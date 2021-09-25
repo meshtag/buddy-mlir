@@ -24,9 +24,13 @@ namespace {
 class CBSMConvVectorizationPattern : public ConversionPattern {
 public:
   explicit CBSMConvVectorizationPattern(MLIRContext *context,
-                                        int64_t strideParam)
+                                        int64_t strideParam, int64_t centerXParam,
+                                        int64_t centerYParam, int64_t boundaryOptionParam)
       : ConversionPattern(linalg::ConvHWOp::getOperationName(), 1, context) {
     stride = strideParam;
+    centerX = centerXParam;
+    centerY = centerYParam;
+    boundaryOption = boundaryOptionParam;
   }
 
   LogicalResult
@@ -106,7 +110,7 @@ public:
   }
 
 private:
-  int64_t stride;
+  int64_t stride, centerX, centerY, boundaryOption;
 };
 } // end anonymous namespace
 
@@ -122,7 +126,15 @@ class ConvVectorizationPass
 public:
   ConvVectorizationPass() = default;
   ConvVectorizationPass(const ConvVectorizationPass &) {}
-  explicit ConvVectorizationPass(int64_t strideParam) { stride = strideParam; }
+  explicit ConvVectorizationPass(int64_t strideParam, 
+                                 int64_t centerXParam, int64_t centerYParam, 
+                                 int64_t boundaryOptionParam)
+  {
+    stride = strideParam;
+    centerX = centerXParam;
+    centerY = centerYParam;
+    boundaryOption = boundaryOptionParam;
+  }
 
   void runOnOperation() override;
 
@@ -133,6 +145,15 @@ public:
 
   Option<int64_t> stride{*this, "strip-mining",
                          llvm::cl::desc("Strip mining size."),
+                         llvm::cl::init(32)};
+  Option<int64_t> centerX{*this, "anchorX",
+                         llvm::cl::desc("X coordinate of anchor point."),
+                         llvm::cl::init(32)};
+  Option<int64_t> centerY{*this, "anchorY",
+                         llvm::cl::desc("Y coordinate of anchor point."),
+                         llvm::cl::init(32)};
+  Option<int64_t> boundaryOption{*this, "boundaryOption",
+                         llvm::cl::desc("Specifies desired method of boundary extrapolation."),
                          llvm::cl::init(32)};
 };
 } // end anonymous namespace.
@@ -148,7 +169,7 @@ void ConvVectorizationPass::runOnOperation() {
   target.addLegalOp<linalg::FillOp>();
 
   RewritePatternSet patterns(context);
-  patterns.add<CBSMConvVectorizationPattern>(context, stride);
+  patterns.add<CBSMConvVectorizationPattern>(context, stride, centerX, centerY, boundaryOption);
 
   if (failed(applyPartialConversion(module, target, std::move(patterns))))
     signalPassFailure();

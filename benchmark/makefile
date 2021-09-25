@@ -4,12 +4,15 @@ MLIR_OPT := ../llvm/build/bin/mlir-opt
 MLIR_CPU_RUNNER := ../llvm/build/bin/mlir-cpu-runner
 OPT_FLAG := -O0
 
-STRIP := 32
+STRIP := 5
+centerX := 2
+centerY := 20
+boundaryOption := 1
 FILTER_min := 3
-FILTER_max := 11
+FILTER_max := 3
 FILTER_step := 2
-OUTPUT_min := 32
-OUTPUT_max := 4096
+OUTPUT_min := 10
+OUTPUT_max := 10
 OUTPUT_step := 0
 
 ifeq ($(shell uname),Linux)
@@ -31,7 +34,7 @@ OUT=$(patsubst tempFile/%.mlir, %.out, $(SOURCE))
 all:$(OUT) 
 	$(shell rm -rf tempFile)
 
-TOOL_OPT := -conv-vectorization="strip-mining=${STRIP}" -lower-affine -convert-scf-to-std -convert-vector-to-llvm -convert-memref-to-llvm -convert-std-to-llvm 
+TOOL_OPT := -conv-vectorization="strip-mining=${STRIP} anchorX=${centerX} anchorY=${centerY} boundaryOption=${boundaryOption}" -lower-affine -convert-scf-to-std -convert-vector-to-llvm -convert-memref-to-llvm -convert-std-to-llvm 
 
 $(OUT):$(SOURCE)
 	@echo $*
