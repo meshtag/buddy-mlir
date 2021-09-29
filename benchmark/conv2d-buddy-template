@@ -16,6 +16,7 @@ module {
   func @main() {
     %cst = constant 2.000000e+00 : f32
     %cst_k = constant 1.000000e+00 : f32
+    %cst_o = constant 0.000000e+00 : f32
 
     %kernel_size = constant 3 : index
     %c0 = constant 0 : index
@@ -27,6 +28,10 @@ module {
 
     %image = call @alloc_2d_filled_f32(%image_size, %image_size, %cst) : (index, index, f32) -> memref<?x?xf32>
     %kernel = call @alloc_2d_filled_f32(%kernel_size, %kernel_size, %cst_k) : (index, index, f32) -> memref<?x?xf32>
+    %output = call @alloc_2d_filled_f32(%image_size, %image_size, %cst_o) : (index, index, f32) -> memref<?x?xf32>
+
+    // %print_output_image = memref.cast %output : memref<?x?xf32> to memref<*xf32>
+    // call @print_memref_f32(%print_output_image) : (memref<*xf32>) -> ()
 
     %print_output = memref.cast %image : memref<?x?xf32> to memref<*xf32>
     call @print_memref_f32(%print_output) : (memref<*xf32>) -> ()
@@ -41,41 +46,52 @@ module {
 
     affine.for %ivs0 = %c0 to %last_pseudo_elem {
       affine.for %ivs1 = %c0 to %kernel_size {
-        affine.for %ivs2 = %c0 to %kernel_size {
-          affine.for %iv = %c0 to %last_pseudo_elem step %stride {
-            affine.for %iv_v = %c0 to %stride {
+        affine.for %iv = %c0 to %last_pseudo_elem step 3 {
+          affine.for %iv_v = %c0 to %stride {
 
-              %curr_row = addi %ivs0, %ivs1 : index
-              %curr_col = addi %iv, %iv_v : index
+            // Handle new kernel column using %iv_v
+            %curr_row = addi %ivs0, %ivs1 : index
+            %curr_col = addi %iv, %iv_v : index
+
+            %kernel_val = memref.load %kernel[%ivs1, %iv_v] : memref<?x?xf32>
+            %kernel_vec = vector.broadcast %kernel_val : f32 to vector<3xf32>
+
+            // vector.print %kernel_vec : vector<3xf32>
+
+            %im_row = subi %curr_row, %center_y : index
+            %im_col = subi %curr_col, %center_x : index
+
+            %pos_row_up = cmpi slt, %im_row, %center_y : index
+            %pos_col_left = cmpi slt, %im_col, %center_x : index
+
+            %pos_row_mid_helper = subi %image_size, %center_y : index
+            %pos_col_right_helper = subi %image_size, %center_x : index
+
+            %pos_row_mid = cmpi sle, %im_row, %pos_row_mid_helper : index
+            %pos_col_right = cmpi sle, %im_col, %pos_col_right_helper : index
+
+            // No Comparison required for lower region and right region.
+
+            scf.if %pos_row_up {
+
+              // vector.print %ivs0 : index
+              // vector.print %iv : index
             
-              %im_row = subi %curr_row, %center_y : index
-              %im_col = subi %curr_col, %center_x : index
+            } else {
+              scf.if %pos_row_mid {
+                
+                // %input_vec = affine.vector_load %image[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
+                // %res_vec = affine.vector_load %output[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
+                // %out_vec = vector.fma %res_vec, %res_vec, %kernel_vec : vector<3xf32>
+                // vector.store %out_vec, %output[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
+                // vector.print %input_vec : vector<3xf32>
 
-              %pos_row_up = cmpi slt, %im_row, %center_y : index
-              %pos_col_left = cmpi slt, %im_col, %center_x : index
 
-              %pos_row_mid_helper = subi %image_size, %center_y : index
-              %pos_col_right_helper = subi %image_size, %center_x : index
-
-              %pos_row_mid = cmpi sle, %im_row, %pos_row_mid_helper : index
-              %pos_col_right = cmpi sle, %im_col, %pos_col_right_helper : index
-
-              // No Comparison required for lower region and right region.
-
-              scf.if %pos_row_up {
-
-                vector.print %ivs0 : index
-                vector.print %iv : index
-            
               } else {
-                scf.if %pos_row_mid {
 
-                } else {
-
-                }
               }
-
             }
+
           }
         }
       }
