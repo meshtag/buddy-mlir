@@ -30,9 +30,6 @@ module {
     %kernel = call @alloc_2d_filled_f32(%kernel_size, %kernel_size, %cst_k) : (index, index, f32) -> memref<?x?xf32>
     %output = call @alloc_2d_filled_f32(%image_size, %image_size, %cst_o) : (index, index, f32) -> memref<?x?xf32>
 
-    // %print_output_image = memref.cast %output : memref<?x?xf32> to memref<*xf32>
-    // call @print_memref_f32(%print_output_image) : (memref<*xf32>) -> ()
-
     %print_output = memref.cast %image : memref<?x?xf32> to memref<*xf32>
     call @print_memref_f32(%print_output) : (memref<*xf32>) -> ()
 
@@ -56,8 +53,6 @@ module {
             %kernel_val = memref.load %kernel[%ivs1, %iv_v] : memref<?x?xf32>
             %kernel_vec = vector.broadcast %kernel_val : f32 to vector<3xf32>
 
-            // vector.print %kernel_vec : vector<3xf32>
-
             %im_row = subi %curr_row, %center_y : index
             %im_col = subi %curr_col, %center_x : index
 
@@ -79,11 +74,11 @@ module {
             
             } else {
               scf.if %pos_row_mid {
-                
-                // %input_vec = affine.vector_load %image[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
-                // %res_vec = affine.vector_load %output[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
-                // %out_vec = vector.fma %res_vec, %res_vec, %kernel_vec : vector<3xf32>
-                // vector.store %out_vec, %output[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
+
+                %input_vec = affine.vector_load %image[%ivs0 + %ivs1 - %center_y, %iv + %iv_v - %center_x] : memref<?x?xf32>, vector<3xf32>
+                %res_vec = affine.vector_load %output[%ivs0 + %ivs1 - %center_y, %iv + %iv_v - %center_x] : memref<?x?xf32>, vector<3xf32>
+                %out_vec = vector.fma %res_vec, %res_vec, %kernel_vec : vector<3xf32>
+                affine.vector_store %out_vec, %output[%ivs0, %ivs0] : memref<?x?xf32>, vector<3xf32>
                 // vector.print %input_vec : vector<3xf32>
 
 
@@ -96,6 +91,9 @@ module {
         }
       }
     }
+
+    %print_output_image = memref.cast %output : memref<?x?xf32> to memref<*xf32>
+    call @print_memref_f32(%print_output_image) : (memref<*xf32>) -> ()
 
     memref.dealloc %image : memref<?x?xf32>
     return

@@ -92,112 +92,22 @@ public:
                     loc, vectorTy32, input, inputVectorMap,
                     ValueRange{ivs[0], ivs[1], ivs[2], iv});
 
-                // Value g1 = nestedBuilder.create<CmpIOp>(loc, CmpIPredicate::slt, ivs[0], c1);
-
-                // auto g2 = nestedBuilder.create<scf::IfOp>(loc, ivs[0].operator==(c0), 
-                //   rewriter.create<ConstantIndexOp>(loc, 1000));
-
-                // Value i1 = nestedBuilder.create<ConstantIndexOp>(loc, g2);
-                // nestedBuilder.create<PrintOp>(loc, i1);
-
-                // bool a = 0;
-                // nestedBuilder.create<scf::IfOp>(loc, 
-                //   nestedBuilder.create<CmpIOp>(loc, CmpIPredicate::slt, ivs[0], c1), 
-                  
-                //     // nestedBuilder.create<PrintOp>(loc, inputVector)
-                //   nestedBuilder.create<PrintOp>(loc, ivs[0])
-                //   // nestedBuilder.create<PrintOp>(loc, c1);
-                  
-                // Value c100 = nestedBuilder.create<ConstantIndexOp>(loc, 100);
-                // auto p1 = nestedBuilder.create<CmpIOp>(loc, CmpIPredicate::slt, ivs[0], c1);
-                // auto p2 = nestedBuilder.create<SelectOp>(loc, p1, c100, c1);
-                // // nestedBuilder.create<PrintOp>(loc, p2);
-                // bool a;
-                // nestedBuilder.create<scf::IfOp>(loc, 
-                //   ivs[0].operator==(c1)
-                // , a = 1
-                // , a = 0);
-                // else 
-                // {
-                //   // nestedBuilder.create<PrintOp>(loc, c100);
-                //   // nestedBuilder.create<PrintOp>(loc, p2.result());
-                //   // nestedBuilder.create<PrintOp>(loc, c1);
-                // }
-
-                //   );
-                
-                // if (a)
-                // {
-                //   nestedBuilder.create<PrintOp>(loc, inputVector);
-                //   nestedBuilder.create<PrintOp>(loc, ivs[0]);
-                //   nestedBuilder.create<PrintOp>(loc, c1);
-                // }
-
-                // nestedBuilder.create<scf::IfOp>(loc, g1.operator==(c0)
-                // {
-                //   nestedBuilder.create<PrintOp>(loc, inputVector);
-                //   nestedBuilder.create<PrintOp>(loc, ivs[0]);
-                //   nestedBuilder.create<PrintOp>(loc, c1);
-                // });
-
-
-
-                // auto y = ivs[0].getDefiningOp<ConstantIndexOp>();
-                // auto y1 = y.value().dyn_cast<ConstantIndexOp>();
-                // int val = 0;
-                // for (auto b : y1.getValues<bool>())
-                // {
-                //   if (val == 0 && b)
-                //     val = 1;
-                // }
-
-                // nestedBuilder.create<PrintOp>(loc, centerYValue);
-                // centerYValue.setType(ivs[0].getType());
-                // Value a11 = nestedBuilder.create<ConstantOp>(loc, 101);
-                // Value b11 = nestedBuilder.create<ConstantOp>(loc, 101);
-                // auto h = a11.operator==(b11);
-                // if (h == 1)
-                // {
-                //   nestedBuilder.create<PrintOp>(loc, 
-                //     nestedBuilder.create<ConstantIndexOp>(loc, 100));
-                //   nestedBuilder.create<PrintOp>(loc, ivs[0]);
-                //   nestedBuilder.create<PrintOp>(loc, centerYValue);
-                // }
-                // Value k11 = nestedBuilder.create<ConstantIndexOp>(loc, h);
-                // nestedBuilder.create<PrintOp>(loc, k11);
-
-                // auto g = ivs[0].getType();
-                // Value p = nestedBuilder.create<ConstantIndexOp>(loc, ivs[0].operator==(
-                //   centerYValue.dyn_cast<g>()));
-                // nestedBuilder.create<PrintOp>(loc, p);
-
-                // if (check && ivs[0].operator!=(centerYValue))
-                // {
-                //   nestedBuilder.create<PrintOp>(loc, ivs[0]);
-                //   nestedBuilder.create<PrintOp>(loc, centerYValue);
-                //   nestedBuilder.create<PrintOp>(loc, inputVector);
-                // }
-                // else if (check && ivs[0].operator==(centerYValue))
-                // {
-                //   check = 0;
-                // }
-
-                // // Define AffineMap.
-                // // The `outputVector` and `resultVector` share the same
-                // // AffineMap.
-                // AffineExpr x, y;
-                // bindDims(ctx, x, y);
-                // AffineMap outputVectorMap = AffineMap::get(
-                //     /*dimCount=*/2, /*symbolCount=*/0, {x, y * stride}, ctx);
-                // Value outputVector = nestedBuilder.create<AffineVectorLoadOp>(
-                //     loc, vectorTy32, output, outputVectorMap,
-                //     ValueRange{ivs[0], iv});
-                // // FMA = Fused Multiply + Add
-                // Value resultVector = nestedBuilder.create<FMAOp>(
-                //     loc, inputVector, kernelVector, outputVector);
-                // nestedBuilder.create<AffineVectorStoreOp>(
-                //     loc, resultVector, output, outputVectorMap,
-                //     ValueRange{ivs[0], iv});
+                // Define AffineMap.
+                // The `outputVector` and `resultVector` share the same
+                // AffineMap.
+                AffineExpr x, y;
+                bindDims(ctx, x, y);
+                AffineMap outputVectorMap = AffineMap::get(
+                    /*dimCount=*/2, /*symbolCount=*/0, {x, y * stride}, ctx);
+                Value outputVector = nestedBuilder.create<AffineVectorLoadOp>(
+                    loc, vectorTy32, output, outputVectorMap,
+                    ValueRange{ivs[0], iv});
+                // FMA = Fused Multiply + Add
+                Value resultVector = nestedBuilder.create<FMAOp>(
+                    loc, inputVector, kernelVector, outputVector);
+                nestedBuilder.create<AffineVectorStoreOp>(
+                    loc, resultVector, output, outputVectorMap,
+                    ValueRange{ivs[0], iv});
                 nestedBuilder.create<AffineYieldOp>(nestedLoc);
               });
         });
