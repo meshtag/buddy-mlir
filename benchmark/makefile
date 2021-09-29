@@ -4,15 +4,15 @@ MLIR_OPT := ../llvm/build/bin/mlir-opt
 MLIR_CPU_RUNNER := ../llvm/build/bin/mlir-cpu-runner
 OPT_FLAG := -O0
 
-STRIP := 5
-centerX := 2
-centerY := 20
+STRIP := 3
+centerX := 1
+centerY := 1
 boundaryOption := 1
 FILTER_min := 3
 FILTER_max := 3
 FILTER_step := 2
-OUTPUT_min := 10
-OUTPUT_max := 10
+OUTPUT_min := 3
+OUTPUT_max := 3
 OUTPUT_step := 0
 
 ifeq ($(shell uname),Linux)
@@ -37,10 +37,6 @@ all:$(OUT)
 TOOL_OPT := -conv-vectorization="strip-mining=${STRIP} anchorX=${centerX} anchorY=${centerY} boundaryOption=${boundaryOption}" -lower-affine -convert-scf-to-std -convert-vector-to-llvm -convert-memref-to-llvm -convert-std-to-llvm 
 
 $(OUT):$(SOURCE)
-	@echo $*
-	@${CONV_OPT} tempFile/$*.mlir ${TOOL_OPT} | \
-	${MLIR_CPU_RUNNER} ${OPT_FLAG} -e main -entry-point-result=void -shared-libs=${MLIR_RUNNER_UTILS} -shared-libs=${MLIR_C_RUNNER_UTILS}
-
-	@${MLIR_OPT} tempFile/$*.mlir -convert-linalg-to-loops -lower-affine -convert-linalg-to-llvm -convert-scf-to-std -convert-std-to-llvm | \
+	@${MLIR_OPT} tempFile/$*.mlir -convert-linalg-to-loops -lower-affine -convert-linalg-to-llvm -convert-scf-to-std -convert-std-to-llvm -convert-vector-to-llvm | \
 	${MLIR_CPU_RUNNER} ${OPT_FLAG} -e main -entry-point-result=void -shared-libs=${MLIR_RUNNER_UTILS} -shared-libs=${MLIR_C_RUNNER_UTILS}
 	@echo

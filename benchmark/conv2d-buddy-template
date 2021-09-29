@@ -1,8 +1,6 @@
-#map0 = affine_map<(d0, d1) -> (d0 + d1 - 1)>
+#map0 = affine_map<(d0) -> (d0)>
 module {
   func private @print_memref_f32(memref<*xf32>)
-  func private @print_flops(f64)
-  func private @rtclock() -> f64
 
   func @alloc_2d_filled_f32(%arg0: index, %arg1: index, %arg2: f32) -> memref<?x?xf32> {
     %c0 = constant 0 : index
@@ -16,67 +14,54 @@ module {
     return %0 : memref<?x?xf32>
   }
 
-  func @conv_2d(%arg0: memref<?x?xf32>, %arg1: memref<?x?xf32>, %arg2: memref<?x?xf32>) {
-    linalg.conv_2d ins (%arg0, %arg1: memref<?x?xf32>, memref<?x?xf32>)
-                  outs (%arg2: memref<?x?xf32>)
-    return
-  }
-
   func @main() {
-    %c2 = constant 2 : index
-    %c3 = constant 3 : index
+    %cst = constant 2.000000e+00 : f32
+    %cst_k = constant 1.000000e+00 : f32
 
-    // Image and Output value.
-    %cst = constant 1.000000e+00 : f32
-    %cst_0 = constant 0.000000e+00 : f32
+    %kernel_size = constant 3 : index
+    %c0 = constant 0 : index
+    %c1 = constant 1 : index
+    %image_size = constant 6 : index
 
-    %current_filter = constant TEMPLATE_FILTER : index
-    %current_output = constant TEMPLATE_OUTPUT : index
-    %current_image = affine.apply #map0(%current_output, %current_filter)
+    %center_y = constant 1 : index
+    %center_x = constant 1 : index
 
-    // Filter.
-    %filter = call @alloc_2d_filled_f32(%current_filter, %current_filter, %cst) : (index, index, f32) -> memref<?x?xf32>
-    // Image.
-    %image = call @alloc_2d_filled_f32(%current_image, %current_image, %cst) : (index, index, f32) -> memref<?x?xf32>
-    // Output.
-    %output = call @alloc_2d_filled_f32(%current_output, %current_output, %cst_0) : (index, index, f32) -> memref<?x?xf32>
+    %image = call @alloc_2d_filled_f32(%image_size, %image_size, %cst) : (index, index, f32) -> memref<?x?xf32>
+    %kernel = call @alloc_2d_filled_f32(%kernel_size, %kernel_size, %cst_k) : (index, index, f32) -> memref<?x?xf32>
 
-    // Execution times.
-    %reps = constant 20 : index
-
-    // Record start time.
-    %t_start = call @rtclock() : () -> f64
-
-    // Execute convolution for specific times.
-    affine.for %arg0 = 0 to %reps {
-      call @conv_2d(%image, %filter, %output) : (memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>) -> ()
-    }
-
-    // Record end time.
-    %t_end = call @rtclock() : () -> f64
-    // Get the total running time.
-    %t = subf %t_end, %t_start : f64
-
-    // Print output.
-    %print_output = memref.cast %output : memref<?x?xf32> to memref<*xf32>
+    %print_output = memref.cast %image : memref<?x?xf32> to memref<*xf32>
     call @print_memref_f32(%print_output) : (memref<*xf32>) -> ()
 
-    // 2 * [filter size]^2 * [output size]^2.
-    %flops1 = muli %current_output, %current_output : index
-    %flops2 = muli %current_filter, %current_filter : index
-    %flops3 = muli %c2, %flops2 : index
-    %flops4 = muli %flops1, %flops3 : index
-    // Calculate GFLOPS.
-    %num_flops = muli %reps, %flops4 : index
-    %num_flops_i = index_cast %num_flops : index to i64
-    %num_flops_f = sitofp %num_flops_i : i64 to f64
-    %flops = divf %num_flops_f, %t : f64
-    // Print the running time.
-    call @print_flops(%flops) : (f64) -> ()
+    %print_kernel = memref.cast %kernel : memref<?x?xf32> to memref<*xf32>
+    call @print_memref_f32(%print_kernel) : (memref<*xf32>) -> ()
+
+    %pseudo_size_helper = subi %kernel_size, %c1 : index
+    %pseudo_image_size = addi %image_size, %pseudo_size_helper : index
+    %last_pseudo_elem = subi %pseudo_image_size, %pseudo_size_helper : index
+    %stride = constant 3 : index
+
+    affine.for %ivs0 = %c0 to %last_pseudo_elem {
+      affine.for %ivs1 = %c0 to %kernel_size {
+        affine.for %ivs2 = %c0 to %kernel_size {
+          affine.for %iv = %c0 to %last_pseudo_elem {
+
+            %curr_row = addi %ivs0, %ivs1 : index
+            %curr_psedu_col = floordivi_signed %ivs2, %stride : index
+            %curr_col = muli %curr_psedu_col, %stride : index
+            %pos = cmpi slt, %curr_row, %center_y : index
+            
+            scf.if %pos {
+
+            } else {
+              
+            }
+
+          }
+        }
+      }
+    }
 
     memref.dealloc %image : memref<?x?xf32>
-    memref.dealloc %filter : memref<?x?xf32>
-    memref.dealloc %output : memref<?x?xf32>
     return
   }
 }
