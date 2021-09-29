@@ -1,4 +1,3 @@
-#map0 = affine_map<(d0) -> (d0)>
 module {
   func private @print_memref_f32(memref<*xf32>)
 
@@ -43,19 +42,40 @@ module {
     affine.for %ivs0 = %c0 to %last_pseudo_elem {
       affine.for %ivs1 = %c0 to %kernel_size {
         affine.for %ivs2 = %c0 to %kernel_size {
-          affine.for %iv = %c0 to %last_pseudo_elem {
+          affine.for %iv = %c0 to %last_pseudo_elem step %stride {
+            affine.for %iv_v = %c0 to %stride {
 
-            %curr_row = addi %ivs0, %ivs1 : index
-            %curr_psedu_col = floordivi_signed %ivs2, %stride : index
-            %curr_col = muli %curr_psedu_col, %stride : index
-            %pos = cmpi slt, %curr_row, %center_y : index
+              %curr_row = addi %ivs0, %ivs1 : index
+              %curr_col = addi %iv, %iv_v : index
             
-            scf.if %pos {
+              %im_row = subi %curr_row, %center_y : index
+              %im_col = subi %curr_col, %center_x : index
 
-            } else {
-              
+              %pos_row_up = cmpi slt, %im_row, %center_y : index
+              %pos_col_left = cmpi slt, %im_col, %center_x : index
+
+              %pos_row_mid_helper = subi %image_size, %center_y : index
+              %pos_col_right_helper = subi %image_size, %center_x : index
+
+              %pos_row_mid = cmpi sle, %im_row, %pos_row_mid_helper : index
+              %pos_col_right = cmpi sle, %im_col, %pos_col_right_helper : index
+
+              // No Comparison required for lower region and right region.
+
+              scf.if %pos_row_up {
+
+                vector.print %ivs0 : index
+                vector.print %iv : index
+            
+              } else {
+                scf.if %pos_row_mid {
+
+                } else {
+
+                }
+              }
+
             }
-
           }
         }
       }
