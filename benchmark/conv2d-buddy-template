@@ -45,6 +45,7 @@ module {
     %last_pseudo_elem = subi %pseudo_image_size, %pseudo_size_helper : index
     %stride = constant 3 : index
 
+    // last_pseudo_elem will be different in horizontal direction for unequal center_y and center_x
     affine.for %ivs0 = %c0 to %last_pseudo_elem {
       affine.for %ivs1 = %c0 to %kernel_size {
         affine.for %iv = %c0 to %last_pseudo_elem step 3 {
@@ -74,9 +75,9 @@ module {
 
               %input_vec = vector.broadcast %constant_padding : f32 to vector<3xf32>
 
-              %res_vec = vector.load %output[%curr_row, %curr_col] : memref<?x?xf32>, vector<3xf32>
+              %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<3xf32>
               %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<3xf32>
-              vector.store %out_vec, %output[%curr_row, %curr_col] : memref<?x?xf32>, vector<3xf32>
+              vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<3xf32>
 
             } else {
               scf.if %pos_row_mid {
@@ -92,16 +93,19 @@ module {
                   %input_vec = vector.maskedload %image[%im_row, %c0], %im_mask, %padding
                      : memref<?x?xf32>, vector<3xi1>, vector<3xf32> into vector<3xf32>
 
-                  %res_vec = vector.load %output[%im_row, %curr_col] : memref<?x?xf32>, vector<3xf32>
+                  %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<3xf32>
                   %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<3xf32>
-                  vector.store %out_vec, %output[%im_row, %curr_col] : memref<?x?xf32>, vector<3xf32>
+                  vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<3xf32>
 
-                  vector.print %im_row : index
-                  vector.print %curr_col : index
+                  // vector.print %im_row : index
+                  // vector.print %curr_col : index
+                  // vector.print %kernel_vec : vector<3xf32>
+                  
+                  vector.print %input_vec : vector<3xf32>
                   vector.print %kernel_vec : vector<3xf32>
-                  // vector.print %input_vec : vector<3xf32>
-                  // vector.print %out_vec : vector<3xf32>
-                  // vector.print %ivs0 : index
+                  vector.print %res_vec : vector<3xf32>
+                  vector.print %out_vec : vector<3xf32>
+                  vector.print %curr_row : index
 
                 } else {
                   scf.if %pos_col_mid {
