@@ -117,9 +117,13 @@ module {
 
             %res_vec = vector.load %output[%1, %2] : memref<?x?xf32>, vector<3xf32>
             %out_vec = vector.fma %res_vec, %res_vec, %kernel_vec : vector<3xf32>
-            // vector.print %out_vec : vector<3xf32>
+            vector.print %out_vec : vector<3xf32>
             // affine.vector_store %out_vec, %output[%ivs0 + %ivs1 - %center_y, %iv + %iv_v - %center_x] : memref<?x?xf32>, vector<3xf32>
             // vector.store %out_vec, %output[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
+            
+            %check_vec = constant dense<11.0> : vector<3xf32>
+            // vector.print %check_vec : vector<3xf32>
+            // vector.store %check_vec, %output[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
           }
         }
       }
