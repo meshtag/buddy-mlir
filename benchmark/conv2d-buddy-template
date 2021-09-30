@@ -25,6 +25,7 @@ module {
 
     %center_y = constant 1 : index
     %center_x = constant 1 : index
+    %constant_padding = constant 0 : f32
 
     %image = call @alloc_2d_filled_f32(%image_size, %image_size, %cst) : (index, index, f32) -> memref<?x?xf32>
     %kernel = call @alloc_2d_filled_f32(%kernel_size, %kernel_size, %cst_k) : (index, index, f32) -> memref<?x?xf32>
@@ -57,35 +58,55 @@ module {
             %im_col = subi %curr_col, %center_x : index
 
             %pos_row_up = cmpi slt, %im_row, %center_y : index
-            %pos_col_left = cmpi slt, %im_col, %center_x : index
-
             %pos_row_mid_helper = subi %image_size, %center_y : index
-            %pos_col_right_helper = subi %image_size, %center_x : index
-
             %pos_row_mid = cmpi sle, %im_row, %pos_row_mid_helper : index
-            %pos_col_right = cmpi sle, %im_col, %pos_col_right_helper : index
+
+            %pos_col_left = cmpi slt, %im_col, %center_x : index
+            %pos_col_mid_helper = subi %image_size, %center_x : index
+            %pos_col_mid = cmpi sle, %im_col, %pos_col_right_helper : index
 
             // No Comparison required for lower region and right region.
 
             scf.if %pos_row_up {
 
-              // vector.print %ivs0 : index
-              // vector.print %iv : index
+              %input_vec = vector.broadcast %constant_padding : f32 to vector<3xf32>
             
             } else {
               scf.if %pos_row_mid {
+                scf.if %pos_col_left {
 
-                %input_vec = affine.vector_load %image[%ivs0 + %ivs1 - %center_y, %iv + %iv_v - %center_x] : memref<?x?xf32>, vector<3xf32>
-                %res_vec = affine.vector_load %output[%ivs0 + %ivs1 - %center_y, %iv + %iv_v - %center_x] : memref<?x?xf32>, vector<3xf32>
-                %out_vec = vector.fma %res_vec, %res_vec, %kernel_vec : vector<3xf32>
-                affine.vector_store %out_vec, %output[%ivs0, %ivs0] : memref<?x?xf32>, vector<3xf32>
-                // vector.print %input_vec : vector<3xf32>
+                  %padding_ip_mask = vector.create_mask %c0, %center_x : vector<3xi1>
+                  %padding = vector.broadcast %constant_padding : f32 to vector<3xf32>
 
+                  %input_vec = vector.maskedload %padding, %padding_ip_mask, %image[%im_row, 0]
+                    : vector<3xf32>, vector<3xi1>, memref<?x?xf32> into vector<3xf32>
 
+                } else {
+                  scf.if %pos_col_mid {
+
+                     %input_vec = affine.vector_load %image[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
+
+                  } else {
+
+                    %mask_helper = subi 3, %center_x : index
+                    %im_mask = vector.create_mask %c0, %mask_helper : vector<3xi1>
+                    %padding = vector.broadcast %constant_padding : f32 to vector<3xf32>
+
+                    %input_vec = vector.maskedload %image[%im_row, %im_col], %im_mask, %padding 
+                      : memref<?x?xf32>, vector<3xi1>, vector<3xf32> into vector<3xf32>
+
+                  }
+                }
               } else {
+
+                %input_vec = vector.broadcast %constant_padding : f32 to vector<3xf32>
 
               }
             }
+
+            %res_vec = affine.vector_load %output[%ivs0 + %ivs1 - %center_y, %iv + %iv_v - %center_x] : memref<?x?xf32>, vector<3xf32>
+            %out_vec = vector.fma %res_vec, %res_vec, %kernel_vec : vector<3xf32>
+            affine.vector_store %out_vec, %output[%ivs0 + %ivs1 - %center_y, %iv + %iv_v - %center_x] : memref<?x?xf32>, vector<3xf32>
 
           }
         }
