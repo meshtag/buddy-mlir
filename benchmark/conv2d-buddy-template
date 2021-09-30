@@ -73,7 +73,14 @@ module {
             scf.if %pos_row_up {
 
               %input_vec = vector.broadcast %constant_padding : f32 to vector<3xf32>
+
+              %res_vec = vector.load %output[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
+              %out_vec = vector.fma %res_vec, %input_vec, %kernel_vec : vector<3xf32>
+              vector.store %out_vec, %output[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
             
+              vector.print %kernel_vec : vector<3xf32>
+              vector.print %input_vec : vector<3xf32>
+
             } else {
               scf.if %pos_row_mid {
                 scf.if %pos_col_left {
@@ -85,11 +92,21 @@ module {
                   %input_vec = vector.maskedload %image[%im_row, %c0], %im_mask, %padding
                      : memref<?x?xf32>, vector<3xi1>, vector<3xf32> into vector<3xf32>
 
+                  // %res_vec = vector.load %output[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
+                  // %out_vec = vector.fma %res_vec, %input_vec, %kernel_vec : vector<3xf32>
+                  // vector.print %kernel_vec : vector<3xf32>
+                  // vector.store %out_vec, %output[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
+
                 } else {
                   scf.if %pos_col_mid {
 
                     // %input_vec = affine.vector_load %image[%ivs0 + %ivs1 - %center_y, %iv + %iv_v - %center_x] : memref<?x?xf32>, vector<3xf32>
                     %input_vec = vector.load %image[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
+
+                    // %res_vec = vector.load %output[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
+                    // %out_vec = vector.fma %res_vec, %input_vec, %kernel_vec : vector<3xf32>
+                    // vector.print %kernel_vec : vector<3xf32>
+                    // vector.store %out_vec, %output[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
 
                   } else {
 
@@ -100,30 +117,30 @@ module {
                     %input_vec = vector.maskedload %image[%im_row, %im_col], %im_mask, %padding 
                       : memref<?x?xf32>, vector<3xi1>, vector<3xf32> into vector<3xf32>
 
+                    // %res_vec = vector.load %output[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
+                    // %out_vec = vector.fma %res_vec, %input_vec, %kernel_vec : vector<3xf32>
+                    // vector.print %kernel_vec : vector<3xf32>
+                    // vector.store %out_vec, %output[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
+
                   }
                 }
               } else {
 
                 %input_vec = vector.broadcast %constant_padding : f32 to vector<3xf32>
 
+                // %res_vec = vector.load %output[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
+                // %out_vec = vector.fma %res_vec, %input_vec, %kernel_vec : vector<3xf32>
+                // vector.print %kernel_vec : vector<3xf32>
+                // vector.store %out_vec, %output[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
+
               }
             }
 
-            // %res_vec = affine.vector_load %output[%ivs0 + %ivs1 - %center_y, %iv + %iv_v - %center_x] : memref<?x?xf32>, vector<3xf32>
-            %11 = addi %ivs0, %ivs1 : index
-            %1 = subi %11, %center_y : index
-            %22 = addi %iv, %iv_v : index
-            %2 = subi %22, %center_x : index
-
-            %res_vec = vector.load %output[%1, %2] : memref<?x?xf32>, vector<3xf32>
-            %out_vec = vector.fma %res_vec, %res_vec, %kernel_vec : vector<3xf32>
-            vector.print %out_vec : vector<3xf32>
-            // affine.vector_store %out_vec, %output[%ivs0 + %ivs1 - %center_y, %iv + %iv_v - %center_x] : memref<?x?xf32>, vector<3xf32>
+            // %res_vec = vector.load %output[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
+            // %out_vec = vector.fma %res_vec, %input_vec, %kernel_vec : vector<3xf32>
+            // vector.print %kernel_vec : vector<3xf32>
             // vector.store %out_vec, %output[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
-            
-            %check_vec = constant dense<11.0> : vector<3xf32>
-            // vector.print %check_vec : vector<3xf32>
-            // vector.store %check_vec, %output[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
+
           }
         }
       }
