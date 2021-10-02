@@ -22,11 +22,12 @@ module {
     %kernel_size = constant 3 : index
     %c0 = constant 0 : index
     %c1 = constant 1 : index
-    %image_size = constant 6 : index
 
+    %image_size = constant 6 : index
     %center_y = constant 1 : index
     %center_x = constant 1 : index
     %constant_padding = constant 0.0 : f32
+    %stride = constant 3 : index
 
     %image = call @alloc_2d_filled_f32(%image_size, %image_size, %cst)
                : (index, index, f32) -> memref<?x?xf32>
@@ -41,10 +42,8 @@ module {
     %print_kernel = memref.cast %kernel : memref<?x?xf32> to memref<*xf32>
     call @print_memref_f32(%print_kernel) : (memref<*xf32>) -> ()
 
-    %pseudo_size_helper = subi %kernel_size, %c1 : index
-    %pseudo_image_size = addi %image_size, %pseudo_size_helper : index
-    %last_pseudo_elem = subi %pseudo_image_size, %pseudo_size_helper : index
-    %stride = constant 3 : index
+    %pseudo_kernel_size_helper = subi %kernel_size, %c1 : index
+    %pseudo_image_size = addi %image_size, %pseudo_kernel_size_helper : index
 
     // Execution times.
     %reps = constant 200 : index
@@ -52,11 +51,10 @@ module {
     // Record start time.
     %t_start = call @rtclock() : () -> f64
 
-    affine.for %rep = 0 to %reps {
-    // last_pseudo_elem will be different in horizontal direction for unequal center_y and center_x
-    affine.for %ivs0 = %c0 to %last_pseudo_elem {
+    // affine.for %rep = 0 to %reps {
+    affine.for %ivs0 = %c0 to %image_size {
       affine.for %ivs1 = %c0 to %kernel_size {
-        affine.for %iv = %c0 to %last_pseudo_elem step 3 {
+        affine.for %iv = %c0 to %image_size step 3 {
           affine.for %iv_v = %c0 to %kernel_size {
 
             // Handle new kernel column using %iv_v
@@ -70,12 +68,17 @@ module {
             %im_col = subi %curr_col, %center_x : index
 
             %pos_row_up = cmpi slt, %curr_row, %center_y : index
-            %pos_row_mid_helper = subi %pseudo_image_size, %center_y : index
+            %pos_row_mid_flag = subi %pseudo_kernel_size_helper, %center_y : index
+            %pos_row_mid_helper = subi %pseudo_image_size, %pos_row_mid_flag : index
             %pos_row_mid = cmpi slt, %curr_row, %pos_row_mid_helper : index
 
             %pos_col_left = cmpi slt, %curr_col, %center_x : index
+            // %pos_col_mid_flag = subi %pseudo_kernel_size_helper, %center_x : index
             %pos_col_mid_helper = subi %pseudo_image_size, %stride : index
             %pos_col_mid = cmpi slt, %curr_col, %pos_col_mid_helper : index
+
+            vector.print %pos_col_mid_helper : index
+            vector.print %kernel_vec : vector<3xf32>
 
             // No Comparison required for lower region and right region.
 
@@ -128,6 +131,12 @@ module {
                     %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<3xf32>
                     vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<3xf32>
 
+                    vector.print %curr_col : index
+                    vector.print %input_vec : vector<3xf32>
+                    vector.print %res_vec : vector<3xf32>
+                    vector.print %kernel_vec : vector<3xf32>
+                    vector.print %out_vec : vector<3xf32>
+
                   }
                 }
               } else {
@@ -144,7 +153,7 @@ module {
         }
       }
     }
-    }
+    // }
 
     // Record end time.
     %t_end = call @rtclock() : () -> f64
@@ -152,7 +161,7 @@ module {
     // Get the total running time.
     %t = subf %t_end, %t_start : f64
 
-    vector.print %t : f64
+    // vector.print %t : f64
 
     %print_output_image = memref.cast %output : memref<?x?xf32> to memref<*xf32>
     call @print_memref_f32(%print_output_image) : (memref<*xf32>) -> ()
