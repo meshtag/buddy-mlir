@@ -177,3 +177,16 @@ module {
 }
 
 // 0.000180006
+
+// %dummy = constant 100 : index
+   //                %print_output_image = memref.cast %output : memref<?x?xf32> to memref<*xf32>
+      //             call @print_memref_f32(%print_output_image) : (memref<*xf32>) -> ()
+         //          vector.print %dummy : index
+            //       vector.print %curr_col : index
+               //    vector.print %input_vec : vector<3xf32>
+                  // vector.print %res_vec : vector<3xf32>
+              //     vector.print %kernel_vec : vector<3xf32>
+                 //  vector.print %out_vec : vector<3xf32>
+                  // vector.print %curr_col : index
+                  // vector.print %ivs1 : index
+                  // vector.print %dummy : index

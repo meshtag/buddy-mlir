@@ -24,8 +24,8 @@ module {
     %c1 = constant 1 : index
 
     %image_size = constant 6 : index
-    %center_y = constant 1 : index
-    %center_x = constant 1 : index
+    %center_y = constant 2 : index
+    %center_x = constant 2 : index
     %constant_padding = constant 0.0 : f32
     %stride = constant 3 : index
 
@@ -73,12 +73,10 @@ module {
             %pos_row_mid = cmpi slt, %curr_row, %pos_row_mid_helper : index
 
             %pos_col_left = cmpi slt, %curr_col, %center_x : index
-            // %pos_col_mid_flag = subi %pseudo_kernel_size_helper, %center_x : index
-            %pos_col_mid_helper = subi %pseudo_image_size, %stride : index
-            %pos_col_mid = cmpi slt, %curr_col, %pos_col_mid_helper : index
-
-            vector.print %pos_col_mid_helper : index
-            vector.print %kernel_vec : vector<3xf32>
+            %pos_col_helper = addi %curr_col, %stride : index
+            %pos_col_mid_flag = subi %pseudo_kernel_size_helper, %center_x : index
+            %pos_col_mid_helper = subi %pseudo_image_size, %pos_col_mid_flag : index
+            %pos_col_mid = cmpi sle, %pos_col_helper, %pos_col_mid_helper : index
 
             // No Comparison required for lower region and right region.
 
@@ -94,7 +92,8 @@ module {
               scf.if %pos_row_mid {
                 scf.if %pos_col_left {
 
-                  %im_mask_initial = vector.create_mask %center_x : vector<3xi1>
+                  %im_mask_initial_helper = subi %center_x, %curr_col : index
+                  %im_mask_initial = vector.create_mask %im_mask_initial_helper : vector<3xi1>
                   %padding = vector.broadcast %constant_padding : f32 to vector<3xf32>
 
                   %c11 = constant 1 : i1
@@ -120,7 +119,8 @@ module {
                   } else {
 
                     // mid right region
-                    %mask_helper = subi %kernel_size, %center_x : index
+                    %mask_helper_helper = subi %pos_col_helper, %pos_col_mid_helper : index
+                    %mask_helper = subi %kernel_size, %mask_helper_helper : index
                     %im_mask = vector.create_mask %mask_helper : vector<3xi1>
                     %padding = vector.broadcast %constant_padding : f32 to vector<3xf32>
 
@@ -130,12 +130,6 @@ module {
                     %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<3xf32>
                     %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<3xf32>
                     vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<3xf32>
-
-                    vector.print %curr_col : index
-                    vector.print %input_vec : vector<3xf32>
-                    vector.print %res_vec : vector<3xf32>
-                    vector.print %kernel_vec : vector<3xf32>
-                    vector.print %out_vec : vector<3xf32>
 
                   }
                 }
