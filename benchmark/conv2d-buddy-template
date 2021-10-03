@@ -15,7 +15,7 @@ module {
   }
 
   func @main() {
-    %cst = constant 2.000000e+00 : f32
+    %cst = constant 4.000000e+00 : f32
     %cst_k = constant 1.000000e+00 : f32
     %cst_o = constant 0.000000e+00 : f32
 
@@ -23,7 +23,7 @@ module {
     %c0 = constant 0 : index
     %c1 = constant 1 : index
 
-    %image_size = constant 6 : index
+    %image_size = constant 15 : index
     %center_y = constant 2 : index
     %center_x = constant 2 : index
     %constant_padding = constant 0.0 : f32
@@ -67,31 +67,35 @@ module {
             %im_row = subi %curr_row, %center_y : index
             %im_col = subi %curr_col, %center_x : index
 
+            // Flag to determine whether we are in vertically upper region of 2D input data.
             %pos_row_up = cmpi slt, %curr_row, %center_y : index
+            
             %pos_row_mid_flag = subi %pseudo_kernel_size_helper, %center_y : index
             %pos_row_mid_helper = subi %pseudo_image_size, %pos_row_mid_flag : index
+            
+            // Flag to determine whether we are in vertically middle region of 2D input data.
             %pos_row_mid = cmpi slt, %curr_row, %pos_row_mid_helper : index
 
+            // Flag to determine whether we are in horizontally left region of 2D input data.
             %pos_col_left = cmpi slt, %curr_col, %center_x : index
             %pos_col_helper = addi %curr_col, %stride : index
-            %pos_col_mid_flag = subi %pseudo_kernel_size_helper, %center_x : index
-            %pos_col_mid_helper = subi %pseudo_image_size, %pos_col_mid_flag : index
+            %pos_col_mid_flag_helper = subi %pseudo_kernel_size_helper, %center_x : index
+            %pos_col_mid_helper = subi %pseudo_image_size, %pos_col_mid_flag_helper : index
+            
+            // Flag to determine whether we are in horizontally middle region of 2D input data.
             %pos_col_mid = cmpi sle, %pos_col_helper, %pos_col_mid_helper : index
 
             // No Comparison required for lower region and right region.
 
             scf.if %pos_row_up {
-
               %input_vec = vector.broadcast %constant_padding : f32 to vector<3xf32>
 
               %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<3xf32>
               %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<3xf32>
               vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<3xf32>
-
             } else {
               scf.if %pos_row_mid {
                 scf.if %pos_col_left {
-
                   %im_mask_initial_helper = subi %center_x, %curr_col : index
                   %im_mask_initial = vector.create_mask %im_mask_initial_helper : vector<3xi1>
                   %padding = vector.broadcast %constant_padding : f32 to vector<3xf32>
@@ -106,18 +110,14 @@ module {
                   %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<3xf32>
                   %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<3xf32>
                   vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<3xf32>
-
                 } else {
                   scf.if %pos_col_mid {
-
                     %input_vec = vector.load %image[%im_row, %im_col] : memref<?x?xf32>, vector<3xf32>
 
                     %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<3xf32>
                     %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<3xf32>
                     vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<3xf32>
-
                   } else {
-
                     // mid right region
                     %mask_helper_helper = subi %pos_col_helper, %pos_col_mid_helper : index
                     %mask_helper = subi %kernel_size, %mask_helper_helper : index
@@ -130,17 +130,14 @@ module {
                     %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<3xf32>
                     %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<3xf32>
                     vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<3xf32>
-
                   }
                 }
               } else {
-
                 %input_vec = vector.broadcast %constant_padding : f32 to vector<3xf32>
 
                 %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<3xf32>
                 %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<3xf32>
                 vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<3xf32>
-
               }
             }
           }
@@ -167,4 +164,3 @@ module {
   }
 }
 
-// 0.000180006
