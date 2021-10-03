@@ -23,7 +23,7 @@ module {
     %c0 = constant 0 : index
     %c1 = constant 1 : index
 
-    %image_size = constant 15 : index
+    %image_size = constant 6 : index
     %center_y = constant 2 : index
     %center_x = constant 2 : index
     %constant_padding = constant 0.0 : f32
@@ -57,7 +57,6 @@ module {
         affine.for %iv = %c0 to %image_size step 3 {
           affine.for %iv_v = %c0 to %kernel_size {
 
-            // Handle new kernel column using %iv_v
             %curr_row = addi %ivs0, %ivs1 : index
             %curr_col = addi %iv, %iv_v : index
 
@@ -78,10 +77,11 @@ module {
 
             // Flag to determine whether we are in horizontally left region of 2D input data.
             %pos_col_left = cmpi slt, %curr_col, %center_x : index
+
             %pos_col_helper = addi %curr_col, %stride : index
             %pos_col_mid_flag_helper = subi %pseudo_kernel_size_helper, %center_x : index
             %pos_col_mid_helper = subi %pseudo_image_size, %pos_col_mid_flag_helper : index
-            
+
             // Flag to determine whether we are in horizontally middle region of 2D input data.
             %pos_col_mid = cmpi sle, %pos_col_helper, %pos_col_mid_helper : index
 
