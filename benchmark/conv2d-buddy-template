@@ -23,17 +23,18 @@ module {
     %c0 = constant 0 : index
     %c1 = constant 1 : index
 
-    %image_size = constant 6 : index
+    %image_height = constant 8 : index
+    %image_width = constant 6 : index
     %center_y = constant 2 : index
     %center_x = constant 2 : index
     %constant_padding = constant 0.0 : f32
     %stride = constant 3 : index
 
-    %image = call @alloc_2d_filled_f32(%image_size, %image_size, %cst)
+    %image = call @alloc_2d_filled_f32(%image_height, %image_width, %cst)
                : (index, index, f32) -> memref<?x?xf32>
     %kernel = call @alloc_2d_filled_f32(%kernel_size, %kernel_size, %cst_k)
                : (index, index, f32) -> memref<?x?xf32>
-    %output = call @alloc_2d_filled_f32(%image_size, %image_size, %cst_o)
+    %output = call @alloc_2d_filled_f32(%image_height, %image_width, %cst_o)
                : (index, index, f32) -> memref<?x?xf32>
 
     %print_output = memref.cast %image : memref<?x?xf32> to memref<*xf32>
@@ -43,7 +44,9 @@ module {
     call @print_memref_f32(%print_kernel) : (memref<*xf32>) -> ()
 
     %pseudo_kernel_size_helper = subi %kernel_size, %c1 : index
-    %pseudo_image_size = addi %image_size, %pseudo_kernel_size_helper : index
+
+    %pseudo_image_height = addi %image_height, %pseudo_kernel_size_helper : index
+    %pseudo_image_width = addi %image_width, %pseudo_kernel_size_helper : index
 
     // Execution times.
     %reps = constant 200 : index
@@ -52,9 +55,9 @@ module {
     %t_start = call @rtclock() : () -> f64
 
     // affine.for %rep = 0 to %reps {
-    affine.for %ivs0 = %c0 to %image_size {
+    affine.for %ivs0 = %c0 to %image_height {
       affine.for %ivs1 = %c0 to %kernel_size {
-        affine.for %iv = %c0 to %image_size step 3 {
+        affine.for %iv = %c0 to %image_width step 3 {
           affine.for %iv_v = %c0 to %kernel_size {
 
             %curr_row = addi %ivs0, %ivs1 : index
@@ -70,7 +73,7 @@ module {
             %pos_row_up = cmpi slt, %curr_row, %center_y : index
             
             %pos_row_mid_flag = subi %pseudo_kernel_size_helper, %center_y : index
-            %pos_row_mid_helper = subi %pseudo_image_size, %pos_row_mid_flag : index
+            %pos_row_mid_helper = subi %pseudo_image_height, %pos_row_mid_flag : index
             
             // Flag to determine whether we are in vertically middle region of 2D input data.
             %pos_row_mid = cmpi slt, %curr_row, %pos_row_mid_helper : index
@@ -80,7 +83,7 @@ module {
 
             %pos_col_helper = addi %curr_col, %stride : index
             %pos_col_mid_flag_helper = subi %pseudo_kernel_size_helper, %center_x : index
-            %pos_col_mid_helper = subi %pseudo_image_size, %pos_col_mid_flag_helper : index
+            %pos_col_mid_helper = subi %pseudo_image_width, %pos_col_mid_flag_helper : index
 
             // Flag to determine whether we are in horizontally middle region of 2D input data.
             %pos_col_mid = cmpi sle, %pos_col_helper, %pos_col_mid_helper : index
