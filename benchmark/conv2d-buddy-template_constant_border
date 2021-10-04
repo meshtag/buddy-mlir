@@ -19,14 +19,14 @@ module {
     %cst_k = constant 1.000000e+00 : f32
     %cst_o = constant 0.000000e+00 : f32
 
-    %kernel_size = constant 5 : index
+    %kernel_size = constant 3 : index
     %c0 = constant 0 : index
     %c1 = constant 1 : index
 
-    %image_height = constant 13 : index
-    %image_width = constant 10 : index
-    %center_y = constant 4 : index
-    %center_x = constant 4 : index
+    %image_height = constant 3 : index
+    %image_width = constant 5 : index
+    %center_y = constant 2 : index
+    %center_x = constant 2 : index
     %constant_padding = constant 0.0 : f32
     %stride = constant 5 : index
 
