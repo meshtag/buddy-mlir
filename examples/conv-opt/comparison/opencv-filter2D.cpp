@@ -17,16 +17,6 @@ enum class boundaryOption
   BORDER_REFLECT101
 };
 
-void PrintImage(cv::Mat img)
-{
-  for (std::ptrdiff_t row = 0; row < img.rows; ++row)
-  {
-      for (std::ptrdiff_t col = 0; col < img.cols; ++col)
-        std::cout << static_cast<int>(img.at<uchar>(col, row)) << " ";
-      std::cout << "\n";
-  }
-}
-
 void generateExpectedImage(cv::Mat img, cv::Mat expectedImg, int ddepth, cv::Mat kernel, 
                            cv::Point anchor, double delta, boundaryOption option, std::string name)
 {
@@ -42,14 +32,18 @@ void generateExpectedImage(cv::Mat img, cv::Mat expectedImg, int ddepth, cv::Mat
   cv::imwrite(name, expectedImg);
 }
 
-int main()
+int main(int argc, char **argv)
 {
+  if (argc != 4)
+  {
+    std::cout << "Invalid CLI arguments\nUsage : ImageHeight ImageWidth DestinationFolder\n";
+  }
+
   cv::Mat origImg, expImg;
-  origImg.create(6, 6, CV_8UC1);
-  expImg.create(6, 6, CV_8UC1);
+  origImg.create(atoi(argv[1]), atoi(argv[2]), CV_8UC1);
+  expImg.create(atoi(argv[1]), atoi(argv[2]), CV_8UC1);
 
   FillImage(origImg);
-  PrintImage(origImg);
 
   double delta = 0;
   int ddepth = -1;
@@ -62,7 +56,7 @@ int main()
     {
       // Put all expected images inside a folder and then test them from there.
       std::string partialName;
-      partialName = "ExpectedImage_" + std::to_string(i) + "_" + std::to_string(j) + "_";
+      partialName = std::string(argv[3]) + "/ExpectedImage_" + std::to_string(i) + "_" + std::to_string(j) + "_";
       anchor = cv::Point(i, j);
 
       generateExpectedImage(origImg, expImg, ddepth, kernel, anchor, delta, 
