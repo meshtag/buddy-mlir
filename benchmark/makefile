@@ -6,10 +6,10 @@ OPT_FLAG := -O0
 
 STRIP := 32
 FILTER_min := 3
-FILTER_max := 11
+FILTER_max := 3
 FILTER_step := 2
 OUTPUT_min := 32
-OUTPUT_max := 4096
+OUTPUT_max := 32
 OUTPUT_step := 0
 
 ifeq ($(shell uname),Linux)
@@ -37,7 +37,3 @@ $(OUT):$(SOURCE)
 	@echo $*
 	@${CONV_OPT} tempFile/$*.mlir ${TOOL_OPT} | \
 	${MLIR_CPU_RUNNER} ${OPT_FLAG} -e main -entry-point-result=void -shared-libs=${MLIR_RUNNER_UTILS} -shared-libs=${MLIR_C_RUNNER_UTILS}
-
-	@${MLIR_OPT} tempFile/$*.mlir -convert-linalg-to-loops -lower-affine -convert-linalg-to-llvm -convert-scf-to-std -convert-std-to-llvm -reconcile-unrealized-casts | \
-	${MLIR_CPU_RUNNER} ${OPT_FLAG} -e main -entry-point-result=void -shared-libs=${MLIR_RUNNER_UTILS} -shared-libs=${MLIR_C_RUNNER_UTILS}
-	@echo
