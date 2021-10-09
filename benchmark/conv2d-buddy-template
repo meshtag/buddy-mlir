@@ -25,8 +25,8 @@ module {
 
     %image_height = constant 13 : index
     %image_width = constant 10 : index
-    %center_y = constant 4 : index
-    %center_x = constant 4 : index
+    %center_y = constant 2 : index
+    %center_x = constant 2 : index
     %constant_padding = constant 0.0 : f32
     %stride = constant 5 : index
 
@@ -91,56 +91,56 @@ module {
             // No Comparison required for lower region and right region.
 
             scf.if %pos_row_up {
-              %input_vec = vector.broadcast %constant_padding : f32 to vector<5xf32>
+              scf.if %pos_col_left {
 
-              %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
-              %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<5xf32>
-              vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
+
+
+              } else {
+                scf.if %pos_col_mid {
+
+                  
+
+                } else {
+
+
+
+                }
+              }
+
             } else {
               scf.if %pos_row_mid {
                 scf.if %pos_col_left {
-                  %im_mask_initial_helper = subi %center_x, %curr_col : index
-                  %im_mask_initial = vector.create_mask %im_mask_initial_helper : vector<5xi1>
-                  %padding = vector.broadcast %constant_padding : f32 to vector<5xf32>
 
-                  %c11 = constant 1 : i1
-                  %mask_inverter_helper = vector.broadcast %c11 : i1 to vector<5xi1>
-                  %im_mask = subi %mask_inverter_helper, %im_mask_initial : vector<5xi1>
+                  
 
-                  %input_vec = vector.maskedload %image[%im_row, %c0], %im_mask, %padding
-                     : memref<?x?xf32>, vector<5xi1>, vector<5xf32> into vector<5xf32>
-
-                  %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
-                  %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<5xf32>
-                  vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
                 } else {
                   scf.if %pos_col_mid {
-                    %input_vec = vector.load %image[%im_row, %im_col] : memref<?x?xf32>, vector<5xf32>
-
-                    %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
-                    %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<5xf32>
-                    vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
+                    
+                    
                   } else {
-                    // mid right region
-                    %mask_helper_helper = subi %pos_col_helper, %pos_col_mid_helper : index
-                    %mask_helper = subi %kernel_size, %mask_helper_helper : index
-                    %im_mask = vector.create_mask %mask_helper : vector<5xi1>
-                    %padding = vector.broadcast %constant_padding : f32 to vector<5xf32>
 
-                    %input_vec = vector.maskedload %image[%im_row, %im_col], %im_mask, %padding 
-                      : memref<?x?xf32>, vector<5xi1>, vector<5xf32> into vector<5xf32>
+                    
 
-                    %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
-                    %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<5xf32>
-                    vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
                   }
                 }
               } else {
-                %input_vec = vector.broadcast %constant_padding : f32 to vector<5xf32>
+               
+                scf.if %pos_col_left {
 
-                %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
-                %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<5xf32>
-                vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
+                  
+
+                } else {
+                  scf.if %pos_col_mid {
+
+                    
+
+                  } else {
+
+                    
+
+                  }
+                }
+
               }
             }
           }
