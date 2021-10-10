@@ -93,16 +93,60 @@ module {
             scf.if %pos_row_up {
               scf.if %pos_col_left {
 
+                %ref_row = subi %center_y, %curr_row : index
 
+                // Assume stride is greater than center_x
+                %left_mask_helper_elem = subi %center_x, %curr_col : index
+                %left_mask_helper = vector.create_mask %left_mask_helper_elem : vector<5xi1>
+                %c11 = constant 1 : i1
+                %mask_inverter = vector.broadcast %c11 : i1 to vector<5xi1>
+                %left_mask = subi %mask_inverter, %left_mask_helper : vector<5xi1>
+
+                %c11_f32 = constant 1.0 : f32
+                %inverter_f32 = vector.broadcast %c11_f32 : f32 to vector<5xf32>
+                %im_data = vector.load %image[%ref_row, %c0] : memref<?x?xf32>, vector<5xf32>
+                %padding_vec = vector.shuffle %im_data, %inverter_f32[4, 3, 2, 1, 0] :
+                               vector<5xf32>, vector<5xf32>
+
+                %input_vec = vector.maskedload %image[%ref_row, %c0], %left_mask, %padding_vec
+                            : memref<?x?xf32>, vector<5xi1>, vector<5xf32> into vector<5xf32>
+
+                %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
+                %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<5xf32>
+                vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
 
               } else {
                 scf.if %pos_col_mid {
 
-                  
+                  %ref_row = subi %center_y, %curr_row : index
+                  %input_vec = vector.load %image[%ref_row, %curr_col] : memref<?x?xf32>, vector<5xf32>
+
+                  %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
+                  %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<5xf32>
+                  vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
 
                 } else {
 
+                  %ref_row = subi %center_y, %curr_row : index
+                  %load_index = subi %image_width, %stride : index
 
+                  // Assume stride is greater than kernel_width - center_y - 1
+                  %right_mask_helper_elem = subi %pos_col_helper, %pos_col_mid_helper : index
+                  %right_mask_elem = subi %stride, %right_mask_helper_elem : index
+                  %right_mask = vector.create_mask %right_mask_elem : vector<5xi1>
+
+                  %c11_f32 = constant 1.0 : f32
+                  %inverter_f32 = vector.broadcast %c11_f32 : f32 to vector<5xf32>
+                  %im_data = vector.load %image[%ref_row, %load_index] : memref<?x?xf32>, vector<5xf32>
+                  %padding_vec = vector.shuffle %im_data, %inverter_f32[4, 3, 2, 1, 0] :
+                                 vector<5xf32>, vector<5xf32>
+
+                  %input_vec = vector.maskedload %image[%ref_row, %im_col], %right_mask, %padding_vec
+                             : memref<?x?xf32>, vector<5xi1>, vector<5xf32> into vector<5xf32>
+
+                  %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
+                  %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<5xf32>
+                  vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
 
                 }
               }
@@ -111,15 +155,56 @@ module {
               scf.if %pos_row_mid {
                 scf.if %pos_col_left {
 
-                  
+                  // Assume stride is greater than center_x
+                  %left_mask_helper_elem = subi %center_x, %curr_col : index
+                  %left_mask_helper = vector.create_mask %left_mask_helper_elem : vector<5xi1>
+                  %c11 = constant 1 : i1
+                  %mask_inverter = vector.broadcast %c11 : i1 to vector<5xi1>
+                  %left_mask = subi %mask_inverter, %left_mask_helper : vector<5xi1>
+
+                  %c11_f32 = constant 1.0 : f32
+                  %inverter_f32 = vector.broadcast %c11_f32 : f32 to vector<5xf32>
+                  %im_data = vector.load %image[%im_row, %c0] : memref<?x?xf32>, vector<5xf32>
+                  %padding_vec = vector.shuffle %im_data, %inverter_f32[4, 3, 2, 1, 0] : 
+                                 vector<5xf32>, vector<5xf32>
+
+                  %input_vec = vector.maskedload %image[%im_row, %c0], %left_mask, %padding_vec
+                             : memref<?x?xf32>, vector<5xi1>, vector<5xf32> into vector<5xf32>
+
+                  %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
+                  %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<5xf32>
+                  vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
 
                 } else {
                   scf.if %pos_col_mid {
-                    
-                    
+
+                  %input_vec = vector.load %image[%im_row, %im_col] : memref<?x?xf32>, vector<5xf32>
+
+                  %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
+                  %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<5xf32>
+                  vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
+
                   } else {
 
-                    
+                    // Assume stride is greater than kernel_width - center_y - 1
+                    %right_mask_helper_elem = subi %pos_col_helper, %pos_col_mid_helper : index
+                    %right_mask_elem = subi %stride, %right_mask_helper_elem : index
+                    %right_mask = vector.create_mask %right_mask_elem : vector<5xi1>
+
+                    %load_index = subi %image_width, %stride : index
+                    %im_data = vector.load %image[%im_row, %load_index] : 
+                               memref<?x?xf32>, vector<5xf32>
+                    %c11_f32 = constant 1.0 : f32
+                    %inverter_f32 = vector.broadcast %c11_f32 : f32 to vector<5xf32>
+                    %padding_vec = vector.shuffle %im_data, %inverter_f32[4, 3, 2, 1, 0] : 
+                                   vector<5xf32>, vector<5xf32>
+
+                    %input_vec = vector.maskedload %image[%im_row, %im_col], %right_mask, 
+                        %padding_vec : memref<?x?xf32>, vector<5xi1>, vector<5xf32> into vector<5xf32>
+
+                    %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
+                    %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<5xf32>
+                    vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
 
                   }
                 }
@@ -127,16 +212,67 @@ module {
                
                 scf.if %pos_col_left {
 
-                  
+                  %ref_row_helper = subi %curr_row ,%pos_row_mid_helper : index
+                  %ref_row_1_ahead = subi %image_height, %ref_row_helper : index
+                  %ref_row = subi %ref_row_1_ahead, %c1 : index
+
+                  // Assume stride is greater than center_x
+                  %left_mask_helper_elem = subi %center_x, %curr_col : index
+                  %left_mask_helper = vector.create_mask %left_mask_helper_elem : vector<5xi1>
+                  %c11 = constant 1 : i1
+                  %mask_inverter = vector.broadcast %c11 : i1 to vector<5xi1>
+                  %left_mask = subi %mask_inverter, %left_mask_helper : vector<5xi1>
+
+                  %c11_f32 = constant 1.0 : f32
+                  %inverter_f32 = vector.broadcast %c11_f32 : f32 to vector<5xf32>
+                  %im_data = vector.load %image[%ref_row, %c0] : memref<?x?xf32>, vector<5xf32>
+                  %padding_vec = vector.shuffle %im_data, %inverter_f32[4, 3, 2, 1, 0] :
+                                 vector<5xf32>, vector<5xf32>
+
+                  %input_vec = vector.maskedload %image[%ref_row, %c0], %left_mask, %padding_vec
+                              : memref<?x?xf32>, vector<5xi1>, vector<5xf32> into vector<5xf32>
+
+                  %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
+                  %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<5xf32>
+                  vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
 
                 } else {
                   scf.if %pos_col_mid {
 
+                    %ref_row_helper = subi %curr_row ,%pos_row_mid_helper : index
+                    %ref_row_1_ahead = subi %image_height, %ref_row_helper : index
+                    %ref_row = subi %ref_row_1_ahead, %c1 : index
                     
+                    %input_vec = vector.load %image[%ref_row, %im_col] : memref<?x?xf32>, vector<5xf32>
+
+                    %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
+                    %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<5xf32>
+                    vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
 
                   } else {
 
-                    
+                    %ref_row_helper = subi %curr_row ,%pos_row_mid_helper : index
+                    %ref_row_1_ahead = subi %image_height, %ref_row_helper : index
+                    %ref_row = subi %ref_row_1_ahead, %c1 : index
+                    %load_index = subi %image_width, %stride : index
+
+                    // Assume stride is greater than kernel_width - center_y - 1
+                    %right_mask_helper_elem = subi %pos_col_helper, %pos_col_mid_helper : index
+                    %right_mask_elem = subi %stride, %right_mask_helper_elem : index
+                    %right_mask = vector.create_mask %right_mask_elem : vector<5xi1>
+
+                    %c11_f32 = constant 1.0 : f32
+                    %inverter_f32 = vector.broadcast %c11_f32 : f32 to vector<5xf32>
+                    %im_data = vector.load %image[%ref_row, %load_index] : memref<?x?xf32>, vector<5xf32>
+                    %padding_vec = vector.shuffle %im_data, %inverter_f32[4, 3, 2, 1, 0] :
+                                   vector<5xf32>, vector<5xf32>
+
+                    %input_vec = vector.maskedload %image[%ref_row, %im_col], %right_mask, %padding_vec
+                               : memref<?x?xf32>, vector<5xi1>, vector<5xf32> into vector<5xf32>
+
+                    %res_vec = vector.load %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
+                    %out_vec = vector.fma %kernel_vec, %input_vec, %res_vec : vector<5xf32>
+                    vector.store %out_vec, %output[%ivs0, %iv] : memref<?x?xf32>, vector<5xf32>
 
                   }
                 }
