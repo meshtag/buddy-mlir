@@ -46,20 +46,12 @@ $ cmake -G Ninja .. \
 $ ninja
 ```
 
-<<<<<<< HEAD
-## Dialect
-
-### Image Dialect
-
-[Image dialect](./include/Dialect/Img) is designed for digital image processing workloads.
-=======
 ## Dialects
 
 ### Bud Dialect
 
 Bud dialect is designed for testing and demonstrating.
 
->>>>>>> main
 ## Tools
 
 ### conv-opt
