@@ -25,9 +25,9 @@ $ cd buddy-mlir
 $ mkdir llvm/build
 $ cd llvm/build
 $ cmake -G Ninja ../llvm -DLLVM_ENABLE_PROJECTS="mlir" \
--DLLVM_TARGETS_TO_BUILD="host" \
--DLLVM_ENABLE_ASSERTIONS=ON \
--DCMAKE_BUILD_TYPE=RELEASE
+    -DLLVM_TARGETS_TO_BUILD="host" \
+    -DLLVM_ENABLE_ASSERTIONS=ON \
+    -DCMAKE_BUILD_TYPE=RELEASE
 $ ninja
 $ ninja check-mlir
 ```
@@ -46,11 +46,20 @@ $ cmake -G Ninja .. \
 $ ninja
 ```
 
+<<<<<<< HEAD
 ## Dialect
 
 ### Image Dialect
 
 [Image dialect](./include/Dialect/Img) is designed for digital image processing workloads.
+=======
+## Dialects
+
+### Bud Dialect
+
+Bud dialect is designed for testing and demonstrating.
+
+>>>>>>> main
 ## Tools
 
 ### conv-opt
@@ -97,33 +106,22 @@ $ cd bin
 $ ./edge-detection ../../examples/conv-opt/images/YuTu.png result.png
 ```
 
-Note: the edge detection example currently only supports 1026x1026 images.
+Note: In the edge detection example, images size needs to be an integer multiple of the strip mining size.
 
-### img-opt
+We also provide the performance comparison between our conv-opt tool and other state-of-the-art approaches. 
+For more details, please see [convolution comparison](./examples/conv-opt/comparison/README.md).
 
-The img-opt is the driver for image dialect. 
+### bud-opt
 
-```
-$ img-opt <input> -lower-img
-```
-
-**Conversion example**
-
-Take prewitt operation as an example. 
-If every element of the input is 1, it means there are no edges in the image.
-As a result, the convolution with the prewitt operation is 0.
+The bud-opt is the driver for bud dialect.
 
 ```
-$ ./build/bin/img-opt ./examples/img-opt/prewitt.mlir -lower-img |\
-  ./llvm/build/bin/mlir-opt -convert-linalg-to-loops -lower-affine -convert-linalg-to-llvm -convert-scf-to-std -convert-vector-to-llvm -convert-std-to-llvm |\
-  ./llvm/build/bin/mlir-cpu-runner -entry-point-result=void -shared-libs=./llvm/build/lib/libmlir_runner_utils.so
+$ bud-opt <input> -lower-bud
+```
 
-Unranked Memref base@ = 0x55e62feb6be0 rank = 2 offset = 0 sizes = [7, 7] strides = [7, 1] data = 
-[[0,   0,   0,   0,   0,   0,   0], 
- [0,   0,   0,   0,   0,   0,   0], 
- [0,   0,   0,   0,   0,   0,   0], 
- [0,   0,   0,   0,   0,   0,   0], 
- [0,   0,   0,   0,   0,   0,   0], 
- [0,   0,   0,   0,   0,   0,   0], 
- [0,   0,   0,   0,   0,   0,   0]]
+**Example**
+
+```
+$ cd buddy-mlir/build/bin
+$ ./bud-opt ../../examples/bud-opt/TestConstant.mlir --lower-bud
 ```
