@@ -21,6 +21,11 @@
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/Bufferize.h"
+#include "mlir/Dialect/Affine/IR/AffineOps.h"
+#include "mlir/Dialect/Linalg/Transforms/Transforms.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/StandardOps/IR/Ops.h"
+#include "mlir/Dialect/Vector/VectorOps.h"
 
 #include "DIP/DIPDialect.h"
 #include "DIP/DIPOps.h"
@@ -29,45 +34,31 @@
 
 using namespace mlir;
 using namespace Buddy;
+using namespace vector;
 
 //===----------------------------------------------------------------------===//
 // Rewrite Pattern
 //===----------------------------------------------------------------------===//
 
 namespace {
-class DIPCorr2DLowering : public OpRewritePattern<DIP::Corr2DOp> {
+class DIPCorr2DLowering : public ConversionPattern {
 public:
-  using OpRewritePattern<DIP::Corr2DOp>::OpRewritePattern;
-
-  explicit DIPCorr2DLowering(MLIRContext *context , std::ptrdiff_t centerX, 
-              std::ptrdiff_t centerY, unsigned int boundaryOption) : OpRewritePattern(context)
-  {
-    this->centerX = centerX;
-    this->centerY = centerY;
-    this->boundaryOption = boundaryOption;
-    std::cout << this->centerX << "\n";
-    std::cout << this->centerY << "\n";
-    std::cout << this->boundaryOption << "\n";
-    std::cout << "Here\n";
+  explicit DIPCorr2DLowering(MLIRContext *context)
+      : ConversionPattern(DIP::Corr2DOp::getOperationName(), 1, context) {
   }
 
-  LogicalResult matchAndRewrite(DIP::Corr2DOp op,
-                                PatternRewriter &rewriter) const override {
-    auto loc = op.getLoc();
-    
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const override {
+
     return success();
   }
-
-private:
-  std::ptrdiff_t centerX, centerY;
-  unsigned int boundaryOption = 0;
 };
 } // end anonymous namespace
 
-void populateLowerDIPConversionPatterns(RewritePatternSet &patterns, std::ptrdiff_t centerX, 
-                                        std::ptrdiff_t centerY, unsigned int boundaryOption)
+void populateLowerDIPConversionPatterns(RewritePatternSet &patterns)
 {
-  patterns.add<DIPCorr2DLowering>(patterns.getContext(), centerX, centerY, boundaryOption);
+  patterns.add<DIPCorr2DLowering>(patterns.getContext());
 }
 
 //===----------------------------------------------------------------------===//
@@ -79,13 +70,6 @@ class LowerDIPPass : public PassWrapper<LowerDIPPass, OperationPass<ModuleOp>> {
 public:
   LowerDIPPass() = default;
   LowerDIPPass(const LowerDIPPass &) {}
-  explicit LowerDIPPass(std::ptrdiff_t centerXParam, std::ptrdiff_t centerYParam,
-                        unsigned int boundaryOptionParam = 0)
-  { 
-    centerX = centerXParam;
-    centerY = centerYParam;
-    boundaryOption = boundaryOptionParam;
-  }
 
   StringRef getArgument() const final { return "lower-DIP"; }
   StringRef getDescription() const final { return "Lower DIP Dialect."; }
@@ -93,18 +77,9 @@ public:
   void runOnOperation() override;
 
   void getDependentDialects(DialectRegistry &registry) const override {
-    registry.insert<Buddy::DIP::DIPDialect, StandardOpsDialect>();
+    registry.insert<Buddy::DIP::DIPDialect, StandardOpsDialect, memref::MemRefDialect, 
+                      scf::SCFDialect, VectorDialect>();
   }
-
-  Option<std::ptrdiff_t> centerX{*this, "centerX",
-                         llvm::cl::desc("X co-ordinate of anchor point"),
-                         llvm::cl::init(32)};
-  Option<std::ptrdiff_t> centerY{*this, "centerY",
-                         llvm::cl::desc("Y co-ordinate of anchor point"),
-                         llvm::cl::init(32)};
-  Option<unsigned int> boundaryOption{*this, "boundaryOption",
-                         llvm::cl::desc("Method for boundary extrapolation"),
-                         llvm::cl::init(32)};
 };
 } // end anonymous namespace.
 
@@ -113,11 +88,12 @@ void LowerDIPPass::runOnOperation() {
   ModuleOp module = getOperation();
 
   ConversionTarget target(*context);
-  target.addLegalDialect<StandardOpsDialect>();
+  target.addLegalDialect<AffineDialect, scf::SCFDialect, StandardOpsDialect,
+                         memref::MemRefDialect, VectorDialect, DIP::DIPDialect>();
   target.addLegalOp<ModuleOp, FuncOp, ReturnOp>();
 
   RewritePatternSet patterns(context);
-  populateLowerDIPConversionPatterns(patterns, centerX, centerY, boundaryOption);
+  populateLowerDIPConversionPatterns(patterns);
 
   if (failed(applyPartialConversion(module, target, std::move(patterns))))
     signalPassFailure();
