@@ -25,6 +25,8 @@
 #include "DIP/DIPDialect.h"
 #include "DIP/DIPOps.h"
 
+#include <iostream>
+
 using namespace mlir;
 using namespace Buddy;
 
@@ -33,27 +35,39 @@ using namespace Buddy;
 //===----------------------------------------------------------------------===//
 
 namespace {
-class DIPTestConstantLowering : public OpRewritePattern<DIP::TestConstantOp> {
+class DIPCorr2DLowering : public OpRewritePattern<DIP::Corr2DOp> {
 public:
-  using OpRewritePattern<DIP::TestConstantOp>::OpRewritePattern;
+  using OpRewritePattern<DIP::Corr2DOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(DIP::TestConstantOp op,
+  explicit DIPCorr2DLowering(MLIRContext *context , std::ptrdiff_t centerX, 
+              std::ptrdiff_t centerY, unsigned int boundaryOption) : OpRewritePattern(context)
+  {
+    this->centerX = centerX;
+    this->centerY = centerY;
+    this->boundaryOption = boundaryOption;
+    std::cout << this->centerX << "\n";
+    std::cout << this->centerY << "\n";
+    std::cout << this->boundaryOption << "\n";
+    std::cout << "Here\n";
+  }
+
+  LogicalResult matchAndRewrite(DIP::Corr2DOp op,
                                 PatternRewriter &rewriter) const override {
     auto loc = op.getLoc();
-    // Get type from the origin operation.
-    Type resultType = op.getResult().getType();
-    // Create constant operation.
-    Attribute zeroAttr = rewriter.getZeroAttr(resultType);
-    Value c0 = rewriter.create<ConstantOp>(loc, resultType, zeroAttr);
-
-    rewriter.replaceOp(op, c0);
+    
     return success();
   }
+
+private:
+  std::ptrdiff_t centerX, centerY;
+  unsigned int boundaryOption = 0;
 };
 } // end anonymous namespace
 
-void populateLowerDIPConversionPatterns(RewritePatternSet &patterns) {
-  patterns.add<DIPTestConstantLowering>(patterns.getContext());
+void populateLowerDIPConversionPatterns(RewritePatternSet &patterns, std::ptrdiff_t centerX, 
+                                        std::ptrdiff_t centerY, unsigned int boundaryOption)
+{
+  patterns.add<DIPCorr2DLowering>(patterns.getContext(), centerX, centerY, boundaryOption);
 }
 
 //===----------------------------------------------------------------------===//
@@ -65,6 +79,13 @@ class LowerDIPPass : public PassWrapper<LowerDIPPass, OperationPass<ModuleOp>> {
 public:
   LowerDIPPass() = default;
   LowerDIPPass(const LowerDIPPass &) {}
+  explicit LowerDIPPass(std::ptrdiff_t centerXParam, std::ptrdiff_t centerYParam,
+                        unsigned int boundaryOptionParam = 0)
+  { 
+    centerX = centerXParam;
+    centerY = centerYParam;
+    boundaryOption = boundaryOptionParam;
+  }
 
   StringRef getArgument() const final { return "lower-DIP"; }
   StringRef getDescription() const final { return "Lower DIP Dialect."; }
@@ -74,6 +95,16 @@ public:
   void getDependentDialects(DialectRegistry &registry) const override {
     registry.insert<Buddy::DIP::DIPDialect, StandardOpsDialect>();
   }
+
+  Option<std::ptrdiff_t> centerX{*this, "centerX",
+                         llvm::cl::desc("X co-ordinate of anchor point"),
+                         llvm::cl::init(32)};
+  Option<std::ptrdiff_t> centerY{*this, "centerY",
+                         llvm::cl::desc("Y co-ordinate of anchor point"),
+                         llvm::cl::init(32)};
+  Option<unsigned int> boundaryOption{*this, "boundaryOption",
+                         llvm::cl::desc("Method for boundary extrapolation"),
+                         llvm::cl::init(32)};
 };
 } // end anonymous namespace.
 
@@ -86,7 +117,7 @@ void LowerDIPPass::runOnOperation() {
   target.addLegalOp<ModuleOp, FuncOp, ReturnOp>();
 
   RewritePatternSet patterns(context);
-  populateLowerDIPConversionPatterns(patterns);
+  populateLowerDIPConversionPatterns(patterns, centerX, centerY, boundaryOption);
 
   if (failed(applyPartialConversion(module, target, std::move(patterns))))
     signalPassFailure();

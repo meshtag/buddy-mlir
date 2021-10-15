@@ -24,13 +24,20 @@
 include "DIPDialect.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
-def DIP_TestConstantOp : DIP_Op<"test_constant", []> {
-  let summary = "Test Constant Operation.";
+def DIP_Corr2DOp : DIP_Op<"Corr2D">
+{
+  let summary = "Operation for performing 2D correlation";
 
-  let results = (outs AnyInteger:$result);
+  let arguments = (ins Arg<AnyRankedOrUnrankedMemRef, "inputImage",
+                           [MemRead]>:$memrefI,
+                       Arg<AnyRankedOrUnrankedMemRef, "kernel",
+                           [MemRead]>:$memrefK);
+
+  let results = (outs Arg<AnyRankedOrUnrankedMemRef, "outputImage",
+                           [MemRead]>:$memrefO);
 
   let assemblyFormat = [{
-    attr-dict `:` type($result)
+    $memrefI `,` $memrefK attr-dict `:` type($memrefI) `,` type($memrefK) `to` type($memrefO)
   }];
 }
 
