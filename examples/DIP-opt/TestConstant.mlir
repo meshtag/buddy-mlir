@@ -1,5 +1,5 @@
 module {
-
+  func private @print_memref_f32(memref<*xf32>)
   func @alloc_2d_filled_f32(%arg0: index, %arg1: index, %arg2: f32) -> memref<?x?xf32> {
     %c0 = constant 0 : index
     %c1 = constant 1 : index
@@ -16,9 +16,6 @@ module {
   {
 
     %outputImage = DIP.Corr2D %inputImage, %kernel : memref<?x?xf32>, memref<?x?xf32> to memref<?x?xf32>
-    // %cO = constant 5.0 : f32
-    // %outputImageSize = constant 5 : index
-    // %outputImage = call @alloc_2d_filled_f32(%outputImageSize, %outputImageSize, %cO) : (index, index, f32) -> memref<?x?xf32>
 
     return %outputImage : memref<?x?xf32>
   }
@@ -35,6 +32,9 @@ module {
     %kernel = call @alloc_2d_filled_f32(%kernelSize, %kernelSize, %cK) : (index, index, f32) -> memref<?x?xf32>
 
     %outputImage = call @DIPCorr2D(%inputImage, %kernel) : (memref<?x?xf32>, memref<?x?xf32>) -> memref<?x?xf32>
+
+    %printInputImage = memref.cast %inputImage : memref<?x?xf32> to memref<*xf32>
+    // call @print_memref_f32(%printInputImage) : memref<*xf32> -> ()
 
     return
   }
