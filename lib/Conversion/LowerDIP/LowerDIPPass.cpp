@@ -155,6 +155,10 @@ public:
     registry.insert<Buddy::DIP::DIPDialect, StandardOpsDialect, memref::MemRefDialect, 
                       scf::SCFDialect, VectorDialect>();
   }
+  // void getDependentDialects(DialectRegistry &registry) const override {
+  //   registry.insert<scf::SCFDialect, AffineDialect,
+  //                   VectorDialect, StandardOpsDialect>();
+  // }
 };
 } // end anonymous namespace.
 
@@ -163,8 +167,9 @@ void LowerDIPPass::runOnOperation() {
   ModuleOp module = getOperation();
 
   ConversionTarget target(*context);
-  target.addLegalDialect<AffineDialect, scf::SCFDialect, StandardOpsDialect,
-                         memref::MemRefDialect, VectorDialect, DIP::DIPDialect>();
+  target.addLegalDialect<AffineDialect,
+                         scf::SCFDialect, StandardOpsDialect,
+                         memref::MemRefDialect, VectorDialect>();
   target.addLegalOp<ModuleOp, FuncOp, ReturnOp>();
 
   RewritePatternSet patterns(context);
