@@ -83,6 +83,9 @@ public:
               ValueRange{outputCol}, stripMap, /*Step=*/1, llvm::None,
               [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv,
                   ValueRange itrArgs) {
+
+                nestedBuilder.create<PrintOp>(nestedLoc, iv);
+
                 // Vectorize the kernel.
                 // Define `*Type`.
                 FloatType f32 = mlir::FloatType::getF32(ctx);
