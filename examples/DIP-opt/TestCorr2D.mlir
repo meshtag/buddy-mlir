@@ -19,11 +19,14 @@ module {
     %outputVal = constant 0.0 : f32
     %output = call @alloc_2d_filled_f32(%outputSize, %outputSize, %outputVal) : (index, index, f32) -> memref<?x?xf32>
 
+    %centerX = constant 0 : i32
+    %centerY = constant 0 : i32
+    %boundaryOption = constant 0 : i32
 
     // %printOutputImage1 = memref.cast %output : memref<?x?xf32> to memref<*xf32>
     // call @print_memref_f32(%printOutputImage1) : (memref<*xf32>) -> ()
 
-    DIP.Corr2D %inputImage, %kernel, %output : memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32> 
+    DIP.Corr2D %inputImage, %kernel, %output, %centerX, %centerY, %boundaryOption : memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, i32, i32, i32
 
     // %printOutputImage = memref.cast %output : memref<?x?xf32> to memref<*xf32>
     // call @print_memref_f32(%printOutputImage) : (memref<*xf32>) -> ()

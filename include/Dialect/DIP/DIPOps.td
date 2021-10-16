@@ -33,10 +33,12 @@ def DIP_Corr2DOp : DIP_Op<"Corr2D">
                        Arg<AnyRankedOrUnrankedMemRef, "kernel",
                            [MemRead]>:$memrefK,
                        Arg<AnyRankedOrUnrankedMemRef, "checkOutput",
-                           [MemRead]>:$memrefCO);
+                           [MemRead]>:$memrefCO,
+                       AnyInteger : $centerX, AnyInteger : $centerY, 
+                       AnyInteger : $boundaryOption);
 
   let assemblyFormat = [{
-    $memrefI `,` $memrefK `,` $memrefCO attr-dict `:` type($memrefI) `,` type($memrefK) `,` type($memrefCO) 
+    $memrefI `,` $memrefK `,` $memrefCO `,` $centerX `,` $centerY `,` $boundaryOption attr-dict `:` type($memrefI) `,` type($memrefK) `,` type($memrefCO) `,` type($centerX) `,` type($centerY) `,` type($boundaryOption)
   }];
 }
 

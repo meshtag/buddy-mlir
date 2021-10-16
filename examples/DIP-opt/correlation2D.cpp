@@ -42,7 +42,19 @@ MemRef_descriptor MemRef_Descriptor(float *allocated, float *aligned,
 // Declare the corr2d C interface.
 extern "C" {
 void _mlir_ciface_DIPCorr2D(MemRef_descriptor input, MemRef_descriptor kernel,
-                          MemRef_descriptor output);
+                            MemRef_descriptor output, int centerX, int centerY, int boundaryOption);
+}
+
+void printImage(cv::Mat img)
+{
+  std::cout << "\n";
+  for (std::ptrdiff_t row = 0; row < img.rows; ++row)
+  {
+    for (std::ptrdiff_t col = 0; col < img.cols; ++col)
+      std::cout << static_cast<unsigned int>(img.at<uchar>(col, row)) << " ";
+    std::cout << "\n";
+  }
+  std::cout << "\n";
 }
 
 int main(int argc, char *argv[]) {
@@ -69,8 +81,8 @@ int main(int argc, char *argv[]) {
   }
 
   // Define the kernel.
-  // float kernelAlign[9] = {-1, 0, 1, -1, 0, 1, -1, 0, 1};
-  float *kernelAlign = laplacianKernelAlign;
+  float kernelAlign[9] = {1, 1, 1, 1, 1, 1, 1, 1, 1};
+  // float *kernelAlign = laplacianKernelAlign;
   int kernelRows = laplacianKernelRows;
   int kernelCols = laplacianKernelCols;
 
@@ -100,7 +112,7 @@ int main(int argc, char *argv[]) {
   start = clock();
 
   // Call the MLIR conv2d function.
-  _mlir_ciface_DIPCorr2D(input, kernel, output);
+  _mlir_ciface_DIPCorr2D(input, kernel, output, 0, 0, 0);
 
   end = clock();
   cout << "Execution time: " 
@@ -126,6 +138,13 @@ int main(int argc, char *argv[]) {
     cout << "Saved PNG file." << endl;
   else
     cout << "ERROR: Can't save PNG file." << endl;
+
+  printImage(image);
+
+  std::cout << "Here\n";
+
+  Mat imageOut = imread(argv[2], IMREAD_GRAYSCALE);
+  printImage(imageOut);
 
   free(inputAlign);
   free(outputAlign);

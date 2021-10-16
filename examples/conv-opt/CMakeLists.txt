@@ -14,11 +14,11 @@ add_library(Conv2D STATIC conv2d.o)
 
 message(${BUDDY_EXAMPLES_DIR})
 
-# SET_SOURCE_FILES_PROPERTIES(
-#   template.o
-#   PROPERTIES
-#   EXTERNAL_OBJECT true
-#   GENERATED true)
+SET_SOURCE_FILES_PROPERTIES(
+  template.o
+  PROPERTIES
+  EXTERNAL_OBJECT true
+  GENERATED true)
 
 SET_TARGET_PROPERTIES(
   Conv2D
