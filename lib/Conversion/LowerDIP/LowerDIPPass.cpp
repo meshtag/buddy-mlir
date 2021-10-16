@@ -55,25 +55,6 @@ public:
     // Get input, kernel and output.
     Value input = op->getOperand(0);
     Value kernel = op->getOperand(1);
-
-    // Type inputType = input.getType();
-    // MemRefType inputMemrefType = inputType.dyn_cast<MemRefType>();
-
-    // Value outputRow = rewriter.create<ConstantIndexOp>(loc, 3);
-    // Value outputCol = rewriter.create<ConstantIndexOp>(loc, 3);
-    // Value output = rewriter.create<memref::AllocOp>(loc, input.getType().dyn_cast<MemRefType>());
-    // SmallVector<Value, 8> uperBounds{outputRow, kernelRow, kernelCol};
-    // SmallVector<Value, 8> shape{outputRow, outputCol};
-    // Value output = rewriter.create<memref::AllocOp>(loc, MemRefType::get(shape, input.getType(), {}, 8)).getResult();
-
-    // b
-    //   .create<memref::AllocOp>(
-    //       subView.getLoc(),
-    //       MemRefType::get(shape, subView.getType().getElementType(),
-    //                       /*affineMapComposition =*/{}, 3),
-    //       boundingSubViewSize)
-    //   .getResult();
-
     Value output = op->getOperand(2);
 
     // Create DimOp.
