@@ -20,10 +20,16 @@ module {
     %output = call @alloc_2d_filled_f32(%outputSize, %outputSize, %outputVal) : (index, index, f32) -> memref<?x?xf32>
 
 
+    %printOutputImage1 = memref.cast %output : memref<?x?xf32> to memref<*xf32>
+    call @print_memref_f32(%printOutputImage1) : (memref<*xf32>) -> ()
+
     %outputImage = DIP.Corr2D %inputImage, %kernel, %output : memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32> to memref<?x?xf32>
 
     // DIP.Corr2D ins (%inputImage, %kernel : memref<?x?xf32>, memref<?x?xf32>)
     //            outs (%outputImage : memref<?x?xf32>)
+
+    %printOutputImage = memref.cast %output : memref<?x?xf32> to memref<*xf32>
+    call @print_memref_f32(%printOutputImage) : (memref<*xf32>) -> ()
 
     return %output : memref<?x?xf32>
   }
@@ -43,7 +49,10 @@ module {
     %outputImage = call @DIPCorr2D(%inputImage, %kernel) : (memref<?x?xf32>, memref<?x?xf32>) -> memref<?x?xf32>
 
     %printInputImage = memref.cast %inputImage : memref<?x?xf32> to memref<*xf32>
-    // call @print_memref_f32(%printInputImage) : memref<*xf32> -> ()
+    call @print_memref_f32(%printInputImage) : (memref<*xf32>) -> ()
+
+    %printKernel = memref.cast %kernel : memref<?x?xf32> to memref<*xf32>
+    call @print_memref_f32(%printKernel) : (memref<*xf32>) -> ()
 
     return
   }
