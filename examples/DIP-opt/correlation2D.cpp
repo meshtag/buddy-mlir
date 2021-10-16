@@ -41,7 +41,7 @@ MemRef_descriptor MemRef_Descriptor(float *allocated, float *aligned,
 
 // Declare the corr2d C interface.
 extern "C" {
-void _mlir_ciface_corr_2d(MemRef_descriptor input, MemRef_descriptor kernel,
+void _mlir_ciface_DIPCorr2D(MemRef_descriptor input, MemRef_descriptor kernel,
                           MemRef_descriptor output);
 }
 
@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
   start = clock();
 
   // Call the MLIR conv2d function.
-  _mlir_ciface_corr_2d(input, kernel, output);
+  _mlir_ciface_DIPCorr2D(input, kernel, output);
 
   end = clock();
   cout << "Execution time: " 
