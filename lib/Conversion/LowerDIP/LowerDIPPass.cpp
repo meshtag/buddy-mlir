@@ -56,15 +56,15 @@ public:
     Value input = op->getOperand(0);
     Value kernel = op->getOperand(1);
 
-    Type inputType = input.getType();
-    MemRefType inputMemrefType = inputType.dyn_cast<MemRefType>();
+    // Type inputType = input.getType();
+    // MemRefType inputMemrefType = inputType.dyn_cast<MemRefType>();
 
-    Value outputRow = rewriter.create<ConstantIndexOp>(loc, 3);
-    Value outputCol = rewriter.create<ConstantIndexOp>(loc, 3);
-    // Value output = rewriter.create<memref::AllocOp>(loc, inputMemrefType);
+    // Value outputRow = rewriter.create<ConstantIndexOp>(loc, 3);
+    // Value outputCol = rewriter.create<ConstantIndexOp>(loc, 3);
+    // Value output = rewriter.create<memref::AllocOp>(loc, input.getType().dyn_cast<MemRefType>());
     // SmallVector<Value, 8> uperBounds{outputRow, kernelRow, kernelCol};
     // SmallVector<Value, 8> shape{outputRow, outputCol};
-    // Value output = rewriter.create<memref::AllocOp>(loc, MemRefType::get(shape, )
+    // Value output = rewriter.create<memref::AllocOp>(loc, MemRefType::get(shape, input.getType(), {}, 8)).getResult();
 
     // b
     //   .create<memref::AllocOp>(
@@ -74,73 +74,76 @@ public:
     //       boundingSubViewSize)
     //   .getResult();
 
-    // Value output = op->getOperand(2);
+    Value output = op->getOperand(2);
 
     // Create DimOp.
     Value kernelRow = rewriter.create<memref::DimOp>(loc, kernel, c0);
     Value kernelCol = rewriter.create<memref::DimOp>(loc, kernel, c1);
-    // Value outputRow = rewriter.create<memref::DimOp>(loc, output, c0);
-    // Value outputCol = rewriter.create<memref::DimOp>(loc, output, c1);
+    Value outputRow = rewriter.create<memref::DimOp>(loc, output, c0);
+    Value outputCol = rewriter.create<memref::DimOp>(loc, output, c1);
     // Size of strip mining.
     AffineExpr d0;
     bindDims(ctx, d0);
 
     AffineMap stripMap = AffineMap::get(1, 0, {d0.ceilDiv(3)}, ctx);
     SmallVector<Value, 8> lowerBounds(3, c0);
-    // SmallVector<Value, 8> uperBounds{outputRow, kernelRow, kernelCol};
+    SmallVector<Value, 8> uperBounds{outputRow, kernelRow, kernelCol};
     SmallVector<int64_t, 8> steps(3, /*Value=*/1);
 
-    // buildAffineLoopNest(
-    //     rewriter, loc, lowerBounds, uperBounds, steps,
-    //     [&](OpBuilder &builder, Location loc, ValueRange ivs) {
-    //       // Create strip mining loop.
-    //       builder.create<AffineForOp>(
-    //           loc, ValueRange{c0}, builder.getDimIdentityMap(),
-    //           ValueRange{outputCol}, stripMap, /*Step=*/1, llvm::None,
-    //           [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv,
-    //               ValueRange itrArgs) {
+    buildAffineLoopNest(
+        rewriter, loc, lowerBounds, uperBounds, steps,
+        [&](OpBuilder &builder, Location loc, ValueRange ivs) {
+          // Create strip mining loop.
+          builder.create<AffineForOp>(
+              loc, ValueRange{c0}, builder.getDimIdentityMap(),
+              ValueRange{outputCol}, stripMap, /*Step=*/1, llvm::None,
+              [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv,
+                  ValueRange itrArgs) {
 
-    //             nestedBuilder.create<PrintOp>(nestedLoc, iv);
+                // nestedBuilder.create<PrintOp>(nestedLoc, iv);
+                // nestedBuilder.create<PrintOp>(nestedLoc, ivs[0]);
+                // nestedBuilder.create<PrintOp>(nestedLoc, ivs[1]);
+                // nestedBuilder.create<PrintOp>(nestedLoc, ivs[2]);
 
-    //             // Vectorize the kernel.
-    //             // Define `*Type`.
-    //             FloatType f32 = mlir::FloatType::getF32(ctx);
-    //             VectorType vectorTy1 = mlir::VectorType::get({1}, f32);
-    //             VectorType vectorTy32 = mlir::VectorType::get({3}, f32);
-    //             // Broadcast element of the kernel.
-    //             Value kernelValue = builder.create<AffineVectorLoadOp>(
-    //                 loc, vectorTy1, kernel, ValueRange{ivs[1], ivs[2]});
-    //             Value kernelVector =
-    //                 builder.create<BroadcastOp>(loc, vectorTy32, kernelValue);
-    //             // Load input vector from memref.
-    //             AffineExpr m, n, k, j;
-    //             bindDims(ctx, m, n, k, j);
-    //             AffineMap inputVectorMap = AffineMap::get(
-    //                 /*dimCount=*/4, /*symbolCount=*/0, {m + n, k + j * 3},
-    //                 ctx);
-    //             Value inputVector = nestedBuilder.create<AffineVectorLoadOp>(
-    //                 loc, vectorTy32, input, inputVectorMap,
-    //                 ValueRange{ivs[0], ivs[1], ivs[2], iv});
-    //             // Define AffineMap.
-    //             // The `outputVector` and `resultVector` share the same
-    //             // AffineMap.
-    //             AffineExpr x, y;
-    //             bindDims(ctx, x, y);
-    //             AffineMap outputVectorMap = AffineMap::get(
-    //                 /*dimCount=*/2, /*symbolCount=*/0, {x, y * 3}, ctx);
-    //             Value outputVector = nestedBuilder.create<AffineVectorLoadOp>(
-    //                 loc, vectorTy32, output, outputVectorMap,
-    //                 ValueRange{ivs[0], iv});
-    //             // FMA = Fused Multiply + Add
-    //             Value resultVector = nestedBuilder.create<FMAOp>(
-    //                 loc, inputVector, kernelVector, outputVector);
-    //             nestedBuilder.create<AffineVectorStoreOp>(
-    //                 loc, resultVector, output, outputVectorMap,
-    //                 ValueRange{ivs[0], iv});
-    //             nestedBuilder.create<AffineYieldOp>(nestedLoc);
-    //           });
-    //     });
-    // // Remove the origin convolution operation.
+                // Vectorize the kernel.
+                // Define `*Type`.
+                FloatType f32 = mlir::FloatType::getF32(ctx);
+                VectorType vectorTy1 = mlir::VectorType::get({1}, f32);
+                VectorType vectorTy32 = mlir::VectorType::get({3}, f32);
+                // Broadcast element of the kernel.
+                Value kernelValue = builder.create<AffineVectorLoadOp>(
+                    loc, vectorTy1, kernel, ValueRange{ivs[1], ivs[2]});
+                Value kernelVector =
+                    builder.create<BroadcastOp>(loc, vectorTy32, kernelValue);
+                // Load input vector from memref.
+                AffineExpr m, n, k, j;
+                bindDims(ctx, m, n, k, j);
+                AffineMap inputVectorMap = AffineMap::get(
+                    /*dimCount=*/4, /*symbolCount=*/0, {m + n, k + j * 3},
+                    ctx);
+                Value inputVector = nestedBuilder.create<AffineVectorLoadOp>(
+                    loc, vectorTy32, input, inputVectorMap,
+                    ValueRange{ivs[0], ivs[1], ivs[2], iv});
+                // Define AffineMap.
+                // The `outputVector` and `resultVector` share the same
+                // AffineMap.
+                AffineExpr x, y;
+                bindDims(ctx, x, y);
+                AffineMap outputVectorMap = AffineMap::get(
+                    /*dimCount=*/2, /*symbolCount=*/0, {x, y * 3}, ctx);
+                Value outputVector = nestedBuilder.create<AffineVectorLoadOp>(
+                    loc, vectorTy32, output, outputVectorMap,
+                    ValueRange{ivs[0], iv});
+                // FMA = Fused Multiply + Add
+                Value resultVector = nestedBuilder.create<FMAOp>(
+                    loc, inputVector, kernelVector, outputVector);
+                nestedBuilder.create<AffineVectorStoreOp>(
+                    loc, resultVector, output, outputVectorMap,
+                    ValueRange{ivs[0], iv});
+                nestedBuilder.create<AffineYieldOp>(nestedLoc);
+              });
+        });
+    // Remove the origin convolution operation.
     rewriter.eraseOp(op);
     return success();
   }
@@ -169,7 +172,7 @@ public:
 
   void getDependentDialects(DialectRegistry &registry) const override {
     registry.insert<Buddy::DIP::DIPDialect, StandardOpsDialect, memref::MemRefDialect, 
-                      scf::SCFDialect, VectorDialect>();
+                      scf::SCFDialect, VectorDialect, AffineDialect>();
   }
 };
 } // end anonymous namespace.
