@@ -57,8 +57,12 @@ public:
     Value input = op->getOperand(0);
     Value kernel = op->getOperand(1);
     Value output = op->getOperand(2);
-    Value centerX = op->getOperand(3);
-    Value centerY = op->getOperand(4);
+    // Value centerX = op->getOperand(3);
+    // Value centerY = op->getOperand(4);
+
+    Value centerX = rewriter.create<ConstantIndexOp>(loc, 1);
+    Value centerY = rewriter.create<ConstantIndexOp>(loc, 1);
+
     Value boundaryOption = op->getOperand(5);
     unsigned int stride = 3;
 
@@ -73,6 +77,12 @@ public:
 
     Value pseudoInputRow = rewriter.create<AddIOp>(loc, inputRow, kernelSizeHelper);
     Value pseudoInputCol = rewriter.create<AddIOp>(loc, inputCol, kernelSizeHelper);
+
+    Value kernelRowMidHelper = rewriter.create<SubIOp>(loc, kernelSizeHelper, centerY);
+    Value rowMidHelper = rewriter.create<SubIOp>(loc, pseudoInputRow, kernelRowMidHelper);
+
+    Value kernelColHelper = rewriter.create<SubIOp>(loc, kernelSizeHelper, centerX);
+    Value colMidHelper = rewriter.create<SubIOp>(loc, pseudoInputCol, kernelColHelper);
 
     Value outputRow = rewriter.create<memref::DimOp>(loc, output, c0);
     Value outputCol = rewriter.create<memref::DimOp>(loc, output, c1);
@@ -101,40 +111,31 @@ public:
                 VectorType vectorTy1 = mlir::VectorType::get({1}, f32);
                 VectorType vectorTy32 = mlir::VectorType::get({3}, f32);
 
+                // builder.create<PrintOp>(nestedLoc, iv);
+
                 // Broadcast element of the kernel.
                 Value kernelValue = builder.create<AffineVectorLoadOp>(
                     loc, vectorTy1, kernel, ValueRange{ivs[1], ivs[2]});
                 Value kernelVector =
                     builder.create<BroadcastOp>(loc, vectorTy32, kernelValue);
 
-                // Load input vector from memref.
-                AffineExpr m, n, k, j;
-                bindDims(ctx, m, n, k, j);
-                AffineMap inputVectorMap = AffineMap::get(
-                    /*dimCount=*/4, /*symbolCount=*/0, {m + n, k + j * stride},
-                    ctx);
-                Value inputVector = nestedBuilder.create<AffineVectorLoadOp>(
-                    loc, vectorTy32, input, inputVectorMap,
-                    ValueRange{ivs[0], ivs[1], ivs[2], iv});
+                Value currRow = builder.create<AddIOp>(loc, ivs[0], ivs[1]);
+                Value currCol = builder.create<AddIOp>(loc, ivs[2], iv);
 
-                // Define AffineMap.
-                // The `outputVector` and `resultVector` share the same
-                // AffineMap.
-                AffineExpr x, y;
-                bindDims(ctx, x, y);
-                AffineMap outputVectorMap = AffineMap::get(
-                    /*dimCount=*/2, /*symbolCount=*/0, {x, y * stride}, ctx);
-                Value outputVector = nestedBuilder.create<AffineVectorLoadOp>(
-                    loc, vectorTy32, output, outputVectorMap,
-                    ValueRange{ivs[0], iv});
+                Value imRow = builder.create<SubIOp>(loc, currRow, centerY);
+                Value imCol = builder.create<SubIOp>(loc, currCol, centerX);
 
-                // FMA = Fused Multiply + Add
-                Value resultVector = nestedBuilder.create<FMAOp>(
-                    loc, inputVector, kernelVector, outputVector);
+                Value rowUpCond = builder.create<CmpIOp>(loc, mlir::CmpIPredicate::slt, currRow,
+                                                         centerY);
+                // builder.create<PrintOp>(loc, ivs[0]);
+                // builder.create<scf::IfOp>(loc, rowUpCond, 
+                //   [&](OpBuilder &builder, Location loc, Value centerY, Value currRow){
+                //   builder.create<PrintOp>(loc, centerY);
+                //   builder.create<PrintOp>(loc, currRow);
+                //   builder.create<AffineYieldOp>(loc);
+                // });
 
-                nestedBuilder.create<AffineVectorStoreOp>(
-                    loc, resultVector, output, outputVectorMap,
-                    ValueRange{ivs[0], iv});
+                
                 nestedBuilder.create<AffineYieldOp>(nestedLoc);
               });
         });

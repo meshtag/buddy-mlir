@@ -142,9 +142,9 @@ int main(int argc, char *argv[]) {
   compression_params.push_back(IMWRITE_PNG_COMPRESSION);
   compression_params.push_back(9);
 
-  for (std::ptrdiff_t row = 0; row < kernelRows; ++row)
+  for (int64 row = 0; row < kernelRows; ++row)
   {
-    for (std::ptrdiff_t col = 0; col < kernelCols; ++col)
+    for (int64 col = 0; col < kernelCols; ++col)
     {
       _mlir_ciface_DIPCorr2D(input, kernel, output, col, row, 0);
 
