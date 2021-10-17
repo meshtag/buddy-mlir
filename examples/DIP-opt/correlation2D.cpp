@@ -116,8 +116,10 @@ int main(int argc, char *argv[]) {
   int kernelCols = laplacianKernelCols;
 
   // Define the output.
-  int outputRows = image.rows - kernelRows + 1;
-  int outputCols = image.cols - kernelCols + 1;
+  // int outputRows = image.rows - kernelRows + 1;
+  // int outputCols = image.cols - kernelCols + 1;
+  int outputRows = image.rows;
+  int outputCols = image.cols;
   float *outputAlign = (float *)malloc(outputRows * outputCols * sizeof(float));
 
   // Define the allocated, sizes, and strides.
@@ -153,7 +155,7 @@ int main(int argc, char *argv[]) {
       imwrite(argv[2], outputImage, compression_params);
       Mat imageOut = imread(argv[2], IMREAD_GRAYSCALE);
 
-
+      printImage(imageOut);
     }
   }
 
