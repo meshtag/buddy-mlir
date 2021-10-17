@@ -57,6 +57,35 @@ void printImage(cv::Mat img)
   std::cout << "\n";
 }
 
+void testEquality(cv::Mat img1, cv::Mat img2)
+{
+  if (img1.rows != img2.rows || img1.cols != img2.cols)
+  {
+    std::cout << "Image dimensions are not equal\n";
+    std::cout << "Img1 dimension : (" << img1.rows << "," << img1.cols << ")\n";
+    std::cout << "Img2 dimension : (" << img2.rows << "," << img2.cols << ")\n";
+    return;
+  }
+  bool flag = 1;
+  for (std::ptrdiff_t row = 0; row < img1.rows; ++row)
+  {
+    for (std::ptrdiff_t col = 0; col < img1.cols; ++col)
+    {
+      if (img1.at<uchar>(col, row) != img2.at<uchar>(col, row))
+      {
+        std::cout << "Images are not same\n";
+        std::cout << "They are different at : (" << col << "," << row << ")\n";
+        std::cout << static_cast<unsigned int>(img1.at<uchar>(col, row)) << " "
+                  << static_cast<unsigned int>(img2.at<uchar>(col, row)) << "\n";
+        flag = 0;
+        break;
+      }
+    }
+    if (!flag)
+      break;
+  }
+}
+
 int main(int argc, char *argv[]) {
   printf("Start processing...\n");
 
@@ -108,43 +137,31 @@ int main(int argc, char *argv[]) {
   MemRef_descriptor output =
       MemRef_Descriptor(allocated, outputAlign, 0, sizesOutput, stridesOutput);
 
-  clock_t start,end;
-  start = clock();
-
-  // Call the MLIR conv2d function.
-  _mlir_ciface_DIPCorr2D(input, kernel, output, 0, 0, 0);
-
-  end = clock();
-  cout << "Execution time: " 
-       << (double)(end - start) / CLOCKS_PER_SEC << " s" << endl;
-
-  // Define a cv::Mat with the output of the conv2d.
-  Mat outputImage(outputRows, outputCols, CV_32FC1, output->aligned);
-
   // Choose a PNG compression level
   vector<int> compression_params;
   compression_params.push_back(IMWRITE_PNG_COMPRESSION);
   compression_params.push_back(9);
 
-  // Write output to PNG.
-  bool result = false;
-  try {
-    result = imwrite(argv[2], outputImage, compression_params);
-  } catch (const cv::Exception &ex) {
-    fprintf(stderr, "Exception converting image to PNG format: %s\n",
-            ex.what());
+  for (std::ptrdiff_t row = 0; row < kernelRows; ++row)
+  {
+    for (std::ptrdiff_t col = 0; col < kernelCols; ++col)
+    {
+      _mlir_ciface_DIPCorr2D(input, kernel, output, col, row, 0);
+
+       // Define a cv::Mat with the output of the conv2d.
+      Mat outputImage(outputRows, outputCols, CV_32FC1, output->aligned);
+      imwrite(argv[2], outputImage, compression_params);
+      Mat imageOut = imread(argv[2], IMREAD_GRAYSCALE);
+
+
+    }
   }
-  if (result)
-    cout << "Saved PNG file." << endl;
-  else
-    cout << "ERROR: Can't save PNG file." << endl;
 
   printImage(image);
 
   std::cout << "Here\n";
 
-  Mat imageOut = imread(argv[2], IMREAD_GRAYSCALE);
-  printImage(imageOut);
+  // testEquality(image, imageOut);
 
   free(inputAlign);
   free(outputAlign);
