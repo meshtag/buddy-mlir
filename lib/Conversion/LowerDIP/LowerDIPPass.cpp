@@ -142,6 +142,7 @@ public:
 
                 builder.create<scf::IfOp>(loc, rowUpCond, 
                   [&](OpBuilder &builder, Location loc){
+                  // rowUp
                   if (!boundaryOption)
                   {
                     Value inputVec = 
@@ -165,7 +166,8 @@ public:
 
                     builder.create<scf::IfOp>(loc, colLeftCond, 
                     [&](OpBuilder &builder, Location loc){
-                      Value inputVec = 
+                    // colLeft
+                    Value inputVec = 
                         builder.create<BroadcastOp>(loc, vectorTy32, constantPadding);
 
                     Value outputVec = nestedBuilder.create<AffineVectorLoadOp>(
@@ -180,13 +182,60 @@ public:
                     builder.create<scf::YieldOp>(loc);
                     },
                   [&](OpBuilder &builder, Location loc){
+                    // colMid or colRight
+
+
+                   
+
 
                     builder.create<scf::YieldOp>(loc);
                   });
                 }
-                  builder.create<scf::YieldOp>(loc);
+                builder.create<scf::YieldOp>(loc);
               },
               [&](OpBuilder &builder, Location loc){
+                // rowMid or rowDown
+                Value rowMidCond = 
+                        builder.create<CmpIOp>(loc, mlir::CmpIPredicate::slt, currRow, rowMidHelper);
+
+                builder.create<scf::IfOp>(loc, rowMidCond, 
+                  [&](OpBuilder &builder, Location loc){
+                    // rowMid
+                    Value colLeftCond = 
+                            builder.create<CmpIOp>(loc, mlir::CmpIPredicate::slt, currCol, centerX);
+
+                    builder.create<scf::IfOp>(loc, colLeftCond,
+                      [&](OpBuilder &builder, Location loc){
+                        // colLeft
+
+                        builder.create<scf::YieldOp>(loc);
+                      }, 
+                      [&](OpBuilder &builder, Location loc){
+                        // colMid or colRight
+                        Value colMidCond = 
+                          builder.create<CmpIOp>(loc, mlir::CmpIPredicate::slt, currCol, colMidHelper);
+
+                        builder.create<scf::IfOp>(loc, colMidCond, 
+                          [&](OpBuilder &builder, Location loc){
+                            // colMid
+
+                            builder.create<scf::YieldOp>(loc);
+                          }, 
+                          [&](OpBuilder &builder, Location loc){
+                            // colRight
+
+                            builder.create<scf::YieldOp>(loc);
+                          });
+                          builder.create<scf::YieldOp>(loc);
+                      });
+                    builder.create<scf::YieldOp>(loc);
+                  },
+                  [&](OpBuilder &builder, Location loc){
+                    // rowDown
+
+
+                    builder.create<scf::YieldOp>(loc);
+                  });
 
                 builder.create<scf::YieldOp>(loc);
               });
