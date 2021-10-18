@@ -67,7 +67,9 @@ public:
 
     Value boundaryOption = op->getOperand(5);
     unsigned int stride = 3;
+    Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
     FloatType f32 = mlir::FloatType::getF32(ctx);
+    IntegerType i1 = mlir::IntegerType::get(ctx, 1);
     Value constantPadding = rewriter.create<ConstantFloatOp>(loc, (APFloat)(float)0, f32);
 
     // Create DimOp.
@@ -112,7 +114,8 @@ public:
                 // Vectorize the kernel.
                 // Define `*Type`.
                 VectorType vectorTy1 = mlir::VectorType::get({1}, f32);
-                VectorType vectorTy32 = mlir::VectorType::get({3}, f32);
+                VectorType vectorTy32 = mlir::VectorType::get({stride}, f32);
+                VectorType vectorMask = mlir::VectorType::get({stride}, i1);
 
                 // Broadcast element of the kernel.
                 Value kernelValue = builder.create<AffineVectorLoadOp>(
@@ -151,10 +154,8 @@ public:
                     Value outputVec = nestedBuilder.create<AffineVectorLoadOp>(
                       loc, vectorTy32, output, outputVectorMap,
                       ValueRange{ivs[0], iv});
-
                     Value resultVec = nestedBuilder.create<FMAOp>(
                       loc, inputVec, kernelVec, outputVec);
-
                     nestedBuilder.create<AffineVectorStoreOp>(
                       loc, resultVec, output, outputVectorMap,
                       ValueRange{ivs[0], iv});
@@ -167,17 +168,7 @@ public:
                     builder.create<scf::IfOp>(loc, colLeftCond, 
                     [&](OpBuilder &builder, Location loc){
                     // colLeft
-                    Value inputVec = 
-                        builder.create<BroadcastOp>(loc, vectorTy32, constantPadding);
-
-                    Value outputVec = nestedBuilder.create<AffineVectorLoadOp>(
-                      loc, vectorTy32, output, outputVectorMap,
-                      ValueRange{ivs[0], iv});
-                    Value resultVec = nestedBuilder.create<FMAOp>(
-                      loc, inputVec, kernelVec, outputVec);
-                    nestedBuilder.create<AffineVectorStoreOp>(
-                      loc, resultVec, output, outputVectorMap,
-                      ValueRange{ivs[0], iv});
+                    
 
                     builder.create<scf::YieldOp>(loc);
                     },
@@ -207,6 +198,37 @@ public:
                     builder.create<scf::IfOp>(loc, colLeftCond,
                       [&](OpBuilder &builder, Location loc){
                         // colLeft
+                        Value initialLeftMaskHelper = 
+                                builder.create<SubIOp>(loc, centerX, currCol);
+                        Value initialLeftMask = 
+                                builder.create<CreateMaskOp>(loc, vectorMask, initialLeftMaskHelper);
+                        Value padding = 
+                                builder.create<BroadcastOp>(loc, vectorTy32, constantPadding);
+
+                        Value maskAllOn = 
+                                builder.create<CreateMaskOp>(loc, vectorMask, strideVal);
+                        Value leftMask = 
+                                builder.create<SubIOp>(loc, maskAllOn, initialLeftMask);
+
+                        Value inputVecHelper = nestedBuilder.create<AffineVectorLoadOp>(
+                          loc, vectorTy32, input, inputVectorMap,
+                          ValueRange{ivs[0], ivs[1], ivs[2], iv});
+
+                        Value dummy_index1 = 
+                                builder.create<AddIOp>(loc, ivs[0], ivs[1]);
+
+                        Value inputVec = 
+                                builder.create<MaskedLoadOp>(loc, vectorTy32, input,
+                                ValueRange{ivs[0], ivs[2]}, leftMask, padding);
+
+                        Value outputVec = builder.create<AffineVectorLoadOp>(
+                          loc, vectorTy32, output, outputVectorMap,
+                          ValueRange{ivs[0], iv});
+                        Value resultVec = builder.create<FMAOp>(
+                          loc, inputVec, kernelVec, outputVec);
+                        builder.create<AffineVectorStoreOp>(
+                          loc, resultVec, output, outputVectorMap,
+                          ValueRange{ivs[0], iv});
 
                         builder.create<scf::YieldOp>(loc);
                       }, 
@@ -218,6 +240,18 @@ public:
                         builder.create<scf::IfOp>(loc, colMidCond, 
                           [&](OpBuilder &builder, Location loc){
                             // colMid
+                            Value inputVec = builder.create<AffineVectorLoadOp>(
+                              loc, vectorTy32, input, inputVectorMap,
+                              ValueRange{ivs[0], ivs[1], ivs[2], iv});
+
+                            Value outputVec = builder.create<AffineVectorLoadOp>(
+                              loc, vectorTy32, output, outputVectorMap,
+                              ValueRange{ivs[0], iv});
+                            Value resultVec = builder.create<FMAOp>(
+                              loc, inputVec, kernelVec, outputVec);
+                            builder.create<AffineVectorStoreOp>(
+                              loc, resultVec, output, outputVectorMap,
+                              ValueRange{ivs[0], iv});
 
                             builder.create<scf::YieldOp>(loc);
                           }, 
@@ -232,7 +266,24 @@ public:
                   },
                   [&](OpBuilder &builder, Location loc){
                     // rowDown
+                    if (!boundaryOption)
+                    {
+                      Value inputVec = 
+                        builder.create<BroadcastOp>(loc, vectorTy32, constantPadding);
 
+                      Value outputVec = nestedBuilder.create<AffineVectorLoadOp>(
+                        loc, vectorTy32, output, outputVectorMap,
+                        ValueRange{ivs[0], iv});
+                      Value resultVec = nestedBuilder.create<FMAOp>(
+                        loc, inputVec, kernelVec, outputVec);
+                      nestedBuilder.create<AffineVectorStoreOp>(
+                        loc, resultVec, output, outputVectorMap,
+                        ValueRange{ivs[0], iv});
+                    }
+                    else 
+                    {
+
+                    }
 
                     builder.create<scf::YieldOp>(loc);
                   });
