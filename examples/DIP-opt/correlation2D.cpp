@@ -96,6 +96,11 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  for (int i = 0; i < 6; ++i)
+    for (int j = 0; j < 6; ++j)
+      image.at<uchar>(j, i) = 6 * i + j;
+
+
   int inputSize = image.rows * image.cols;
 
   // Define the input with the image.

@@ -65,7 +65,8 @@ public:
     Value centerX = rewriter.create<ConstantIndexOp>(loc, 1);
     Value centerY = rewriter.create<ConstantIndexOp>(loc, 1);
 
-    Value boundaryOption = op->getOperand(5);
+    // Value boundaryOption = op->getOperand(5);
+    unsigned int boundaryOption = 0;
     unsigned int stride = 3;
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
     FloatType f32 = mlir::FloatType::getF32(ctx);
@@ -113,9 +114,15 @@ public:
 
                 // Broadcast element of the kernel.
                 Value kernelValue = builder.create<AffineVectorLoadOp>(
-                    loc, vectorTy1, kernel, ValueRange{ivs[1], ivs[2]});
+                    loc, vectorTy1, kernel, ValueRange{ivs[1], ivs[3]});
                 Value kernelVec =
                     builder.create<BroadcastOp>(loc, vectorTy32, kernelValue);
+
+                // builder.create<PrintOp>(loc, ivs[0]);
+                // builder.create<PrintOp>(loc, ivs[1]);
+                // builder.create<PrintOp>(loc, ivs[2]);
+                // builder.create<PrintOp>(loc, ivs[3]);
+                // builder.create<PrintOp>(loc, kernelVec);
 
                 Value currRow = builder.create<AddIOp>(loc, ivs[0], ivs[1]);
                 Value currCol = builder.create<AddIOp>(loc, ivs[2], ivs[3]);
@@ -152,9 +159,9 @@ public:
                       ValueRange{ivs[0], ivs[2]});
                     Value resultVec = builder.create<FMAOp>(
                       loc, inputVec, kernelVec, outputVec);
-                    builder.create<AffineVectorStoreOp>(
-                      loc, resultVec, output, outputVectorMap,
-                      ValueRange{ivs[0], ivs[2]});
+                    // builder.create<AffineVectorStoreOp>(
+                    //   loc, resultVec, output, outputVectorMap,
+                    //   ValueRange{ivs[0], ivs[2]});
                   }
                   else 
                   {
@@ -219,6 +226,14 @@ public:
                           loc, resultVec, output, outputVectorMap,
                           ValueRange{ivs[0], ivs[2]});
 
+                        // builder.create<PrintOp>(loc, currRow);
+                        // builder.create<PrintOp>(loc, currCol);
+                        // builder.create<PrintOp>(loc, imRow);
+                        // builder.create<PrintOp>(loc, imCol);
+                        // builder.create<PrintOp>(loc, resultVec);
+                        // builder.create<PrintOp>(loc, outputVec);
+                        // builder.create<PrintOp>(loc, inputVec);
+
                         builder.create<scf::YieldOp>(loc);
                       }, 
                       [&](OpBuilder &builder, Location loc){
@@ -239,9 +254,15 @@ public:
                               ValueRange{ivs[0], ivs[2]});
                             Value resultVec = builder.create<FMAOp>(
                               loc, inputVec, kernelVec, outputVec);
-                            builder.create<AffineVectorStoreOp>(
-                              loc, resultVec, output, outputVectorMap,
-                              ValueRange{ivs[0], ivs[2]});
+                            // builder.create<AffineVectorStoreOp>(
+                            //   loc, resultVec, output, outputVectorMap,
+                            //   ValueRange{ivs[0], ivs[2]});
+
+                            // builder.create<PrintOp>(loc, currRow);
+                            // builder.create<PrintOp>(loc, currCol);
+                            // builder.create<PrintOp>(loc, imRow);
+                            // builder.create<PrintOp>(loc, imCol);
+                            // builder.create<PrintOp>(loc, inputVec);
 
                             builder.create<scf::YieldOp>(loc);
                           }, 
@@ -266,9 +287,9 @@ public:
                               ValueRange{ivs[0], ivs[2]});
                             Value resultVec = builder.create<FMAOp>(
                               loc, inputVec, kernelVec, outputVec);
-                            builder.create<AffineVectorStoreOp>(
-                              loc, resultVec, output, outputVectorMap,
-                              ValueRange{ivs[0], ivs[2]});
+                            // builder.create<AffineVectorStoreOp>(
+                            //   loc, resultVec, output, outputVectorMap,
+                            //   ValueRange{ivs[0], ivs[2]});
 
                             builder.create<scf::YieldOp>(loc);
                           });
@@ -288,9 +309,9 @@ public:
                         ValueRange{ivs[0], ivs[2]});
                       Value resultVec = builder.create<FMAOp>(
                         loc, inputVec, kernelVec, outputVec);
-                      builder.create<AffineVectorStoreOp>(
-                        loc, resultVec, output, outputVectorMap,
-                        ValueRange{ivs[0], ivs[2]});
+                      // builder.create<AffineVectorStoreOp>(
+                      //   loc, resultVec, output, outputVectorMap,
+                      //   ValueRange{ivs[0], ivs[2]});
                     }
                     else 
                     {
