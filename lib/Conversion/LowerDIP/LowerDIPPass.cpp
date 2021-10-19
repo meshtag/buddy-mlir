@@ -100,7 +100,7 @@ public:
     AffineMap stripMap = AffineMap::get(1, 0, {d0.ceilDiv(stride)}, ctx);
     SmallVector<Value, 8> lowerBounds(3, c0);
     SmallVector<Value, 8> uperBounds{outputRow, kernelRow, kernelCol};
-    SmallVector<int64_t, 8> steps(3, /*Value=*/1);
+    SmallVector<int64_t, 8> steps{1, 1, stride};
 
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, uperBounds, steps,
@@ -128,6 +128,8 @@ public:
 
                 Value imRow = builder.create<SubIOp>(loc, currRow, centerY);
                 Value imCol = builder.create<SubIOp>(loc, currCol, centerX);
+
+                Value colLastElem = builder.create<AddIOp>(loc, currCol, strideVal);
 
                 AffineExpr m, n, k, j;
                 bindDims(ctx, m, n, k, j);
@@ -210,16 +212,9 @@ public:
                         Value leftMask = 
                                 builder.create<SubIOp>(loc, maskAllOn, initialLeftMask);
 
-                        Value inputVecHelper = nestedBuilder.create<AffineVectorLoadOp>(
-                          loc, vectorTy32, input, inputVectorMap,
-                          ValueRange{ivs[0], ivs[1], ivs[2], iv});
-
-                        Value dummy_index1 = 
-                                builder.create<AddIOp>(loc, ivs[0], ivs[1]);
-
                         Value inputVec = 
                                 builder.create<MaskedLoadOp>(loc, vectorTy32, input,
-                                ValueRange{ivs[0], ivs[2]}, leftMask, padding);
+                                ValueRange{imRow, c0}, leftMask, padding);
 
                         Value outputVec = builder.create<AffineVectorLoadOp>(
                           loc, vectorTy32, output, outputVectorMap,
@@ -235,14 +230,15 @@ public:
                       [&](OpBuilder &builder, Location loc){
                         // colMid or colRight
                         Value colMidCond = 
-                          builder.create<CmpIOp>(loc, mlir::CmpIPredicate::slt, currCol, colMidHelper);
+                          builder.create<CmpIOp>(loc, mlir::CmpIPredicate::slt, colLastElem,
+                                  colMidHelper);
 
                         builder.create<scf::IfOp>(loc, colMidCond, 
                           [&](OpBuilder &builder, Location loc){
                             // colMid
                             Value inputVec = builder.create<AffineVectorLoadOp>(
                               loc, vectorTy32, input, inputVectorMap,
-                              ValueRange{ivs[0], ivs[1], ivs[2], iv});
+                              ValueRange{ivs[0], ivs[1], ivs[2], iv}); // Use ImRow and ImCol here
 
                             Value outputVec = builder.create<AffineVectorLoadOp>(
                               loc, vectorTy32, output, outputVectorMap,
@@ -257,6 +253,7 @@ public:
                           }, 
                           [&](OpBuilder &builder, Location loc){
                             // colRight
+                            
 
                             builder.create<scf::YieldOp>(loc);
                           });
@@ -287,7 +284,6 @@ public:
 
                     builder.create<scf::YieldOp>(loc);
                   });
-
                 builder.create<scf::YieldOp>(loc);
               });
               nestedBuilder.create<AffineYieldOp>(nestedLoc);
