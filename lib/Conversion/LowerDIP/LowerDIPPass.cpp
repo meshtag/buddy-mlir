@@ -98,19 +98,13 @@ public:
     bindDims(ctx, d0);
 
     AffineMap stripMap = AffineMap::get(1, 0, {d0.ceilDiv(stride)}, ctx);
-    SmallVector<Value, 8> lowerBounds(3, c0);
-    SmallVector<Value, 8> uperBounds{outputRow, kernelRow, kernelCol};
-    SmallVector<int64_t, 8> steps{1, 1, stride};
+    SmallVector<Value, 8> lowerBounds(4, c0);
+    SmallVector<Value, 8> uperBounds{outputRow, kernelRow, outputCol, kernelCol};
+    SmallVector<int64_t, 8> steps{1, 1, stride, 1};
 
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, uperBounds, steps,
         [&](OpBuilder &builder, Location loc, ValueRange ivs) {
-          // Create strip mining loop.
-          builder.create<AffineForOp>(
-              loc, ValueRange{c0}, builder.getDimIdentityMap(),
-              ValueRange{outputCol}, stripMap, /*Step=*/1, llvm::None,
-              [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv,
-                  ValueRange itrArgs) {
                 // Vectorize the kernel.
                 // Define `*Type`.
                 VectorType vectorTy1 = mlir::VectorType::get({1}, f32);
@@ -124,23 +118,23 @@ public:
                     builder.create<BroadcastOp>(loc, vectorTy32, kernelValue);
 
                 Value currRow = builder.create<AddIOp>(loc, ivs[0], ivs[1]);
-                Value currCol = builder.create<AddIOp>(loc, ivs[2], iv);
+                Value currCol = builder.create<AddIOp>(loc, ivs[2], ivs[3]);
 
                 Value imRow = builder.create<SubIOp>(loc, currRow, centerY);
                 Value imCol = builder.create<SubIOp>(loc, currCol, centerX);
 
                 Value colLastElem = builder.create<AddIOp>(loc, currCol, strideVal);
 
-                AffineExpr m, n, k, j;
-                bindDims(ctx, m, n, k, j);
+                AffineExpr ivs0, ivs1, ivs2, ivs3, cx, cy;
+                bindDims(ctx, ivs0, ivs1, ivs2, ivs3, cx, cy);
                 AffineMap inputVectorMap = AffineMap::get(
-                    /*dimCount=*/4, /*symbolCount=*/0, {m + n, k + j * stride},
+                    /*dimCount=*/6, /*symbolCount=*/0, {ivs0 + ivs1 - cy, ivs2 + ivs3 - cx},
                     ctx);
 
                 AffineExpr x, y;
                 bindDims(ctx, x, y);
                 AffineMap outputVectorMap = AffineMap::get(
-                    /*dimCount=*/2, /*symbolCount=*/0, {x, y * stride}, ctx);
+                    /*dimCount=*/2, /*symbolCount=*/0, {x, y}, ctx);
 
                 Value rowUpCond = builder.create<CmpIOp>(loc, mlir::CmpIPredicate::slt, currRow,
                                                          centerY);
@@ -153,14 +147,14 @@ public:
                     Value inputVec = 
                       builder.create<BroadcastOp>(loc, vectorTy32, constantPadding);
 
-                    Value outputVec = nestedBuilder.create<AffineVectorLoadOp>(
+                    Value outputVec = builder.create<AffineVectorLoadOp>(
                       loc, vectorTy32, output, outputVectorMap,
-                      ValueRange{ivs[0], iv});
-                    Value resultVec = nestedBuilder.create<FMAOp>(
+                      ValueRange{ivs[0], ivs[2]});
+                    Value resultVec = builder.create<FMAOp>(
                       loc, inputVec, kernelVec, outputVec);
-                    nestedBuilder.create<AffineVectorStoreOp>(
+                    builder.create<AffineVectorStoreOp>(
                       loc, resultVec, output, outputVectorMap,
-                      ValueRange{ivs[0], iv});
+                      ValueRange{ivs[0], ivs[2]});
                   }
                   else 
                   {
@@ -218,19 +212,19 @@ public:
 
                         Value outputVec = builder.create<AffineVectorLoadOp>(
                           loc, vectorTy32, output, outputVectorMap,
-                          ValueRange{ivs[0], iv});
+                          ValueRange{ivs[0], ivs[2]});
                         Value resultVec = builder.create<FMAOp>(
                           loc, inputVec, kernelVec, outputVec);
                         builder.create<AffineVectorStoreOp>(
                           loc, resultVec, output, outputVectorMap,
-                          ValueRange{ivs[0], iv});
+                          ValueRange{ivs[0], ivs[2]});
 
                         builder.create<scf::YieldOp>(loc);
                       }, 
                       [&](OpBuilder &builder, Location loc){
                         // colMid or colRight
                         Value colMidCond = 
-                          builder.create<CmpIOp>(loc, mlir::CmpIPredicate::slt, colLastElem,
+                          builder.create<CmpIOp>(loc, mlir::CmpIPredicate::sle, colLastElem,
                                   colMidHelper);
 
                         builder.create<scf::IfOp>(loc, colMidCond, 
@@ -238,22 +232,43 @@ public:
                             // colMid
                             Value inputVec = builder.create<AffineVectorLoadOp>(
                               loc, vectorTy32, input, inputVectorMap,
-                              ValueRange{ivs[0], ivs[1], ivs[2], iv}); // Use ImRow and ImCol here
+                              ValueRange{ivs[0], ivs[1], ivs[2], ivs[3], centerX, centerY});
 
                             Value outputVec = builder.create<AffineVectorLoadOp>(
                               loc, vectorTy32, output, outputVectorMap,
-                              ValueRange{ivs[0], iv});
+                              ValueRange{ivs[0], ivs[2]});
                             Value resultVec = builder.create<FMAOp>(
                               loc, inputVec, kernelVec, outputVec);
                             builder.create<AffineVectorStoreOp>(
                               loc, resultVec, output, outputVectorMap,
-                              ValueRange{ivs[0], iv});
+                              ValueRange{ivs[0], ivs[2]});
 
                             builder.create<scf::YieldOp>(loc);
                           }, 
                           [&](OpBuilder &builder, Location loc){
                             // colRight
-                            
+                            Value rightMaskHelper = 
+                                builder.create<SubIOp>(loc, colLastElem, colMidHelper);
+                            Value rightMaskElem = 
+                                builder.create<SubIOp>(loc, kernelRow, rightMaskHelper);
+                            Value rightMask = 
+                                builder.create<CreateMaskOp>(loc, vectorMask, rightMaskElem);
+
+                            Value padding = 
+                                builder.create<BroadcastOp>(loc, vectorTy32, constantPadding);
+
+                            Value inputVec = 
+                                builder.create<MaskedLoadOp>(loc, vectorTy32, input,
+                                ValueRange{imRow, imCol}, rightMask, padding);
+
+                            Value outputVec = builder.create<AffineVectorLoadOp>(
+                              loc, vectorTy32, output, outputVectorMap,
+                              ValueRange{ivs[0], ivs[2]});
+                            Value resultVec = builder.create<FMAOp>(
+                              loc, inputVec, kernelVec, outputVec);
+                            builder.create<AffineVectorStoreOp>(
+                              loc, resultVec, output, outputVectorMap,
+                              ValueRange{ivs[0], ivs[2]});
 
                             builder.create<scf::YieldOp>(loc);
                           });
@@ -268,14 +283,14 @@ public:
                       Value inputVec = 
                         builder.create<BroadcastOp>(loc, vectorTy32, constantPadding);
 
-                      Value outputVec = nestedBuilder.create<AffineVectorLoadOp>(
+                      Value outputVec = builder.create<AffineVectorLoadOp>(
                         loc, vectorTy32, output, outputVectorMap,
-                        ValueRange{ivs[0], iv});
-                      Value resultVec = nestedBuilder.create<FMAOp>(
+                        ValueRange{ivs[0], ivs[2]});
+                      Value resultVec = builder.create<FMAOp>(
                         loc, inputVec, kernelVec, outputVec);
-                      nestedBuilder.create<AffineVectorStoreOp>(
+                      builder.create<AffineVectorStoreOp>(
                         loc, resultVec, output, outputVectorMap,
-                        ValueRange{ivs[0], iv});
+                        ValueRange{ivs[0], ivs[2]});
                     }
                     else 
                     {
@@ -286,8 +301,7 @@ public:
                   });
                 builder.create<scf::YieldOp>(loc);
               });
-              nestedBuilder.create<AffineYieldOp>(nestedLoc);
-            });
+              // builder.create<AffineYieldOp>(loc);
         });
     // Remove the origin convolution operation.
     rewriter.eraseOp(op);
