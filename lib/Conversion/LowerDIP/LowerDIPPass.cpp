@@ -98,9 +98,10 @@ public:
     AffineExpr d0;
     bindDims(ctx, d0);
 
-    AffineMap stripMap = AffineMap::get(1, 0, {d0.ceilDiv(stride)}, ctx);
+    // AffineMap stripMap = AffineMap::get(1, 0, {d0.ceilDiv(stride)}, ctx);
     SmallVector<Value, 8> lowerBounds(4, c0);
     SmallVector<Value, 8> uperBounds{outputRow, kernelRow, outputCol, kernelCol};
+    // SmallVector<Value, 8> uperBounds{c1, c1, c1, c1};
     SmallVector<int64_t, 8> steps{1, 1, stride, 1};
 
     buildAffineLoopNest(
@@ -119,9 +120,9 @@ public:
                     builder.create<BroadcastOp>(loc, vectorTy32, kernelValue);
 
                 // builder.create<PrintOp>(loc, ivs[0]);
-                // builder.create<PrintOp>(loc, ivs[1]);
+                // // builder.create<PrintOp>(loc, ivs[1]);
                 // builder.create<PrintOp>(loc, ivs[2]);
-                // builder.create<PrintOp>(loc, ivs[3]);
+                // // builder.create<PrintOp>(loc, ivs[3]);
                 // builder.create<PrintOp>(loc, kernelVec);
 
                 Value currRow = builder.create<AddIOp>(loc, ivs[0], ivs[1]);
@@ -159,9 +160,9 @@ public:
                       ValueRange{ivs[0], ivs[2]});
                     Value resultVec = builder.create<FMAOp>(
                       loc, inputVec, kernelVec, outputVec);
-                    // builder.create<AffineVectorStoreOp>(
-                    //   loc, resultVec, output, outputVectorMap,
-                    //   ValueRange{ivs[0], ivs[2]});
+                    builder.create<AffineVectorStoreOp>(
+                      loc, resultVec, output, outputVectorMap,
+                      ValueRange{ivs[0], ivs[2]});
                   }
                   else 
                   {
@@ -218,21 +219,13 @@ public:
                                 ValueRange{imRow, c0}, leftMask, padding);
 
                         Value outputVec = builder.create<AffineVectorLoadOp>(
-                          loc, vectorTy32, output, outputVectorMap,
+                          loc, vectorTy32, output,
                           ValueRange{ivs[0], ivs[2]});
                         Value resultVec = builder.create<FMAOp>(
                           loc, inputVec, kernelVec, outputVec);
                         builder.create<AffineVectorStoreOp>(
-                          loc, resultVec, output, outputVectorMap,
-                          ValueRange{ivs[0], ivs[2]});
-
-                        // builder.create<PrintOp>(loc, currRow);
-                        // builder.create<PrintOp>(loc, currCol);
-                        // builder.create<PrintOp>(loc, imRow);
-                        // builder.create<PrintOp>(loc, imCol);
-                        // builder.create<PrintOp>(loc, resultVec);
-                        // builder.create<PrintOp>(loc, outputVec);
-                        // builder.create<PrintOp>(loc, inputVec);
+                              loc, resultVec, output, outputVectorMap,
+                              ValueRange{ivs[0], ivs[2]});
 
                         builder.create<scf::YieldOp>(loc);
                       }, 
@@ -250,19 +243,13 @@ public:
                               ValueRange{ivs[0], ivs[1], ivs[2], ivs[3], centerX, centerY});
 
                             Value outputVec = builder.create<AffineVectorLoadOp>(
-                              loc, vectorTy32, output, outputVectorMap,
+                              loc, vectorTy32, output,
                               ValueRange{ivs[0], ivs[2]});
                             Value resultVec = builder.create<FMAOp>(
                               loc, inputVec, kernelVec, outputVec);
-                            // builder.create<AffineVectorStoreOp>(
-                            //   loc, resultVec, output, outputVectorMap,
-                            //   ValueRange{ivs[0], ivs[2]});
-
-                            // builder.create<PrintOp>(loc, currRow);
-                            // builder.create<PrintOp>(loc, currCol);
-                            // builder.create<PrintOp>(loc, imRow);
-                            // builder.create<PrintOp>(loc, imCol);
-                            // builder.create<PrintOp>(loc, inputVec);
+                            builder.create<AffineVectorStoreOp>(
+                              loc, resultVec, output, outputVectorMap,
+                              ValueRange{ivs[0], ivs[2]});
 
                             builder.create<scf::YieldOp>(loc);
                           }, 
@@ -283,13 +270,12 @@ public:
                                 ValueRange{imRow, imCol}, rightMask, padding);
 
                             Value outputVec = builder.create<AffineVectorLoadOp>(
-                              loc, vectorTy32, output, outputVectorMap,
-                              ValueRange{ivs[0], ivs[2]});
+                              loc, vectorTy32, output, ValueRange{ivs[0], ivs[2]});
                             Value resultVec = builder.create<FMAOp>(
                               loc, inputVec, kernelVec, outputVec);
-                            // builder.create<AffineVectorStoreOp>(
-                            //   loc, resultVec, output, outputVectorMap,
-                            //   ValueRange{ivs[0], ivs[2]});
+                            builder.create<AffineVectorStoreOp>(
+                              loc, resultVec, output, outputVectorMap,
+                              ValueRange{ivs[0], ivs[2]});
 
                             builder.create<scf::YieldOp>(loc);
                           });
@@ -309,9 +295,9 @@ public:
                         ValueRange{ivs[0], ivs[2]});
                       Value resultVec = builder.create<FMAOp>(
                         loc, inputVec, kernelVec, outputVec);
-                      // builder.create<AffineVectorStoreOp>(
-                      //   loc, resultVec, output, outputVectorMap,
-                      //   ValueRange{ivs[0], ivs[2]});
+                      builder.create<AffineVectorStoreOp>(
+                        loc, resultVec, output, outputVectorMap,
+                        ValueRange{ivs[0], ivs[2]});
                     }
                     else 
                     {

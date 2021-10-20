@@ -1,11 +1,18 @@
 //====- edge-detection.cpp - Example of conv-opt tool ========================//
 //
-//
+// This file implements an edge detection example with linalg.conv_2d operation.
+// The linalg.conv_2d operation will be compiled into an object file with the
+// conv-opt tool.
+// This file will be linked with the object file to generate the executable
+// file.
 //
 //===----------------------------------------------------------------------===//
 
 #include <iostream>
 #include <opencv2/imgcodecs.hpp>
+
+#include <opencv2/opencv.hpp>
+
 #include <time.h>
 
 #include "/home/prathamesh/buddy-mlir/examples/conv-opt/kernels.h"
@@ -39,51 +46,10 @@ MemRef_descriptor MemRef_Descriptor(float *allocated, float *aligned,
   return n;
 }
 
-// Declare the corr2d C interface.
+// Declare the conv2d C interface.
 extern "C" {
 void _mlir_ciface_DIPCorr2D(MemRef_descriptor input, MemRef_descriptor kernel,
                             MemRef_descriptor output, int centerX, int centerY, int boundaryOption);
-}
-
-void printImage(cv::Mat img)
-{
-  std::cout << "\n";
-  for (std::ptrdiff_t row = 0; row < img.rows; ++row)
-  {
-    for (std::ptrdiff_t col = 0; col < img.cols; ++col)
-      std::cout << static_cast<unsigned int>(img.at<uchar>(col, row)) << " ";
-    std::cout << "\n";
-  }
-  std::cout << "\n";
-}
-
-void testEquality(cv::Mat img1, cv::Mat img2)
-{
-  if (img1.rows != img2.rows || img1.cols != img2.cols)
-  {
-    std::cout << "Image dimensions are not equal\n";
-    std::cout << "Img1 dimension : (" << img1.rows << "," << img1.cols << ")\n";
-    std::cout << "Img2 dimension : (" << img2.rows << "," << img2.cols << ")\n";
-    return;
-  }
-  bool flag = 1;
-  for (std::ptrdiff_t row = 0; row < img1.rows; ++row)
-  {
-    for (std::ptrdiff_t col = 0; col < img1.cols; ++col)
-    {
-      if (img1.at<uchar>(col, row) != img2.at<uchar>(col, row))
-      {
-        std::cout << "Images are not same\n";
-        std::cout << "They are different at : (" << col << "," << row << ")\n";
-        std::cout << static_cast<unsigned int>(img1.at<uchar>(col, row)) << " "
-                  << static_cast<unsigned int>(img2.at<uchar>(col, row)) << "\n";
-        flag = 0;
-        break;
-      }
-    }
-    if (!flag)
-      break;
-  }
 }
 
 int main(int argc, char *argv[]) {
@@ -95,11 +61,6 @@ int main(int argc, char *argv[]) {
     cout << "Could not read the image: " << argv[1] << endl;
     return 1;
   }
-
-  for (int i = 0; i < 6; ++i)
-    for (int j = 0; j < 6; ++j)
-      image.at<uchar>(j, i) = 6 * i + j;
-
 
   int inputSize = image.rows * image.cols;
 
@@ -121,8 +82,6 @@ int main(int argc, char *argv[]) {
   int kernelCols = laplacianKernelCols;
 
   // Define the output.
-  // int outputRows = image.rows - kernelRows + 1;
-  // int outputCols = image.cols - kernelCols + 1;
   int outputRows = image.rows;
   int outputCols = image.cols;
   float *outputAlign = (float *)malloc(outputRows * outputCols * sizeof(float));
@@ -144,37 +103,57 @@ int main(int argc, char *argv[]) {
   MemRef_descriptor output =
       MemRef_Descriptor(allocated, outputAlign, 0, sizesOutput, stridesOutput);
 
+  clock_t start,end;
+  start = clock();
+
+  // Call the MLIR conv2d function.
+  _mlir_ciface_DIPCorr2D(input, kernel, output, 0, 0, 0);
+
+  end = clock();
+  cout << "Execution time: " 
+       << (double)(end - start) / CLOCKS_PER_SEC << " s" << endl;
+
+  // Define a cv::Mat with the output of the conv2d.
+  Mat outputImage(outputRows, outputCols, CV_32FC1, output->aligned);
+
   // Choose a PNG compression level
   vector<int> compression_params;
   compression_params.push_back(IMWRITE_PNG_COMPRESSION);
   compression_params.push_back(9);
 
-  for (int64 row = 0; row < 1; ++row)
-  {
-    for (int64 col = 0; col < 1; ++col)
-    {
-      _mlir_ciface_DIPCorr2D(input, kernel, output, col, row, 0);
-
-       // Define a cv::Mat with the output of the conv2d.
-      Mat outputImage(outputRows, outputCols, CV_32FC1, output->aligned);
-      imwrite(argv[2], outputImage, compression_params);
-      Mat imageOut = imread(argv[2], IMREAD_GRAYSCALE);
-
-      printImage(imageOut);
-    }
+  // Write output to PNG.
+  bool result = false;
+  try {
+    result = imwrite(argv[2], outputImage, compression_params);
+  } catch (const cv::Exception &ex) {
+    fprintf(stderr, "Exception converting image to PNG format: %s\n",
+            ex.what());
   }
-
-  printImage(image);
-
-  std::cout << "Here\n";
-
-  // testEquality(image, imageOut);
+  if (result)
+    cout << "Saved PNG file." << endl;
+  else
+    cout << "ERROR: Can't save PNG file." << endl;
 
   free(inputAlign);
   free(outputAlign);
   free(input);
   free(kernel);
   free(output);
+
+  Mat o1 = imread(argv[2], IMREAD_GRAYSCALE);
+  Mat o2;
+  Mat kernel1 = Mat::ones(3, 3, CV_8UC1);
+  filter2D(image, o2, CV_32FC1, kernel1, cv::Point(-1, -1), 0.0, cv::BORDER_CONSTANT);
+  std::cout << image << "\n\n";
+  std::cout << kernel1 << "\n\n";
+  std::cout << o1 << "\n\n";
+  std::cout << o2 << "\n";
+  // for (int i = 0; i < o1.rows; ++i)
+  // {
+  //   for (int j = 0; j < o1.cols; ++j)
+  //     std::cout << static_cast<unsigned int>(o1.at<uchar>(j, i)) << " ";
+  //   std::cout << "\n";
+  // }
 
   return 0;
 }
