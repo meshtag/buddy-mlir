@@ -28,11 +28,11 @@ def DIP_Corr2DOp : DIP_Op<"Corr2D">
 {
   let summary = "Operation for performing 2D correlation";
 
-  let arguments = (ins Arg<AnyRankedOrUnrankedMemRef, "inputImage",
+  let arguments = (ins Arg<AnyRankedOrUnrankedMemRef, "inputMemref",
                            [MemRead]>:$memrefI,
-                       Arg<AnyRankedOrUnrankedMemRef, "kernel",
+                       Arg<AnyRankedOrUnrankedMemRef, "kernelMemref",
                            [MemRead]>:$memrefK,
-                       Arg<AnyRankedOrUnrankedMemRef, "checkOutput",
+                       Arg<AnyRankedOrUnrankedMemRef, "outputMemref",
                            [MemRead]>:$memrefCO,
                        AnyInteger : $centerX, AnyInteger : $centerY, 
                        AnyInteger : $boundaryOption);
