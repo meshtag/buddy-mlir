@@ -88,34 +88,15 @@ public:
     // Create DimOp.
     Value inputRow = rewriter.create<memref::DimOp>(loc, input, c0);
     Value inputCol = rewriter.create<memref::DimOp>(loc, input, c1);
-
     Value kernelSize = rewriter.create<memref::DimOp>(loc, kernel, c0);
-    Value kernelSizeHelper = rewriter.create<SubIOp>(loc, kernelSize, c1);
 
-    Value pseudoInputRow =
-        rewriter.create<AddIOp>(loc, inputRow, kernelSizeHelper);
-    Value pseudoInputCol =
-        rewriter.create<AddIOp>(loc, inputCol, kernelSizeHelper);
-
-    Value kernelRowMidHelper =
-        rewriter.create<SubIOp>(loc, kernelSizeHelper, centerY);
     Value rowMidHelper =
-        rewriter.create<SubIOp>(loc, pseudoInputRow, kernelRowMidHelper);
-
-    Value kernelColHelper =
-        rewriter.create<SubIOp>(loc, kernelSizeHelper, centerX);
+        rewriter.create<AddIOp>(loc, inputRow, centerY);
     Value colMidHelper =
-        rewriter.create<SubIOp>(loc, pseudoInputCol, kernelColHelper);
-
-    Value outputRow = rewriter.create<memref::DimOp>(loc, output, c0);
-    Value outputCol = rewriter.create<memref::DimOp>(loc, output, c1);
-
-    // Size of strip mining.
-    AffineExpr d0;
-    bindDims(ctx, d0);
+        rewriter.create<AddIOp>(loc, inputCol, centerX);
 
     SmallVector<Value, 8> lowerBounds(4, c0);
-    SmallVector<Value, 8> uperBounds{outputRow, kernelSize, outputCol,
+    SmallVector<Value, 8> uperBounds{inputRow, kernelSize, inputCol,
                                      kernelSize};
     SmallVector<int64_t, 8> steps{1, 1, stride, 1};
 
@@ -141,12 +122,6 @@ public:
           Value imCol = builder.create<SubIOp>(loc, currCol, centerX);
 
           Value colLastElem = builder.create<AddIOp>(loc, currCol, strideVal);
-
-          AffineExpr ivs0, ivs1, ivs2, ivs3, cx, cy;
-          bindDims(ctx, ivs0, ivs1, ivs2, ivs3, cx, cy);
-          AffineMap inputVectorMap = AffineMap::get(
-              /*dimCount=*/6, /*symbolCount=*/0,
-              {ivs0 + ivs1 - cy, ivs2 + ivs3 - cx}, ctx);
 
           Value rowUpCond = builder.create<CmpIOp>(
               loc, mlir::CmpIPredicate::slt, currRow, centerY);
@@ -304,11 +279,9 @@ public:
                                 [&](OpBuilder &builder, Location loc) {
                                   // colMid & rowMid
                                   Value inputVec =
-                                      builder.create<AffineVectorLoadOp>(
+                                      builder.create<LoadOp>(
                                           loc, vectorTy32, input,
-                                          inputVectorMap,
-                                          ValueRange{ivs[0], ivs[1], ivs[2],
-                                                     ivs[3], centerX, centerY});
+                                          ValueRange{imRow, imCol});
 
                                   calcAndStoreFMA(builder, loc, vectorTy32,
                                                   inputVec, kernelVec, output,
