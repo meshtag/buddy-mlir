@@ -66,7 +66,7 @@ public:
     Value centerY = rewriter.create<ConstantIndexOp>(loc, 1);
 
     // Value boundaryOption = op->getOperand(5);
-    unsigned int boundaryOption = 0;
+    unsigned int boundaryOption = 1;
     unsigned int stride = 3;
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
     FloatType f32 = mlir::FloatType::getF32(ctx);
@@ -114,7 +114,7 @@ public:
                 VectorType vectorMask = mlir::VectorType::get({stride}, i1);
 
                 // Broadcast element of the kernel.
-                Value kernelValue = builder.create<AffineVectorLoadOp>(
+                Value kernelValue = builder.create<LoadOp>(
                     loc, vectorTy1, kernel, ValueRange{ivs[1], ivs[3]});
                 Value kernelVec =
                     builder.create<BroadcastOp>(loc, vectorTy32, kernelValue);
@@ -143,6 +143,11 @@ public:
                 bindDims(ctx, x, y);
                 AffineMap outputVectorMap = AffineMap::get(
                     /*dimCount=*/2, /*symbolCount=*/0, {x, y}, ctx);
+
+                AffineExpr m, n, p;
+                bindDims(ctx, m, n, p);
+                AffineMap maskVectorMap = AffineMap::get(
+                    /*dimCount=*/3, /*symbolCount=*/0, {m, n - p}, ctx);
 
                 Value rowUpCond = builder.create<CmpIOp>(loc, mlir::CmpIPredicate::slt, currRow,
                                                          centerY);
@@ -178,11 +183,64 @@ public:
                     },
                   [&](OpBuilder &builder, Location loc){
                     // colMid or colRight
+                    Value colMidCond = 
+                          builder.create<CmpIOp>(loc, mlir::CmpIPredicate::sle, colLastElem,
+                                  colMidHelper);
+                    
+                    builder.create<scf::IfOp>(loc, colMidCond,
+                    [&](OpBuilder &builder, Location loc){
+                      // colMid & rowUp
+                      if (boundaryOption == 1)
+                      {
+                        Value inputVec = 
+                            builder.create<LoadOp>(loc, vectorTy32, input, ValueRange{c0, imCol});
 
+                        Value outputVec = builder.create<AffineVectorLoadOp>(
+                            loc, vectorTy32, output, outputVectorMap,
+                            ValueRange{ivs[0], ivs[2]});
+                        Value resultVec = builder.create<FMAOp>(
+                            loc, inputVec, kernelVec, outputVec);
+                        builder.create<AffineVectorStoreOp>(
+                            loc, resultVec, output, outputVectorMap,
+                            ValueRange{ivs[0], ivs[2]});
+                      }
 
-                   
+                      builder.create<scf::YieldOp>(loc);
+                    },
+                    [&](OpBuilder &builder, Location loc){
+                      // colRight & rowUp
+                      Value rightMaskHelper = 
+                          builder.create<mlir::SubIOp>(loc, colLastElem, colMidHelper);
+                      Value rightMaskElem = 
+                          builder.create<mlir::SubIOp>(loc, kernelRow, rightMaskHelper);
+                      Value rightMask = 
+                          builder.create<vector::CreateMaskOp>(loc, vectorMask, rightMaskElem);
 
+                      if (boundaryOption == 1)
+                      {
+                        Value rightRange = 
+                            builder.create<mlir::SubIOp>(loc, inputCol, c1);
+                        Value paddingVal = 
+                            builder.create<memref::LoadOp>(loc, input, ValueRange{c0, rightRange});
+                        Value padding = 
+                            builder.create<vector::BroadcastOp>(loc, vectorTy32, paddingVal);
+                        
+                        Value inputVec = 
+                            builder.create<vector::MaskedLoadOp>(loc, vectorTy32, input, 
+                            ValueRange{c0, imCol}, rightMask, padding);
 
+                        Value outputVec = builder.create<AffineVectorLoadOp>(
+                            loc, vectorTy32, output, outputVectorMap,
+                            ValueRange{ivs[0], ivs[2]});
+                        Value resultVec = builder.create<FMAOp>(
+                            loc, inputVec, kernelVec, outputVec);
+                        builder.create<AffineVectorStoreOp>(
+                            loc, resultVec, output, outputVectorMap,
+                            ValueRange{ivs[0], ivs[2]});
+                      }
+
+                      builder.create<scf::YieldOp>(loc);
+                    });
                     builder.create<scf::YieldOp>(loc);
                   });
                 }
@@ -202,30 +260,41 @@ public:
                     builder.create<scf::IfOp>(loc, colLeftCond,
                       [&](OpBuilder &builder, Location loc){
                         // colLeft
-                        Value initialLeftMaskHelper = 
+                        Value leftMaskHelper = 
                                 builder.create<SubIOp>(loc, centerX, currCol);
-                        Value initialLeftMask = 
-                                builder.create<CreateMaskOp>(loc, vectorMask, initialLeftMaskHelper);
+                        Value leftMaskElem = 
+                                builder.create<SubIOp>(loc, strideVal, leftMaskHelper);
+                        Value leftMask = 
+                                builder.create<CreateMaskOp>(loc, vectorMask, leftMaskElem);
                         Value padding = 
                                 builder.create<BroadcastOp>(loc, vectorTy32, constantPadding);
 
-                        Value maskAllOn = 
-                                builder.create<CreateMaskOp>(loc, vectorMask, strideVal);
-                        Value leftMask = 
-                                builder.create<SubIOp>(loc, maskAllOn, initialLeftMask);
+                        // Value inputVec = 
+                        //     builder.create<AffineVectorLoadOp>(loc, vectorTy32, input,
+                        //     ValueRange{imRow, c0});
+                        
 
-                        Value inputVec = 
+
+                        Value inputVecHelper = 
                                 builder.create<MaskedLoadOp>(loc, vectorTy32, input,
                                 ValueRange{imRow, c0}, leftMask, padding);
 
-                        Value outputVec = builder.create<AffineVectorLoadOp>(
-                          loc, vectorTy32, output,
-                          ValueRange{ivs[0], ivs[2]});
-                        Value resultVec = builder.create<FMAOp>(
-                          loc, inputVec, kernelVec, outputVec);
-                        builder.create<AffineVectorStoreOp>(
-                              loc, resultVec, output, outputVectorMap,
-                              ValueRange{ivs[0], ivs[2]});
+                        Value shuffleMaskElem = builder.create<ConstantFloatOp>(loc, (APFloat)(float) 1, f32);
+                        // Value constantPadding = rewriter.create<ConstantFloatOp>(loc, (APFloat)(float)0, f32);
+                        Value shuffleMask = 
+                                builder.create<CreateMaskOp>(loc, vectorMask, strideVal);
+                        // Value inputVec = 
+                        //         builder.create<ShuffleOp>(loc, inputVecHelper, centerX, strideVal,
+                        //         shuffleMask);
+
+                        // Value outputVec = builder.create<AffineVectorLoadOp>(
+                        //   loc, vectorTy32, output,
+                        //   ValueRange{ivs[0], ivs[2]});
+                        // Value resultVec = builder.create<FMAOp>(
+                        //   loc, inputVec, kernelVec, outputVec);
+                        // builder.create<AffineVectorStoreOp>(
+                        //       loc, resultVec, output, outputVectorMap,
+                        //       ValueRange{ivs[0], ivs[2]});
 
                         builder.create<scf::YieldOp>(loc);
                       }, 
@@ -239,17 +308,17 @@ public:
                           [&](OpBuilder &builder, Location loc){
                             // colMid
                             Value inputVec = builder.create<AffineVectorLoadOp>(
-                              loc, vectorTy32, input, inputVectorMap,
-                              ValueRange{ivs[0], ivs[1], ivs[2], ivs[3], centerX, centerY});
+                                loc, vectorTy32, input, inputVectorMap,
+                                ValueRange{ivs[0], ivs[1], ivs[2], ivs[3], centerX, centerY});
 
                             Value outputVec = builder.create<AffineVectorLoadOp>(
-                              loc, vectorTy32, output,
-                              ValueRange{ivs[0], ivs[2]});
+                                loc, vectorTy32, output,
+                                ValueRange{ivs[0], ivs[2]});
                             Value resultVec = builder.create<FMAOp>(
-                              loc, inputVec, kernelVec, outputVec);
+                                loc, inputVec, kernelVec, outputVec);
                             builder.create<AffineVectorStoreOp>(
-                              loc, resultVec, output, outputVectorMap,
-                              ValueRange{ivs[0], ivs[2]});
+                                loc, resultVec, output, outputVectorMap,
+                                ValueRange{ivs[0], ivs[2]});
 
                             builder.create<scf::YieldOp>(loc);
                           }, 
@@ -262,20 +331,48 @@ public:
                             Value rightMask = 
                                 builder.create<CreateMaskOp>(loc, vectorMask, rightMaskElem);
 
-                            Value padding = 
-                                builder.create<BroadcastOp>(loc, vectorTy32, constantPadding);
+                            if (!boundaryOption)
+                            {
+                              Value padding = 
+                                  builder.create<BroadcastOp>(loc, vectorTy32, constantPadding);
 
-                            Value inputVec = 
-                                builder.create<MaskedLoadOp>(loc, vectorTy32, input,
-                                ValueRange{imRow, imCol}, rightMask, padding);
+                              Value inputVec = 
+                                  builder.create<MaskedLoadOp>(loc, vectorTy32, input,
+                                  ValueRange{imRow, imCol}, rightMask, padding);
 
-                            Value outputVec = builder.create<AffineVectorLoadOp>(
-                              loc, vectorTy32, output, ValueRange{ivs[0], ivs[2]});
-                            Value resultVec = builder.create<FMAOp>(
-                              loc, inputVec, kernelVec, outputVec);
-                            builder.create<AffineVectorStoreOp>(
-                              loc, resultVec, output, outputVectorMap,
-                              ValueRange{ivs[0], ivs[2]});
+                              Value outputVec = builder.create<AffineVectorLoadOp>(
+                                  loc, vectorTy32, output, ValueRange{ivs[0], ivs[2]});
+                              Value resultVec = builder.create<FMAOp>(
+                                  loc, inputVec, kernelVec, outputVec);
+                              builder.create<AffineVectorStoreOp>(
+                                  loc, resultVec, output, outputVectorMap,
+                                  ValueRange{ivs[0], ivs[2]});
+                            }
+                            else if (boundaryOption == 1)
+                            {
+                              Value rightRange = 
+                                  builder.create<mlir::SubIOp>(loc, inputCol, c1);
+                              Value paddingVal = 
+                                  builder.create<memref::LoadOp>(loc, input,
+                                  ValueRange{imRow, rightRange});
+                              Value padding = 
+                                  builder.create<vector::BroadcastOp>(loc, vectorTy32, paddingVal);
+                        
+                              Value inputVec = 
+                                  builder.create<vector::MaskedLoadOp>(loc, vectorTy32, input, 
+                                  ValueRange{imRow, imCol}, rightMask, padding);
+
+                              Value outputVec = builder.create<AffineVectorLoadOp>(
+                                  loc, vectorTy32, output, outputVectorMap,
+                                  ValueRange{ivs[0], ivs[2]});
+                              Value resultVec = builder.create<FMAOp>(
+                                  loc, inputVec, kernelVec, outputVec);
+                              builder.create<AffineVectorStoreOp>(
+                                  loc, resultVec, output, outputVectorMap,
+                                  ValueRange{ivs[0], ivs[2]});
+                            }
+
+                            
 
                             builder.create<scf::YieldOp>(loc);
                           });
@@ -301,14 +398,94 @@ public:
                     }
                     else 
                     {
+                      Value colLeftCond = 
+                          builder.create<CmpIOp>(loc, mlir::CmpIPredicate::slt, currCol, centerX);
 
+                      builder.create<mlir::scf::IfOp>(loc, colLeftCond, 
+                          [&](OpBuilder &builder, Location loc){
+                            // rowDown & colLeft
+                            if (boundaryOption == 1)
+                            {
+                              Value downRange = 
+                                  builder.create<mlir::SubIOp>(loc, inputRow, c1);
+                              
+                            }
+
+                            builder.create<scf::YieldOp>(loc);
+                          },
+                          [&](OpBuilder &builder, Location loc){
+                            // rowDown & (colMid or colRight)
+                            Value colMidCond = 
+                                builder.create<CmpIOp>(loc, mlir::CmpIPredicate::sle, colLastElem,
+                                colMidHelper);
+
+                            builder.create<mlir::scf::IfOp>(loc, colMidCond, 
+                                [&](OpBuilder &builder, Location loc){
+                                  // rowDown & colMid
+                                  if (boundaryOption == 1)
+                                  {
+                                    Value downRange = 
+                                        builder.create<mlir::SubIOp>(loc, inputRow, c1);
+                                    Value inputVec = 
+                                        builder.create<LoadOp>(loc, vectorTy32, input,
+                                        ValueRange{downRange, imCol});
+
+                                    Value outputVec = builder.create<AffineVectorLoadOp>(
+                                        loc, vectorTy32, output, outputVectorMap,
+                                        ValueRange{ivs[0], ivs[2]});
+                                    Value resultVec = builder.create<FMAOp>(
+                                        loc, inputVec, kernelVec, outputVec);
+                                    builder.create<AffineVectorStoreOp>(
+                                        loc, resultVec, output, outputVectorMap,
+                                        ValueRange{ivs[0], ivs[2]});
+                                  }
+                                  builder.create<mlir::scf::YieldOp>(loc);
+                                },
+                                [&](OpBuilder &builder, Location loc){
+                                  // rowDown & colRight
+                                  Value rightMaskHelper = 
+                                      builder.create<SubIOp>(loc, colLastElem, colMidHelper);
+                                  Value rightMaskElem = 
+                                      builder.create<SubIOp>(loc, kernelRow, rightMaskHelper);
+                                  Value rightMask = 
+                                      builder.create<CreateMaskOp>(loc, vectorMask, rightMaskElem);
+
+                                  if (boundaryOption == 1)
+                                  {
+                                    Value downRange = 
+                                        builder.create<mlir::SubIOp>(loc, inputRow, c1);
+                                    Value rightRange = 
+                                        builder.create<SubIOp>(loc, inputCol, c1);
+
+                                    Value paddingVal = 
+                                        builder.create<memref::LoadOp>(loc, input,
+                                        ValueRange{downRange, rightRange});
+                                    Value padding = 
+                                        builder.create<vector::BroadcastOp>(loc, vectorTy32, 
+                                        paddingVal);
+
+                                    Value inputVec = 
+                                        builder.create<vector::MaskedLoadOp>(loc, vectorTy32,
+                                        input, ValueRange{downRange, imCol}, rightMask, padding);
+
+                                    Value outputVec = builder.create<AffineVectorLoadOp>(
+                                        loc, vectorTy32, output, outputVectorMap,
+                                        ValueRange{ivs[0], ivs[2]});
+                                    Value resultVec = builder.create<FMAOp>(
+                                        loc, inputVec, kernelVec, outputVec);
+                                    builder.create<AffineVectorStoreOp>(
+                                        loc, resultVec, output, outputVectorMap,
+                                        ValueRange{ivs[0], ivs[2]});
+                                  }
+                                  builder.create<mlir::scf::YieldOp>(loc);
+                                });
+                                builder.create<mlir::scf::YieldOp>(loc);
+                          });
                     }
-
                     builder.create<scf::YieldOp>(loc);
                   });
                 builder.create<scf::YieldOp>(loc);
               });
-              // builder.create<AffineYieldOp>(loc);
         });
     // Remove the origin convolution operation.
     rewriter.eraseOp(op);
