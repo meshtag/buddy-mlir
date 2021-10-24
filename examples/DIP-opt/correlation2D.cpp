@@ -49,7 +49,7 @@ MemRef_descriptor MemRef_Descriptor(float *allocated, float *aligned,
 // Declare the conv2d C interface.
 extern "C" {
 void _mlir_ciface_DIPCorr2D(MemRef_descriptor input, MemRef_descriptor kernel,
-                            MemRef_descriptor output, int centerX, int centerY, int boundaryOption);
+                            MemRef_descriptor output, unsigned int centerX, unsigned int centerY, int boundaryOption);
 }
 
 int main(int argc, char *argv[]) {
@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
   start = clock();
 
   // Call the MLIR conv2d function.
-  _mlir_ciface_DIPCorr2D(input, kernel, output, 0, 0, 0);
+  _mlir_ciface_DIPCorr2D(input, kernel, output, 1, 1, 1);
 
   end = clock();
   cout << "Execution time: " 
@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
   Mat o1 = imread(argv[2], IMREAD_GRAYSCALE);
   Mat o2;
   Mat kernel1 = Mat::ones(3, 3, CV_8UC1);
-  filter2D(image, o2, CV_32FC1, kernel1, cv::Point(-1, -1), 0.0, cv::BORDER_CONSTANT);
+  filter2D(image, o2, CV_8UC1, kernel1, cv::Point(-1, -1), 0.0, cv::BORDER_REPLICATE);
   std::cout << image << "\n\n";
   std::cout << kernel1 << "\n\n";
   std::cout << o1 << "\n\n";

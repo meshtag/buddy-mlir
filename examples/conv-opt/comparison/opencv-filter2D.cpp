@@ -3,9 +3,14 @@
 #include <string>
 
 void FillImage(cv::Mat img) {
+  int i = 0;
   for (std::ptrdiff_t row = 0; row < img.rows; ++row)
     for (std::ptrdiff_t col = 0; col < img.cols; ++col)
-      img.at<uchar>(col, row) = row * img.rows + col;
+    {
+      img.at<uchar>(col, row) = i;
+      if ((col + row) % 2)
+        ++i;
+    }
 }
 
 enum class boundaryOption {
@@ -45,6 +50,8 @@ int main(int argc, char **argv) {
   expImg.create(atoi(argv[1]), atoi(argv[2]), CV_8UC1);
 
   FillImage(origImg);
+  cv::imwrite("test_9x9.png", origImg);
+  std::cout << origImg << "\n";
 
   double delta = 0;
   int ddepth = -1;

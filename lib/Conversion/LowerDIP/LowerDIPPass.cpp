@@ -30,6 +30,8 @@
 #include "DIP/DIPOps.h"
 #include <numeric>
 
+#include <iostream>
+
 using namespace mlir;
 using namespace Buddy;
 using namespace vector;
@@ -64,12 +66,12 @@ unsigned int calcValue(OpBuilder &builder, Location loc, Value numVal)
   //   // ++val;
   // });
 
-  // buildAffineLoopNest(
-  //       builder, loc, {c0}, {numVal}, {1},
-  //       [&](OpBuilder &builder, Location loc, ValueRange ivs) {
-  //         ++val;
-  //       builder.create<AffineYieldOp>(loc);
-  // });
+  buildAffineLoopNest(
+        builder, loc, {c0}, {numVal}, {1},
+        [&](OpBuilder &builder, Location loc, ValueRange ivs) {
+          ++val;
+        // builder.create<AffineYieldOp>(loc);
+  });
   return val;
 }
 
@@ -89,21 +91,17 @@ public:
     Value input = op->getOperand(0);
     Value kernel = op->getOperand(1);
     Value output = op->getOperand(2);
-    // Value centerX = op->getOperand(3);
-    // Value centerY = op->getOperand(4);
-
-    // rewriter.create<PrintOp>(loc, c0);
-
-    Value centerX = rewriter.create<ConstantIndexOp>(loc, 1);
-    Value centerY = rewriter.create<ConstantIndexOp>(loc, 1);
+    Value centerX = op->getOperand(3);
+    Value centerY = op->getOperand(4);
 
     // Value boundaryOption = op->getOperand(5);
-    unsigned int boundaryOption = 0;
+    unsigned int boundaryOption = 1;
     unsigned int stride = 3;
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
     FloatType f32 = mlir::FloatType::getF32(ctx);
     IntegerType i1 = mlir::IntegerType::get(ctx, 1);
 
+    // Improve this flow for constant padding option
     Value constantPadding =
         rewriter.create<ConstantFloatOp>(loc, (APFloat)(float)0, f32);
 
@@ -183,6 +181,14 @@ public:
                                     loc, vectorTy32, input,
                                     ValueRange{c0, imCol});
                               }
+                              else if (boundaryOption == 2) {
+                                Value refRowHelper = builder.create<SubIOp>(loc, 
+                                    centerY, currRow);
+                                Value refRow = builder.create<SubIOp>(loc, refRowHelper, c1);
+
+                                inputVec = builder.create<LoadOp>(loc, vectorTy32, input, 
+                                    ValueRange{refRow, imCol});
+                              }
 
                               calcAndStoreFMA(builder, loc, vectorTy32,
                                                 inputVec, kernelVec, output,
@@ -218,6 +224,13 @@ public:
                                         loc, vectorTy32, input,
                                         ValueRange{c0, imCol}, rightMask,
                                         padding);
+                              }
+                              else if (boundaryOption == 2) {
+                                Value refRowHelper = builder.create<SubIOp>(loc, 
+                                    centerY, currRow);
+                                Value refRow = builder.create<SubIOp>(loc, refRowHelper, c1);
+
+                                
                               }
 
                               calcAndStoreFMA(builder, loc, vectorTy32,
@@ -264,23 +277,33 @@ public:
                                 loc, vectorTy32, input, ValueRange{imRow, c0},
                                 leftMask, padding);
 
+                              Value p =
+                                      rewriter.create<ConstantFloatOp>(loc, (APFloat)(float)100, f32);
                               Value shuffleMask = builder.create<BroadcastOp>(
-                                loc, vectorTy32, constantPadding);
+                                loc, vectorTy32, p);
                             
                               SmallVector<int64_t, 8> shuffleVals(stride);
-                              std::iota(shuffleVals.begin(), shuffleVals.end(), 0);
-                              // unsigned int rotateOffset = calcValue(builder, loc, leftMaskElem);
+                              std::iota(shuffleVals.begin(), shuffleVals.end(), 2);
+                              // unsigned int p = 
+                              // Value a = builder.create<ConstantIndexOp>(loc, leftMaskElem);
+                              // unsigned int rotateOffset = calcValue(builder, loc, leftMaskElem.cast<inputCol.getType()>());
+                              // unsigned int p = static_cast<IntegerAttr>(*leftMaskElem.getImpl());
                               std::rotate(shuffleVals.begin(), shuffleVals.begin() + 2,
                                 shuffleVals.end());
 
                               inputVec =
                                       builder.create<ShuffleOp>(loc,
                                       inputVecHelper, shuffleMask, shuffleVals);
+
+                              // builder.create<PrintOp>(loc, shuffleMask);
+                              // // builder.create<PrintOp>(loc, shuffleVals);
+                              // builder.create<PrintOp>(loc, inputVec);
+                              // builder.create<PrintOp>(loc, ivs[0]);
                             }
 
-                            calcAndStoreFMA(builder, loc, vectorTy32,
-                                                inputVec, kernelVec, output,
-                                                ValueRange{ivs[0], ivs[2]});
+                            // calcAndStoreFMA(builder, loc, vectorTy32,
+                            //                     inputVec, kernelVec, output,
+                            //                     ValueRange{ivs[0], ivs[2]});
 
                             builder.create<scf::YieldOp>(loc);
                           },
@@ -343,6 +366,8 @@ public:
                                             loc, vectorTy32, input,
                                             ValueRange{imRow, imCol}, rightMask,
                                             padding);
+                                  } else if (boundaryOption == 2) {
+
                                   }
 
                                   calcAndStoreFMA(builder, loc, vectorTy32,
@@ -390,13 +415,18 @@ public:
                                   [&](OpBuilder &builder, Location loc) {
                                     // colMid & rowDown
                                     Value inputVec;
-                                    if (boundaryOption == 1) {
-                                      Value downRange =
-                                          builder.create<mlir::SubIOp>(
+                                    Value downRange =
+                                          builder.create<SubIOp>(
                                               loc, inputRow, c1);
+                                    if (boundaryOption == 1) {
                                       inputVec = builder.create<LoadOp>(
                                           loc, vectorTy32, input,
                                           ValueRange{downRange, imCol});
+                                    } else if (boundaryOption == 2) {
+                                      Value refRow = 
+                                        builder.create<SubIOp>(loc, currRow, rowMidHelper);
+                                      
+
                                     }
 
                                     calcAndStoreFMA(

@@ -34,7 +34,7 @@ def DIP_Corr2DOp : DIP_Op<"Corr2D">
                            [MemRead]>:$memrefK,
                        Arg<AnyRankedOrUnrankedMemRef, "outputMemref",
                            [MemRead]>:$memrefCO,
-                       AnyInteger : $centerX, AnyInteger : $centerY, 
+                       Index : $centerX, Index : $centerY, 
                        AnyInteger : $boundaryOption);
 
   let assemblyFormat = [{
