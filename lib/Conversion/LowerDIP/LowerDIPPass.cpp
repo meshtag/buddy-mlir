@@ -95,7 +95,7 @@ public:
     Value centerY = op->getOperand(4);
 
     // Value boundaryOption = op->getOperand(5);
-    unsigned int boundaryOption = 1;
+    unsigned int boundaryOption = 2;
     unsigned int stride = 3;
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
     FloatType f32 = mlir::FloatType::getF32(ctx);
@@ -230,7 +230,19 @@ public:
                                     centerY, currRow);
                                 Value refRow = builder.create<SubIOp>(loc, refRowHelper, c1);
 
-                                
+                                Value refVecElemHelper = 
+                                    builder.create<SubIOp>(loc, inputCol, strideVal);
+                                Value refVecElem = builder.create<SubIOp>(loc, refVecElemHelper, c1);
+
+                                Value padding = 
+                                    builder.create<LoadOp>(loc, vectorTy32, input,
+                                    ValueRange{imRow, refVecElem});
+
+                                inputVec =
+                                    builder.create<vector::MaskedLoadOp>(
+                                        loc, vectorTy32, input,
+                                        ValueRange{c0, imCol}, rightMask,
+                                        padding);
                               }
 
                               calcAndStoreFMA(builder, loc, vectorTy32,
@@ -366,13 +378,14 @@ public:
                                             loc, vectorTy32, input,
                                             ValueRange{imRow, imCol}, rightMask,
                                             padding);
-                                  } else if (boundaryOption == 2) {
+                                  } 
+                                  else if (boundaryOption == 2) {
 
                                   }
 
-                                  calcAndStoreFMA(builder, loc, vectorTy32,
-                                                    inputVec, kernelVec, output,
-                                                    ValueRange{ivs[0], ivs[2]});
+                                  // calcAndStoreFMA(builder, loc, vectorTy32,
+                                  //                   inputVec, kernelVec, output,
+                                  //                   ValueRange{ivs[0], ivs[2]});
 
                                   builder.create<scf::YieldOp>(loc);
                                 });
@@ -423,16 +436,16 @@ public:
                                           loc, vectorTy32, input,
                                           ValueRange{downRange, imCol});
                                     } else if (boundaryOption == 2) {
-                                      Value refRow = 
-                                        builder.create<SubIOp>(loc, currRow, rowMidHelper);
+                                      // Value refRow = 
+                                      //   builder.create<SubIOp>(loc, currRow, rowMidHelper);
                                       
 
                                     }
 
-                                    calcAndStoreFMA(
-                                          builder, loc, vectorTy32, inputVec,
-                                          kernelVec, output,
-                                          ValueRange{ivs[0], ivs[2]});
+                                    // calcAndStoreFMA(
+                                    //       builder, loc, vectorTy32, inputVec,
+                                    //       kernelVec, output,
+                                    //       ValueRange{ivs[0], ivs[2]});
 
                                     builder.create<mlir::scf::YieldOp>(loc);
                                   },
@@ -472,10 +485,10 @@ public:
                                               rightMask, padding);
                                     }
 
-                                    calcAndStoreFMA(
-                                          builder, loc, vectorTy32, inputVec,
-                                          kernelVec, output,
-                                          ValueRange{ivs[0], ivs[2]});
+                                    // calcAndStoreFMA(
+                                    //       builder, loc, vectorTy32, inputVec,
+                                    //       kernelVec, output,
+                                    //       ValueRange{ivs[0], ivs[2]});
 
                                     builder.create<mlir::scf::YieldOp>(loc);
                                   });
