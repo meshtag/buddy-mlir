@@ -33,6 +33,15 @@ module {
         memref.store %arg2, %1[%arg3, %arg4] : memref<?x?xf32>
       }
     }
+
+    %argLast = subi %arg0, %c1 : index
+    %77 = constant 7.0 : f32
+
+    scf.for %arg4 = %c0 to %arg1 step %c1 {
+        %h11 = memref.load %0[%arg4, %argLast] : memref<?x?xf32>
+        memref.store %77, %1[%arg4, %argLast] : memref<?x?xf32>
+    }
+
     return %1 : memref<?x?xf32>
   }
 

@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
   Mat o1 = imread(argv[2], IMREAD_GRAYSCALE);
   Mat o2;
   Mat kernel1 = Mat::ones(3, 3, CV_8UC1);
-  filter2D(image, o2, CV_8UC1, kernel1, cv::Point(-1, -1), 0.0, cv::BORDER_REPLICATE);
+  filter2D(image, o2, CV_8UC1, kernel1, cv::Point(-1, -1), 0.0, cv::BORDER_REFLECT);
   std::cout << image << "\n\n";
   std::cout << kernel1 << "\n\n";
   std::cout << o1 << "\n\n";
