@@ -1,8 +1,8 @@
 //====- edge-detection.cpp - Example of conv-opt tool ========================//
 //
-// This file implements an edge detection example with linalg.conv_2d operation.
-// The linalg.conv_2d operation will be compiled into an object file with the
-// conv-opt tool.
+// This file implements an edge detection example with DIP.Corr2D operation.
+// The DIP.Corr2D operation will be compiled into an object file with the
+// DIP-opt tool.
 // This file will be linked with the object file to generate the executable
 // file.
 //
@@ -52,14 +52,37 @@ void _mlir_ciface_DIPCorr2D(MemRef_descriptor input, MemRef_descriptor kernel,
                             MemRef_descriptor output, unsigned int centerX, unsigned int centerY, int boundaryOption);
 }
 
-int main(int argc, char *argv[]) {
-  printf("Start processing...\n");
+bool testImages(cv::Mat img1, cv::Mat img2)
+{
+  if (img1.rows != img2.rows || img1.cols != img2.cols)
+  {
+    std::cout << "Dimensions not equal\n";
+    return 0;
+  }
 
+  for (std::ptrdiff_t i = 0; i < img1.rows; ++i)
+  {
+    for (std::ptrdiff_t j = 3; j < img1.cols; ++j)
+    {
+      if (img1.at<uchar>(j, i) != img2.at<uchar>(j, i))
+      {
+        std::cout << "Pixels not equal at : (" << j << "," << i << ")\n";
+        std::cout << (int)img1.at<uchar>(j, i) << "\n";
+        std::cout << (int)img2.at<uchar>(j, i) << "\n\n";
+        return 0;
+      }
+    }
+  }
+  return 1;
+}
+
+void testImplementation(int argc, char *argv[], 
+    std::ptrdiff_t x, std::ptrdiff_t y, std::ptrdiff_t boundaryOption)
+{
   // Read as grayscale image.
   Mat image = imread(argv[1], IMREAD_GRAYSCALE);
   if (image.empty()) {
     cout << "Could not read the image: " << argv[1] << endl;
-    return 1;
   }
 
   int inputSize = image.rows * image.cols;
@@ -78,8 +101,8 @@ int main(int argc, char *argv[]) {
   // Define the kernel.
   float kernelAlign[9] = {1, 1, 1, 1, 1, 1, 1, 1, 1};
   // float *kernelAlign = laplacianKernelAlign;
-  int kernelRows = laplacianKernelRows;
-  int kernelCols = laplacianKernelCols;
+  int kernelRows = 3;
+  int kernelCols = 3;
 
   // Define the output.
   int outputRows = image.rows;
@@ -103,57 +126,48 @@ int main(int argc, char *argv[]) {
   MemRef_descriptor output =
       MemRef_Descriptor(allocated, outputAlign, 0, sizesOutput, stridesOutput);
 
-  clock_t start,end;
-  start = clock();
+  Mat kernel1 = Mat::ones(3, 3, CV_8UC1);
+  bool flag = 1;
 
-  // Call the MLIR conv2d function.
-  _mlir_ciface_DIPCorr2D(input, kernel, output, 1, 1, 1);
+      // Call the MLIR Corr2D function.
+      _mlir_ciface_DIPCorr2D(input, kernel, output, x, y, 0);
 
-  end = clock();
-  cout << "Execution time: " 
-       << (double)(end - start) / CLOCKS_PER_SEC << " s" << endl;
+      // Define a cv::Mat with the output of the conv2d.
+      Mat outputImage(outputRows, outputCols, CV_32FC1, output->aligned);
 
-  // Define a cv::Mat with the output of the conv2d.
-  Mat outputImage(outputRows, outputCols, CV_32FC1, output->aligned);
+      // Choose a PNG compression level
+      vector<int> compression_params;
+      compression_params.push_back(IMWRITE_PNG_COMPRESSION);
+      compression_params.push_back(9);
+      imwrite(argv[2], outputImage, compression_params);
 
-  // Choose a PNG compression level
-  vector<int> compression_params;
-  compression_params.push_back(IMWRITE_PNG_COMPRESSION);
-  compression_params.push_back(9);
+      Mat o1 = imread(argv[2], IMREAD_GRAYSCALE);
+      Mat o2;
+      filter2D(image, o2, CV_8UC1, kernel1, cv::Point(x, y), 0.0, cv::BORDER_CONSTANT);
 
-  // Write output to PNG.
-  bool result = false;
-  try {
-    result = imwrite(argv[2], outputImage, compression_params);
-  } catch (const cv::Exception &ex) {
-    fprintf(stderr, "Exception converting image to PNG format: %s\n",
-            ex.what());
-  }
-  if (result)
-    cout << "Saved PNG file." << endl;
-  else
-    cout << "ERROR: Can't save PNG file." << endl;
+      std::cout << image << "\n\n";
+      std::cout << kernel1 << "\n\n";
+      std::cout << o1 << "\n\n";
+      std::cout << o2 << "\n\n";
+      if (!testImages(o1, o2))
+        std::cout << "x, y = " << x << ", " << y << "\n";
 
-  free(inputAlign);
-  free(outputAlign);
+
   free(input);
   free(kernel);
   free(output);
+  free(inputAlign);
+  free(outputAlign);
+}
 
-  Mat o1 = imread(argv[2], IMREAD_GRAYSCALE);
-  Mat o2;
-  Mat kernel1 = Mat::ones(3, 3, CV_8UC1);
-  filter2D(image, o2, CV_8UC1, kernel1, cv::Point(-1, -1), 0.0, cv::BORDER_REFLECT);
-  std::cout << image << "\n\n";
-  std::cout << kernel1 << "\n\n";
-  std::cout << o1 << "\n\n";
-  std::cout << o2 << "\n";
-  // for (int i = 0; i < o1.rows; ++i)
-  // {
-  //   for (int j = 0; j < o1.cols; ++j)
-  //     std::cout << static_cast<unsigned int>(o1.at<uchar>(j, i)) << " ";
-  //   std::cout << "\n";
-  // }
+int main(int argc, char *argv[]) {
+  for (std::ptrdiff_t x = 0; x < 1; ++x)
+  {
+    for (std::ptrdiff_t y = 1; y < 2; ++y)
+    {
+      testImplementation(argc, argv, x, y, 0);
+    }
+  }
 
   return 0;
 }

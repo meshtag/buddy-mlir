@@ -58,9 +58,9 @@ unsigned int calcValue(OpBuilder &builder, Location loc, Value numVal)
   Value c1 = builder.create<ConstantIndexOp>(loc, 1);
   unsigned int val = 0;
 
-  Value whileCond = builder.create<CmpIOp>(
-                      loc, mlir::CmpIPredicate::slt, builder.create<ConstantIndexOp>(loc, val),
-                      numVal);
+  // Value whileCond = builder.create<CmpIOp>(
+  //                     loc, mlir::CmpIPredicate::slt, builder.create<ConstantIndexOp>(loc, val),
+  //                     numVal);
 
   // builder.create<scf::WhileOp>(loc, whileCond, [&](unsigned int val){
   //   // ++val;
@@ -95,7 +95,7 @@ public:
     Value centerY = op->getOperand(4);
 
     // Value boundaryOption = op->getOperand(5);
-    unsigned int boundaryOption = 2;
+    unsigned int boundaryOption = 0;
     unsigned int stride = 3;
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
     FloatType f32 = mlir::FloatType::getF32(ctx);
@@ -304,13 +304,22 @@ public:
                                 loc, vectorTy32, p);
                             
                               SmallVector<int64_t, 8> shuffleVals(stride);
-                              std::iota(shuffleVals.begin(), shuffleVals.end(), 2);
+                              std::iota(shuffleVals.begin(), shuffleVals.end(), 0);
                               // unsigned int p = 
                               // Value a = builder.create<ConstantIndexOp>(loc, leftMaskElem);
-                              // unsigned int rotateOffset = calcValue(builder, loc, leftMaskElem.cast<inputCol.getType()>());
-                              // unsigned int p = static_cast<IntegerAttr>(*leftMaskElem.getImpl());
+                              // unsigned int rotateOffset = 
+                              //     calcValue(builder, loc, dyn_cast<memref::DimOp>(leftMaskElem.getDefiningOp()));
+                              // // unsigned int p = static_cast<IntegerAttr>(*leftMaskElem.getImpl());
+                              // auto h1 = dyn_cast<ConstantIndexOp>(leftMaskElem.getDefiningOp());
+                              // auto h = h1.getValue();
+                              
+                              // ConstantIndexOp j1= builder.create<ConstantIndexOp>(loc, 101);
+                              // unsigned j2 = j1.getValue();
+
                               std::rotate(shuffleVals.begin(), shuffleVals.begin() + 2,
                                 shuffleVals.end());
+
+                              
 
                               inputVec =
                                       builder.create<ShuffleOp>(loc,
