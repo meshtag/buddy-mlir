@@ -95,7 +95,7 @@ public:
     Value centerY = op->getOperand(4);
 
     // Value boundaryOption = op->getOperand(5);
-    unsigned int boundaryOption = 0;
+    unsigned int boundaryOption = 1;
     unsigned int stride = 3;
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
     FloatType f32 = mlir::FloatType::getF32(ctx);
@@ -222,7 +222,7 @@ public:
                                 inputVec =
                                     builder.create<vector::MaskedLoadOp>(
                                         loc, vectorTy32, input,
-                                        ValueRange{currRow, imCol}, rightMask, // currRow seems doubtful
+                                        ValueRange{c0, imCol}, rightMask, // currRow seems doubtful
                                         padding);
                               }
                               else if (boundaryOption == 2) {

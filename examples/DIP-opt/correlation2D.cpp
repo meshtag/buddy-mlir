@@ -60,15 +60,18 @@ bool testImages(cv::Mat img1, cv::Mat img2)
     return 0;
   }
 
-  for (std::ptrdiff_t i = 0; i < img1.rows; ++i)
+  for (std::ptrdiff_t i = 0; i < img1.cols; ++i)
   {
-    for (std::ptrdiff_t j = 3; j < img1.cols; ++j)
+    for (std::ptrdiff_t j = 3; j < img1.rows; ++j)
     {
-      if (img1.at<uchar>(j, i) != img2.at<uchar>(j, i))
+      if (img1.at<uchar>(i, j) != img2.at<uchar>(i, j))
       {
-        std::cout << "Pixels not equal at : (" << j << "," << i << ")\n";
-        std::cout << (int)img1.at<uchar>(j, i) << "\n";
-        std::cout << (int)img2.at<uchar>(j, i) << "\n\n";
+        std::cout << "Pixels not equal at : (" << i << "," << j << ")\n";
+        std::cout << (int)img1.at<uchar>(i, j) << "\n";
+        std::cout << (int)img2.at<uchar>(i, j) << "\n\n";
+
+        std::cout << img1 << "\n\n";
+        std::cout << img2 << "\n\n";
         return 0;
       }
     }
@@ -76,7 +79,7 @@ bool testImages(cv::Mat img1, cv::Mat img2)
   return 1;
 }
 
-void testImplementation(int argc, char *argv[], 
+bool testImplementation(int argc, char *argv[], 
     std::ptrdiff_t x, std::ptrdiff_t y, std::ptrdiff_t boundaryOption)
 {
   // Read as grayscale image.
@@ -94,6 +97,7 @@ void testImplementation(int argc, char *argv[],
     for (int j = 0; j < image.cols; j++) {
       float pixelValue = (float)image.at<uchar>(i, j);
       inputAlign[k] = pixelValue;
+      // std::cout << "inputAlign Value   " << inputAlign[k] << "\n";
       k++;
     }
   }
@@ -108,6 +112,16 @@ void testImplementation(int argc, char *argv[],
   int outputRows = image.rows;
   int outputCols = image.cols;
   float *outputAlign = (float *)malloc(outputRows * outputCols * sizeof(float));
+
+  int k1 = 0;
+  for (int i = 0; i < image.rows; i++) {
+    for (int j = 0; j < image.cols; j++) {
+      outputAlign[k1] = 0;
+      // std::cout << outputAlign[k1] << "  outputAlign\n";
+      // std::cout << "inputAlign Value   " << inputAlign[k] << "\n";
+      k1++;
+    }
+  }
 
   // Define the allocated, sizes, and strides.
   float *allocated = (float *)malloc(1 * sizeof(float));
@@ -127,30 +141,33 @@ void testImplementation(int argc, char *argv[],
       MemRef_Descriptor(allocated, outputAlign, 0, sizesOutput, stridesOutput);
 
   Mat kernel1 = Mat::ones(3, 3, CV_8UC1);
-  bool flag = 1;
 
-      // Call the MLIR Corr2D function.
-      _mlir_ciface_DIPCorr2D(input, kernel, output, x, y, 0);
+  // Call the MLIR Corr2D function.
+  _mlir_ciface_DIPCorr2D(input, kernel, output, x, y, 0);
 
-      // Define a cv::Mat with the output of the conv2d.
-      Mat outputImage(outputRows, outputCols, CV_32FC1, output->aligned);
+  // Define a cv::Mat with the output of the conv2d.
+  Mat outputImage(outputRows, outputCols, CV_32FC1, output->aligned);
 
-      // Choose a PNG compression level
-      vector<int> compression_params;
-      compression_params.push_back(IMWRITE_PNG_COMPRESSION);
-      compression_params.push_back(9);
-      imwrite(argv[2], outputImage, compression_params);
+  // Choose a PNG compression level
+  vector<int> compression_params;
+  compression_params.push_back(IMWRITE_PNG_COMPRESSION);
+  compression_params.push_back(9);
+  // std::cout << outputImage.cols << "  " << outputImage.rows << "\n";
+  imwrite(argv[2], outputImage);
 
-      Mat o1 = imread(argv[2], IMREAD_GRAYSCALE);
-      Mat o2;
-      filter2D(image, o2, CV_8UC1, kernel1, cv::Point(x, y), 0.0, cv::BORDER_CONSTANT);
+  Mat o1 = imread(argv[2], IMREAD_GRAYSCALE);
+  Mat o2;
+  filter2D(image, o2, CV_8UC1, kernel1, cv::Point(x, y), 0.0, cv::BORDER_REPLICATE);
 
-      std::cout << image << "\n\n";
-      std::cout << kernel1 << "\n\n";
-      std::cout << o1 << "\n\n";
-      std::cout << o2 << "\n\n";
-      if (!testImages(o1, o2))
-        std::cout << "x, y = " << x << ", " << y << "\n";
+  // std::cout << image << "\n\n";
+  // std::cout << kernel1 << "\n\n";
+  // std::cout << o1 << "\n\n";
+  // std::cout << o2 << "\n\n";
+  if (!testImages(o1, o2))
+  {
+    std::cout << "x, y = " << x << ", " << y << "\n";
+    return 0;
+  }
 
 
   free(input);
@@ -158,14 +175,25 @@ void testImplementation(int argc, char *argv[],
   free(output);
   free(inputAlign);
   free(outputAlign);
+
+  return 1;
 }
 
 int main(int argc, char *argv[]) {
-  for (std::ptrdiff_t x = 0; x < 1; ++x)
+  bool flag = 1;
+  for (std::ptrdiff_t x = 0; x < 3; ++x)
   {
-    for (std::ptrdiff_t y = 1; y < 2; ++y)
+    for (std::ptrdiff_t y = 0; y < 3; ++y)
     {
-      testImplementation(argc, argv, x, y, 0);
+      if (!testImplementation(argc, argv, x, y, 0))
+      {
+        flag = 0;
+        break;
+      }
+      if (!flag)
+      {
+        break;
+      }
     }
   }
 
