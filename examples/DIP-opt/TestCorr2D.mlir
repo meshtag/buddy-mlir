@@ -48,7 +48,7 @@ module {
   func @DIPCorr2D(%inputImage : memref<?x?xf32>, %kernel : memref<?x?xf32>) -> memref<?x?xf32>
   {
 
-    %outputSize = constant 6 : index
+    %outputSize = constant 7 : index
     %outputVal = constant 0.0 : f32
     %output = call @alloc_2d_filled_f32(%outputSize, %outputSize, %outputVal) : (index, index, f32) -> memref<?x?xf32>
 
@@ -72,7 +72,7 @@ module {
     %cI = constant 2.0 : f32
     %cK = constant 1.0 : f32
 
-    %inputSize = constant 6 : index
+    %inputSize = constant 7 : index
     %kernelSize = constant 3 : index
 
     %inputImage = call @alloc_2d_filled_f32(%inputSize, %inputSize, %cI) : (index, index, f32) -> memref<?x?xf32>
