@@ -95,11 +95,12 @@ public:
     Value centerY = op->getOperand(4);
 
     // Value boundaryOption = op->getOperand(5);
-    unsigned int boundaryOption = 1;
+    unsigned int boundaryOption = 0;
     unsigned int stride = 3;
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
     FloatType f32 = mlir::FloatType::getF32(ctx);
     IntegerType i1 = mlir::IntegerType::get(ctx, 1);
+    IntegerType i32 = mlir::IntegerType::get(ctx, 32);
 
     // Improve this flow for constant padding option
     Value constantPadding =
@@ -123,6 +124,7 @@ public:
     VectorType vectorTy1 = mlir::VectorType::get({1}, f32);
     VectorType vectorTy32 = mlir::VectorType::get({stride}, f32);
     VectorType vectorMask = mlir::VectorType::get({stride}, i1);
+    VectorType vectorI32 = mlir::VectorType::get({stride}, i32);
 
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, uperBounds, steps,
@@ -286,54 +288,36 @@ public:
                                 builder.create<SubIOp>(loc, centerX, currCol);
                             Value leftMaskElem = builder.create<SubIOp>(
                                 loc, strideVal, leftMaskHelper);
-                            Value leftMask = builder.create<CreateMaskOp>(
-                                loc, vectorMask, leftMaskElem);
+                            Value leftMaskInit = builder.create<CreateMaskOp>(
+                                loc, vectorMask, leftMaskHelper);
+                            Value maskInverter = builder.create<CreateMaskOp>(
+                                loc, vectorMask, strideVal);
+                            Value leftMask = builder.create<SubIOp>(loc, maskInverter, leftMaskInit);
+
 
                             if (!boundaryOption)
                             {
-                              Value padding = builder.create<BroadcastOp>(
+                                Value padding = builder.create<BroadcastOp>(
                                 loc, vectorTy32, constantPadding);
 
-                              Value inputVecHelper = builder.create<MaskedLoadOp>(
-                                loc, vectorTy32, input, ValueRange{imRow, c0},
-                                leftMask, padding);
+                                Value indexVecHelper = builder.create<ConstantIntOp>(loc, 1, i32);
+                                Value indexVec = 
+                                    builder.create<BroadcastOp>(loc, vectorI32, indexVecHelper);
+                                // SmallVector<int64_t, 8> shuffleVals(stride);
+                                // std::iota(shuffleVals.begin(), shuffleVals.end(), 0);
 
-                              Value p =
-                                      rewriter.create<ConstantFloatOp>(loc, (APFloat)(float)100, f32);
-                              Value shuffleMask = builder.create<BroadcastOp>(
-                                loc, vectorTy32, p);
-                            
-                              SmallVector<int64_t, 8> shuffleVals(stride);
-                              std::iota(shuffleVals.begin(), shuffleVals.end(), 0);
-                              // unsigned int p = 
-                              // Value a = builder.create<ConstantIndexOp>(loc, leftMaskElem);
-                              // unsigned int rotateOffset = 
-                              //     calcValue(builder, loc, dyn_cast<memref::DimOp>(leftMaskElem.getDefiningOp()));
-                              // // unsigned int p = static_cast<IntegerAttr>(*leftMaskElem.getImpl());
-                              // auto h1 = dyn_cast<ConstantIndexOp>(leftMaskElem.getDefiningOp());
-                              // auto h = h1.getValue();
-                              
-                              // ConstantIndexOp j1= builder.create<ConstantIndexOp>(loc, 101);
-                              // unsigned j2 = j1.getValue();
+                                Value inputVec = builder.create<GatherOp>(loc, vectorTy32, input,
+                                ValueRange{imRow, c0}, indexVec, leftMask, padding);
 
-                              std::rotate(shuffleVals.begin(), shuffleVals.begin() + 2,
-                                shuffleVals.end());
-
-                              
-
-                              inputVec =
-                                      builder.create<ShuffleOp>(loc,
-                                      inputVecHelper, shuffleMask, shuffleVals);
-
-                              // builder.create<PrintOp>(loc, shuffleMask);
-                              // // builder.create<PrintOp>(loc, shuffleVals);
-                              // builder.create<PrintOp>(loc, inputVec);
-                              // builder.create<PrintOp>(loc, ivs[0]);
+                                builder.create<PrintOp>(loc, inputVec);
+                                calcAndStoreFMA(builder, loc, vectorTy32,
+                                                inputVec, kernelVec, output,
+                                                ValueRange{ivs[0], ivs[2]});
                             }
 
                             // calcAndStoreFMA(builder, loc, vectorTy32,
-                            //                     inputVec, kernelVec, output,
-                            //                     ValueRange{ivs[0], ivs[2]});
+                            //                 inputVec, kernelVec, output,
+                            //                 ValueRange{ivs[0], ivs[2]});
 
                             builder.create<scf::YieldOp>(loc);
                           },
