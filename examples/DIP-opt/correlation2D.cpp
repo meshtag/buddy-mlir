@@ -159,10 +159,10 @@ bool testImplementation(int argc, char *argv[],
   Mat o2;
   filter2D(image, o2, CV_8UC1, kernel1, cv::Point(x, y), 0.0, cv::BORDER_CONSTANT);
 
-  std::cout << image << "\n\n";
-  std::cout << kernel1 << "\n\n";
-  std::cout << o1 << "\n\n";
-  std::cout << o2 << "\n\n\n\n";
+  // std::cout << image << "\n\n";
+  // std::cout << kernel1 << "\n\n";
+  // std::cout << o1 << "\n\n";
+  // std::cout << o2 << "\n\n\n\n";
   if (!testImages(o1, o2))
   {
     std::cout << "x, y = " << x << ", " << y << "\n";
@@ -181,9 +181,9 @@ bool testImplementation(int argc, char *argv[],
 
 int main(int argc, char *argv[]) {
   bool flag = 1;
-  for (std::ptrdiff_t x = 1; x < 2; ++x)
+  for (std::ptrdiff_t x = 0; x < 3; ++x)
   {
-    for (std::ptrdiff_t y = 1; y < 2; ++y)
+    for (std::ptrdiff_t y = 0; y < 3; ++y)
     {
       if (!testImplementation(argc, argv, x, y, 0))
       {

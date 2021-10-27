@@ -52,29 +52,6 @@ void calcAndStoreFMA(OpBuilder &builder, Location loc, VectorType vecType,
   builder.create<vector::StoreOp>(loc, resVec, output, indices);
 }
 
-unsigned int calcValue(OpBuilder &builder, Location loc, Value numVal)
-{
-  Value c0 = builder.create<ConstantIndexOp>(loc, 0);
-  Value c1 = builder.create<ConstantIndexOp>(loc, 1);
-  unsigned int val = 0;
-
-  // Value whileCond = builder.create<CmpIOp>(
-  //                     loc, mlir::CmpIPredicate::slt, builder.create<ConstantIndexOp>(loc, val),
-  //                     numVal);
-
-  // builder.create<scf::WhileOp>(loc, whileCond, [&](unsigned int val){
-  //   // ++val;
-  // });
-
-  buildAffineLoopNest(
-        builder, loc, {c0}, {numVal}, {1},
-        [&](OpBuilder &builder, Location loc, ValueRange ivs) {
-          ++val;
-        // builder.create<AffineYieldOp>(loc);
-  });
-  return val;
-}
-
 class DIPCorr2DLowering : public OpRewritePattern<DIP::Corr2DOp> {
 public:
   using OpRewritePattern<DIP::Corr2DOp>::OpRewritePattern;
@@ -100,7 +77,6 @@ public:
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
     FloatType f32 = mlir::FloatType::getF32(ctx);
     IntegerType i1 = mlir::IntegerType::get(ctx, 1);
-    IntegerType i32 = mlir::IntegerType::get(ctx, 32);
 
     // Improve this flow for constant padding option
     Value constantPadding =
@@ -124,8 +100,6 @@ public:
     VectorType vectorTy1 = mlir::VectorType::get({1}, f32);
     VectorType vectorTy32 = mlir::VectorType::get({stride}, f32);
     VectorType vectorMask = mlir::VectorType::get({stride}, i1);
-    VectorType vectorI32 = mlir::VectorType::get({stride}, i32);
-
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, uperBounds, steps,
         [&](OpBuilder &builder, Location loc, ValueRange ivs) {
@@ -154,8 +128,8 @@ public:
                   Value inputVec = builder.create<BroadcastOp>(loc, vectorTy32,
                                                                constantPadding);
 
-                //   calcAndStoreFMA(builder, loc, vectorTy32, inputVec, kernelVec,
-                //                   output, ValueRange{ivs[0], ivs[2]});
+                  calcAndStoreFMA(builder, loc, vectorTy32, inputVec, kernelVec,
+                                  output, ValueRange{ivs[0], ivs[2]});
                 } else {
                   Value colLeftCond = builder.create<CmpIOp>(
                       loc, mlir::CmpIPredicate::slt, currCol, centerX);
@@ -192,9 +166,9 @@ public:
                                     ValueRange{refRow, imCol});
                               }
 
-                            //   calcAndStoreFMA(builder, loc, vectorTy32,
-                            //                     inputVec, kernelVec, output,
-                            //                     ValueRange{ivs[0], ivs[2]});
+                              calcAndStoreFMA(builder, loc, vectorTy32,
+                                                inputVec, kernelVec, output,
+                                                ValueRange{ivs[0], ivs[2]});
 
                               builder.create<scf::YieldOp>(loc);
                             },
@@ -256,9 +230,9 @@ public:
                                       padding);
                               }
 
-                            //   calcAndStoreFMA(builder, loc, vectorTy32,
-                            //                     inputVec, kernelVec, output,
-                            //                     ValueRange{ivs[0], ivs[2]});
+                              calcAndStoreFMA(builder, loc, vectorTy32,
+                                                inputVec, kernelVec, output,
+                                                ValueRange{ivs[0], ivs[2]});
 
                               builder.create<scf::YieldOp>(loc);
                             });
@@ -298,13 +272,6 @@ public:
                                 Value padding = builder.create<BroadcastOp>(
                                 loc, vectorTy32, constantPadding);
 
-                                Value indexVecHelper = builder.create<ConstantIntOp>(loc, 1, i32);
-                                Value indexVec = 
-                                    builder.create<BroadcastOp>(loc, vectorI32, indexVecHelper);
-                                // std::iota(indexVec.use_begin(), indexVec.use_end(), 0);
-
-                                // Value inputVec = builder.create<GatherOp>(loc, vectorTy32, input,
-                                //         ValueRange{imRow, c0}, indexVec, leftMask, padding);
                                 Value c11 = builder.create<SubIOp>(loc, c0, leftMaskElem);
                                 inputVec =
                                     builder.create<vector::MaskedLoadOp>(
@@ -312,7 +279,6 @@ public:
                                       ValueRange{imRow, c11}, leftMask,
                                       padding);
 
-                                // builder.create<PrintOp>(loc, inputVec);
                                 calcAndStoreFMA(builder, loc, vectorTy32,
                                                 inputVec, kernelVec, output,
                                                 ValueRange{ivs[0], ivs[2]});
@@ -339,9 +305,9 @@ public:
                                           loc, vectorTy32, input,
                                           ValueRange{imRow, imCol});
 
-                                //   calcAndStoreFMA(builder, loc, vectorTy32,
-                                //                   inputVec, kernelVec, output,
-                                //                   ValueRange{ivs[0], ivs[2]});
+                                  calcAndStoreFMA(builder, loc, vectorTy32,
+                                                  inputVec, kernelVec, output,
+                                                  ValueRange{ivs[0], ivs[2]});
 
                                   builder.create<scf::YieldOp>(loc);
                                 },
@@ -399,9 +365,9 @@ public:
                                         padding);
                                   }
 
-                                //   calcAndStoreFMA(builder, loc, vectorTy32,
-                                //                     inputVec, kernelVec, output,
-                                //                     ValueRange{ivs[0], ivs[2]});
+                                  calcAndStoreFMA(builder, loc, vectorTy32,
+                                                    inputVec, kernelVec, output,
+                                                    ValueRange{ivs[0], ivs[2]});
 
                                   builder.create<scf::YieldOp>(loc);
                                 });
@@ -415,9 +381,9 @@ public:
                         Value inputVec = builder.create<BroadcastOp>(
                             loc, vectorTy32, constantPadding);
 
-                        // calcAndStoreFMA(builder, loc, vectorTy32, inputVec,
-                        //                 kernelVec, output,
-                        //                 ValueRange{ivs[0], ivs[2]});
+                        calcAndStoreFMA(builder, loc, vectorTy32, inputVec,
+                                        kernelVec, output,
+                                        ValueRange{ivs[0], ivs[2]});
                       } else {
                         Value colLeftCond = builder.create<CmpIOp>(
                             loc, mlir::CmpIPredicate::slt, currCol, centerX);
@@ -427,8 +393,7 @@ public:
                             [&](OpBuilder &builder, Location loc) {
                               // colLeft & rowDown
                               if (boundaryOption == 1) {
-                                Value downRange = builder.create<mlir::SubIOp>(
-                                    loc, inputRow, c1);
+                                
                               }
 
                               builder.create<scf::YieldOp>(loc);
@@ -462,10 +427,10 @@ public:
                                           ValueRange{refRow, imCol});
                                     }
 
-                                    // calcAndStoreFMA(
-                                    //       builder, loc, vectorTy32, inputVec,
-                                    //       kernelVec, output,
-                                    //       ValueRange{ivs[0], ivs[2]});
+                                    calcAndStoreFMA(
+                                          builder, loc, vectorTy32, inputVec,
+                                          kernelVec, output,
+                                          ValueRange{ivs[0], ivs[2]});
 
                                     builder.create<mlir::scf::YieldOp>(loc);
                                   },
@@ -522,10 +487,10 @@ public:
                                               rightMask, padding);
                                     }
 
-                                    // calcAndStoreFMA(
-                                    //       builder, loc, vectorTy32, inputVec,
-                                    //       kernelVec, output,
-                                    //       ValueRange{ivs[0], ivs[2]});
+                                    calcAndStoreFMA(
+                                          builder, loc, vectorTy32, inputVec,
+                                          kernelVec, output,
+                                          ValueRange{ivs[0], ivs[2]});
 
                                     builder.create<mlir::scf::YieldOp>(loc);
                                   });
