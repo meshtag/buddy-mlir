@@ -54,12 +54,12 @@ module {
 
     %centerX = constant 1 : index
     %centerY = constant 1 : index
-    %boundaryOption = constant 0 : i32
+    %boundaryOption = constant 0 : index
 
     // %printOutputImage1 = memref.cast %output : memref<?x?xf32> to memref<*xf32>
     // call @print_memref_f32(%printOutputImage1) : (memref<*xf32>) -> ()
 
-    DIP.Corr2D %inputImage, %kernel, %output, %centerX, %centerY, %boundaryOption : memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, index, index, i32
+    DIP.Corr2D %inputImage, %kernel, %output, %centerX, %centerY, %boundaryOption : memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, index, index, index
 
     %printOutputImage = memref.cast %output : memref<?x?xf32> to memref<*xf32>
     call @print_memref_f32(%printOutputImage) : (memref<*xf32>) -> ()

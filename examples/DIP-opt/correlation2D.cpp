@@ -159,10 +159,10 @@ bool testImplementation(int argc, char *argv[],
   Mat o2;
   filter2D(image, o2, CV_8UC1, kernel1, cv::Point(x, y), 0.0, cv::BORDER_CONSTANT);
 
-  // std::cout << image << "\n\n";
-  // std::cout << kernel1 << "\n\n";
-  // std::cout << o1 << "\n\n";
-  // std::cout << o2 << "\n\n\n\n";
+  std::cout << image << "\n\n";
+  std::cout << kernel1 << "\n\n";
+  std::cout << o1 << "\n\n";
+  std::cout << o2 << "\n\n\n\n";
   if (!testImages(o1, o2))
   {
     std::cout << "x, y = " << x << ", " << y << "\n";

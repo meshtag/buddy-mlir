@@ -71,9 +71,11 @@ public:
     Value output = op->getOperand(2);
     Value centerX = op->getOperand(3);
     Value centerY = op->getOperand(4);
+    Value boundaryOptionVal = op->getOperand(5);
 
-    // Value boundaryOption = op->getOperand(5);
+    // auto p = dyn_cast<ConstantOp>(boundaryOptionVal.getDefiningOp());
     unsigned int boundaryOption = 0;
+
     unsigned int stride = 3;
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
@@ -88,6 +90,10 @@ public:
     Value inputRow = rewriter.create<memref::DimOp>(loc, input, c0);
     Value inputCol = rewriter.create<memref::DimOp>(loc, input, c1);
     Value kernelSize = rewriter.create<memref::DimOp>(loc, kernel, c0);
+
+    Value pseudoInputColHelper = rewriter.create<AddIOp>(loc, inputCol, kernelSize);
+    Value pseudoInputColH = rewriter.create<SubIOp>(loc, pseudoInputColHelper, c1);
+    Value pseudoInputCol = rewriter.create<SubIOp>(loc, pseudoInputColH, c1);
 
     Value rowMidHelper = rewriter.create<AddIOp>(loc, inputRow, centerY);
     Value colMidHelper = rewriter.create<AddIOp>(loc, inputCol, centerX);
@@ -104,14 +110,12 @@ public:
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, uperBounds, steps,
         [&](OpBuilder &builder, Location loc, ValueRange ivs) {
-          // Broadcast element of the kernel.
-          Value kernelValue = builder.create<LoadOp>(
-              loc, vectorTy1, kernel, ValueRange{ivs[1], ivs[3]});
-          Value kernelVec =
-              builder.create<BroadcastOp>(loc, vectorTy32, kernelValue);
-
           Value currRow = builder.create<AddIOp>(loc, ivs[0], ivs[1]);
           Value currCol = builder.create<AddIOp>(loc, ivs[2], ivs[3]);
+
+          Value tailChecker = builder.create<SubIOp>(loc, pseudoInputCol, currCol);
+          Value tailCond = 
+                builder.create<CmpIOp>(loc, mlir::CmpIPredicate::slt, tailChecker, strideVal);
 
           Value imRow = builder.create<SubIOp>(loc, currRow, centerY);
           Value imCol = builder.create<SubIOp>(loc, currCol, centerX);
@@ -120,6 +124,38 @@ public:
 
           Value rowUpCond = builder.create<CmpIOp>(
               loc, mlir::CmpIPredicate::slt, currRow, centerY);
+
+          builder.create<scf::IfOp>(loc, tailCond, 
+            [&](OpBuilder &builder, Location loc){
+                // strideVal = c1;
+                // stride = dyn_cast<ConstantIndexOp>(strideVal.getDefiningOp()).getValue();
+                // strideVal = builder.create<SubIOp>(loc, strideValOrig, tailChecker);
+                // stride = dyn_cast<ConstantIndexOp>(strideVal.getDefiningOp()).getValue();
+                // stride = 1;
+                // strideVal = builder.create<ConstantIndexOp>(loc, 1);
+                Value p1 = builder.create<ConstantIndexOp>(loc, 100);
+
+                builder.create<scf::YieldOp>(loc);
+            },
+            [&](OpBuilder &builder, Location loc){
+                // strideVal = strideValOrig;
+                // stride = 3;
+                // strideVal = builder.create<ConstantIndexOp>(loc, 3);
+                // Value p2 = builder.create<ConstantIndexOp>(loc, 101);
+
+                builder.create<scf::YieldOp>(loc);
+            });
+
+          // builder.create<PrintOp>(loc, strideVal);
+
+          vectorTy32 = mlir::VectorType::get({stride}, f32);
+          vectorMask = mlir::VectorType::get({stride}, i1);
+
+          // Broadcast element of the kernel.
+          Value kernelValue = builder.create<LoadOp>(
+            loc, vectorTy1, kernel, ValueRange{ivs[1], ivs[3]});
+          Value kernelVec =
+            builder.create<BroadcastOp>(loc, vectorTy32, kernelValue);
 
           builder.create<scf::IfOp>(
               loc, rowUpCond,
@@ -165,21 +201,40 @@ public:
                                           kernelVec, output,
                                           ValueRange{ivs[0], ivs[2]});
                         } else if (boundaryOption == 2) {
-                          // Value refRowHelper =
-                          //     builder.create<SubIOp>(loc,
-                          //     centerY, currRow);
-                          // Value refRow = builder.create<SubIOp>(loc,
-                          // refRowHelper, c1);
+                          Value refRowHelper =
+                              builder.create<SubIOp>(loc,
+                              centerY, currRow);
+                          Value refRow = builder.create<SubIOp>(loc,
+                              refRowHelper, c1);
 
-                          // Value padding =
-                          //     builder.create<LoadOp>(loc, vectorTy32, input,
-                          //     ValueRange{refRow, c0});
+                          Value paddingHelper =
+                              builder.create<LoadOp>(loc, vectorTy32, input,
+                              ValueRange{refRow, c0});
+                          Value shuffleVec = kernelVec;
+                          SmallVector<int64_t, 8> shuffleVals(stride);
+                          std::iota(shuffleVals.begin(), shuffleVals.end(), 0);
+                          std::reverse(shuffleVals.begin(), shuffleVals.end());
+                          Value paddingR = builder.create<ShuffleOp>(
+                              loc, paddingHelper, shuffleVec, shuffleVals);
 
-                          // Value c11 = builder.create<SubIOp>(loc, c0,
-                          // leftMaskElem); inputVec =
-                          //     builder.create<vector::MaskedLoadOp>(
-                          //     loc, vectorTy32, input,
-                          //     ValueRange{c0, c11}, leftMask, padding);
+                        //   Value indexHelper = builder.create<SubIOp>(loc, strideVal, leftMaskElem);
+                        //   VectorType vectorTyR = mlir::VectorType::get({
+                        //       dyn_cast<ConstantIndexOp>(leftMaskElem.getDefiningOp()).getValue()},
+                        //       f32);
+                        //   Value padding = 
+                        //       builder.create<ExtractMapOp>(loc, vectorTyR, paddingR,
+                        //       ValueRange{indexHelper});
+
+                          Value c11 = builder.create<SubIOp>(loc, c0,
+                              leftMaskElem);
+                        //   inputVec =
+                        //       builder.create<vector::MaskedLoadOp>(
+                        //       loc, vectorTy32, input,
+                        //       ValueRange{c0, c11}, leftMask, paddingR.use_begin());
+
+                        //   calcAndStoreFMA(builder, loc, vectorTy32, inputVec,
+                        //                   kernelVec, output,
+                        //                   ValueRange{ivs[0], ivs[2]});
                         }
 
                         builder.create<scf::YieldOp>(loc);
