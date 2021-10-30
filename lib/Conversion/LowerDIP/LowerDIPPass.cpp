@@ -107,7 +107,8 @@ public:
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, uperBounds, steps,
         [&](OpBuilder &builder, Location loc, ValueRange ivs) {
-          // Indices of current pixel with respect to pseudo image containing extrapolated boundaries
+          // Indices of current pixel with respect to pseudo image containing
+          // extrapolated boundaries
           Value currRow = builder.create<AddIOp>(loc, ivs[0], ivs[1]);
           Value currCol = builder.create<AddIOp>(loc, ivs[2], ivs[3]);
 
@@ -123,9 +124,9 @@ public:
 
           // Broadcast element of the kernel.
           Value kernelValue = builder.create<LoadOp>(
-            loc, vectorTy1, kernel, ValueRange{ivs[1], ivs[3]});
+              loc, vectorTy1, kernel, ValueRange{ivs[1], ivs[3]});
           Value kernelVec =
-            builder.create<BroadcastOp>(loc, vectorTy32, kernelValue);
+              builder.create<BroadcastOp>(loc, vectorTy32, kernelValue);
 
           builder.create<scf::IfOp>(
               loc, rowUpCond,
@@ -168,8 +169,8 @@ public:
                               leftMask, padding);
                         }
                         calcAndStoreFMA(builder, loc, vectorTy32, inputVec,
-                                          kernelVec, output,
-                                          ValueRange{ivs[0], ivs[2]});
+                                        kernelVec, output,
+                                        ValueRange{ivs[0], ivs[2]});
 
                         builder.create<scf::YieldOp>(loc);
                       },
@@ -280,8 +281,8 @@ public:
                                   loc, vectorTy32, input,
                                   ValueRange{imRow, c11}, leftMask, padding);
                             }
-                            calcAndStoreFMA(builder, loc, vectorTy32,
-                                            inputVec, kernelVec, output,
+                            calcAndStoreFMA(builder, loc, vectorTy32, inputVec,
+                                            kernelVec, output,
                                             ValueRange{ivs[0], ivs[2]});
 
                             builder.create<scf::YieldOp>(loc);
@@ -398,8 +399,8 @@ public:
                                     padding);
                               }
                               calcAndStoreFMA(builder, loc, vectorTy32,
-                                                inputVec, kernelVec, output,
-                                                ValueRange{ivs[0], ivs[2]});
+                                              inputVec, kernelVec, output,
+                                              ValueRange{ivs[0], ivs[2]});
 
                               builder.create<scf::YieldOp>(loc);
                             },
