@@ -152,7 +152,7 @@ bool testImplementation(int argc, char *argv[],
 
   Mat o1 = imread(argv[2], IMREAD_GRAYSCALE);
   Mat o2;
-  filter2D(image, o2, CV_8UC1, kernel1, cv::Point(x, y), 0.0, cv::BORDER_CONSTANT);
+  filter2D(image, o2, CV_8UC1, kernel1, cv::Point(x, y), 0.0, cv::BORDER_REPLICATE);
 
   // std::cout << image << "\n\n";
   // std::cout << kernel1 << "\n\n";

@@ -45,12 +45,35 @@ namespace {
 // Calculate result of FMA and store it in output memref
 void calcAndStoreFMA(OpBuilder &builder, Location loc, VectorType vecType,
                      Value inputVec, Value kernelVec, Value output,
-                     ValueRange indices) {
-  Value outputVec =
-      builder.create<vector::LoadOp>(loc, vecType, output, indices);
-  Value resVec =
-      builder.create<vector::FMAOp>(loc, inputVec, kernelVec, outputVec);
-  builder.create<vector::StoreOp>(loc, resVec, output, indices);
+                     Value index1, Value index2, Value tailCond, Value extraElem) {
+//   Value outputVec =
+//       builder.create<vector::LoadOp>(loc, vecType, output, indices);
+//   Value resVec =
+//       builder.create<vector::FMAOp>(loc, inputVec, kernelVec, outputVec);
+//   builder.create<vector::StoreOp>(loc, resVec, output, indices);
+
+  builder.create<scf::IfOp>(loc, tailCond, 
+    [&](OpBuilder &builder, Location loc){
+        ValueRange indices = ValueRange{index1, index2};
+        Value outputVec =
+            builder.create<vector::LoadOp>(loc, vecType, output, indices);
+        Value resVec =
+            builder.create<vector::FMAOp>(loc, inputVec, kernelVec, outputVec);
+        builder.create<vector::StoreOp>(loc, resVec, output, indices);
+
+        builder.create<scf::YieldOp>(loc);
+    }, [&](OpBuilder &builder, Location loc){
+        Value tailIndex = builder.create<SubIOp>(loc, index2, extraElem);
+        ValueRange indices = ValueRange{index1, tailIndex};
+        Value outputVec =
+            builder.create<vector::LoadOp>(loc, vecType, output, indices);
+        Value resVec =
+            builder.create<vector::FMAOp>(loc, inputVec, kernelVec, outputVec);
+        builder.create<vector::StoreOp>(loc, resVec, output, indices);
+
+
+        builder.create<scf::YieldOp>(loc);
+    });
 }
 
 class DIPCorr2DLowering : public OpRewritePattern<DIP::Corr2DOp> {
@@ -72,9 +95,9 @@ public:
     Value output = op->getOperand(2);
     Value centerX = op->getOperand(3);
     Value centerY = op->getOperand(4);
-    Value boundaryOptionVal = op->getOperand(5);
+    // Value boundaryOptionVal = op->getOperand(5);
 
-    unsigned int boundaryOption = 0;
+    unsigned int boundaryOption = 1;
 
     unsigned int stride = 3;
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
@@ -104,13 +127,42 @@ public:
     VectorType vectorTy32 = mlir::VectorType::get({stride}, f32);
     VectorType vectorMask = mlir::VectorType::get({stride}, i1);
 
+    Value tailVecPadding = rewriter.create<BroadcastOp>(loc, vectorTy32, constantPadding);
+
+    Value pseudoColHelper = rewriter.create<AddIOp>(loc, inputCol, kernelSize);
+    Value pseudoCol = rewriter.create<SubIOp>(loc, pseudoColHelper, c1);
+
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, uperBounds, steps,
         [&](OpBuilder &builder, Location loc, ValueRange ivs) {
+          Value tailCheckerHelper = builder.create<AddIOp>(loc, strideVal, kernelSize);
+          Value tailChecker = builder.create<SubIOp>(loc, tailCheckerHelper, c1);
+          Value colEndDistance = builder.create<SubIOp>(loc, pseudoCol, ivs[2]);
+          Value tailCond = 
+              rewriter.create<CmpIOp>(loc, mlir::CmpIPredicate::sge, colEndDistance, tailChecker);
+
+          Value tailColHelper = builder.create<AddIOp>(loc, ivs[2], ivs[3]);
+          Value extraElem = builder.create<SubIOp>(loc, tailChecker, colEndDistance);
+
           // Indices of current pixel with respect to pseudo image containing
           // extrapolated boundaries
           Value currRow = builder.create<AddIOp>(loc, ivs[0], ivs[1]);
-          Value currCol = builder.create<AddIOp>(loc, ivs[2], ivs[3]);
+          Value currCol = builder.create<SelectOp>(loc, tailCond, 
+              builder.create<AddIOp>(loc, ivs[2], ivs[3]),
+              builder.create<SubIOp>(loc, tailColHelper, extraElem));
+
+          Value tailVecMaskHelper = builder.create<CreateMaskOp>(loc, vectorMask, extraElem);
+          Value maskInverter = builder.create<CreateMaskOp>(loc, vectorMask, strideVal);
+          Value tailVecMask = builder.create<SubIOp>(loc, maskInverter, tailVecMaskHelper);
+
+          Value kernelValue = builder.create<LoadOp>(
+              loc, vectorTy1, kernel, ValueRange{ivs[1], ivs[3]});
+
+          Value kernelVec = builder.create<SelectOp>(loc, tailCond, 
+              builder.create<BroadcastOp>(loc, vectorTy32, kernelValue),
+              builder.create<vector::MaskedLoadOp>(
+                              loc, vectorTy32, kernel, ValueRange{ivs[1], ivs[3]},
+                              tailVecMask, tailVecPadding));
 
           // Pixel indices with respect to the actual image
           Value imRow = builder.create<SubIOp>(loc, currRow, centerY);
@@ -121,12 +173,6 @@ public:
 
           Value rowUpCond = builder.create<CmpIOp>(
               loc, mlir::CmpIPredicate::slt, currRow, centerY);
-
-          // Broadcast element of the kernel.
-          Value kernelValue = builder.create<LoadOp>(
-              loc, vectorTy1, kernel, ValueRange{ivs[1], ivs[3]});
-          Value kernelVec =
-              builder.create<BroadcastOp>(loc, vectorTy32, kernelValue);
 
           builder.create<scf::IfOp>(
               loc, rowUpCond,
@@ -300,7 +346,6 @@ public:
                                   Value inputVec = builder.create<LoadOp>(
                                       loc, vectorTy32, input,
                                       ValueRange{imRow, imCol});
-
                                   calcAndStoreFMA(builder, loc, vectorTy32,
                                                   inputVec, kernelVec, output,
                                                   ValueRange{ivs[0], ivs[2]});

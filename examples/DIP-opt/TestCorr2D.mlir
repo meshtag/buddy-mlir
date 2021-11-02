@@ -52,8 +52,8 @@ module {
     %outputVal = constant 0.0 : f32
     %output = call @alloc_2d_filled_f32(%outputSize, %outputSize, %outputVal) : (index, index, f32) -> memref<?x?xf32>
 
-    %centerX = constant 1 : index
-    %centerY = constant 1 : index
+    %centerX = constant 2 : index
+    %centerY = constant 0 : index
     %boundaryOption = constant 0 : index
 
     // %printOutputImage1 = memref.cast %output : memref<?x?xf32> to memref<*xf32>
