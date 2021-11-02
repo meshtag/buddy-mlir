@@ -65,7 +65,6 @@ void calcAndStoreFMA(OpBuilder &builder, Location loc, VectorType vecType,
             builder.create<vector::FMAOp>(loc, inputVec, kernelVec, outputVec);
         builder.create<vector::StoreOp>(loc, resVec, output, indices);
 
-
         builder.create<scf::YieldOp>(loc);
     });
 }
@@ -100,7 +99,7 @@ public:
     IntegerType i1 = mlir::IntegerType::get(ctx, 1);
 
     // Improve this flow for constant padding option
-    Value constantPadding =
+    Value zeroPaddingElem =
         rewriter.create<ConstantFloatOp>(loc, (APFloat)(float)0, f32);
 
     // Create DimOp.
@@ -121,7 +120,7 @@ public:
     VectorType vectorTy32 = mlir::VectorType::get({stride}, f32);
     VectorType vectorMask = mlir::VectorType::get({stride}, i1);
 
-    Value tailVecPadding = rewriter.create<BroadcastOp>(loc, vectorTy32, constantPadding);
+    Value tailVecPadding = rewriter.create<BroadcastOp>(loc, vectorTy32, zeroPaddingElem);
 
     Value pseudoColHelper = rewriter.create<AddIOp>(loc, inputCol, kernelSize);
     Value pseudoCol = rewriter.create<SubIOp>(loc, pseudoColHelper, c1);
@@ -136,6 +135,8 @@ public:
               rewriter.create<CmpIOp>(loc, mlir::CmpIPredicate::sge, colEndDistance, tailChecker);
 
           Value tailColHelper = builder.create<AddIOp>(loc, ivs[2], ivs[3]);
+          Value colEndDistanceHelper = 
+              builder.create<AddIOp>(loc, colEndDistance, c1);
           Value extraElem = builder.create<SubIOp>(loc, tailChecker, colEndDistance);
 
           // Indices of current pixel with respect to pseudo image containing
@@ -174,7 +175,7 @@ public:
                 // rowUp
                 if (!boundaryOption) {
                   Value inputVec = builder.create<BroadcastOp>(loc, vectorTy32,
-                                                               constantPadding);
+                                                               zeroPaddingElem);
 
                   calcAndStoreFMA(builder, loc, vectorTy32, inputVec, kernelVec,
                                   output, ivs[0], ivs[2], tailCond, extraElem);
@@ -299,7 +300,7 @@ public:
 
                             if (!boundaryOption) {
                               Value padding = builder.create<BroadcastOp>(
-                                  loc, vectorTy32, constantPadding);
+                                  loc, vectorTy32, zeroPaddingElem);
 
                               Value c11 =
                                   builder.create<SubIOp>(loc, c0, leftMaskElem);
@@ -355,7 +356,7 @@ public:
 
                                   if (!boundaryOption) {
                                     Value padding = builder.create<BroadcastOp>(
-                                        loc, vectorTy32, constantPadding);
+                                        loc, vectorTy32, zeroPaddingElem);
 
                                     inputVec = builder.create<MaskedLoadOp>(
                                         loc, vectorTy32, input,
@@ -392,7 +393,7 @@ public:
                       // rowDown
                       if (!boundaryOption) {
                         Value inputVec = builder.create<BroadcastOp>(
-                            loc, vectorTy32, constantPadding);
+                            loc, vectorTy32, zeroPaddingElem);
 
                         calcAndStoreFMA(builder, loc, vectorTy32, inputVec, kernelVec,
                                   output, ivs[0], ivs[2], tailCond, extraElem);
