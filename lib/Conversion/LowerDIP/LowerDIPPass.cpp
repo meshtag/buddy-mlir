@@ -135,8 +135,6 @@ public:
               rewriter.create<CmpIOp>(loc, mlir::CmpIPredicate::sge, colEndDistance, tailChecker);
 
           Value tailColHelper = builder.create<AddIOp>(loc, ivs[2], ivs[3]);
-          Value colEndDistanceHelper = 
-              builder.create<AddIOp>(loc, colEndDistance, c1);
           Value extraElem = builder.create<SubIOp>(loc, tailChecker, colEndDistance);
 
           // Indices of current pixel with respect to pseudo image containing
@@ -156,7 +154,7 @@ public:
           Value kernelVec = builder.create<SelectOp>(loc, tailCond, 
               builder.create<BroadcastOp>(loc, vectorTy32, kernelValue),
               builder.create<vector::MaskedLoadOp>(
-                              loc, vectorTy32, kernel, ValueRange{ivs[1], ivs[3]},
+                              loc, vectorTy32, kernel, ValueRange{ivs[1], c0},
                               tailVecMask, tailVecPadding));
 
           // Pixel indices with respect to the actual image
