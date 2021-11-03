@@ -93,6 +93,8 @@ public:
     unsigned int boundaryOption = 1;
 
     unsigned int stride = 3;
+    unsigned int tailCorrection = 2;
+    unsigned int tailCorrectionRem = stride - tailCorrection;
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
     FloatType f32 = mlir::FloatType::getF32(ctx);
@@ -120,7 +122,11 @@ public:
     VectorType vectorTy32 = mlir::VectorType::get({stride}, f32);
     VectorType vectorMask = mlir::VectorType::get({stride}, i1);
 
-    Value tailVecPadding = rewriter.create<BroadcastOp>(loc, vectorTy32, zeroPaddingElem);
+    VectorType vectorTyTailZero = mlir::VectorType::get({tailCorrectionRem}, f32);
+    VectorType vectorTyTailElem = mlir::VectorType::get({tailCorrection}, f32);
+
+    Value constantPadding = rewriter.create<BroadcastOp>(loc, vectorTy32, zeroPaddingElem);
+    Value tailVecRem = rewriter.create<BroadcastOp>(loc, vectorTyTailZero, zeroPaddingElem);
 
     Value pseudoColHelper = rewriter.create<AddIOp>(loc, inputCol, kernelSize);
     Value pseudoCol = rewriter.create<SubIOp>(loc, pseudoColHelper, c1);
@@ -144,18 +150,24 @@ public:
               builder.create<AddIOp>(loc, ivs[2], ivs[3]),
               builder.create<SubIOp>(loc, tailColHelper, extraElem));
 
+          Value kernelValue = builder.create<LoadOp>(
+              loc, vectorTy1, kernel, ValueRange{ivs[1], ivs[3]});
+          Value tailKernelVec = builder.create<BroadcastOp>(loc, vectorTyTailElem, kernelValue);
+
+          SmallVector<int64_t, 3> shuffleVals(3);
+          std::iota(shuffleVals.begin(), shuffleVals.end(), 0);
+
           Value tailVecMaskHelper = builder.create<CreateMaskOp>(loc, vectorMask, extraElem);
           Value maskInverter = builder.create<CreateMaskOp>(loc, vectorMask, strideVal);
           Value tailVecMask = builder.create<SubIOp>(loc, maskInverter, tailVecMaskHelper);
-
-          Value kernelValue = builder.create<LoadOp>(
-              loc, vectorTy1, kernel, ValueRange{ivs[1], ivs[3]});
 
           Value kernelVec = builder.create<SelectOp>(loc, tailCond, 
               builder.create<BroadcastOp>(loc, vectorTy32, kernelValue),
               builder.create<vector::MaskedLoadOp>(
                               loc, vectorTy32, kernel, ValueRange{ivs[1], c0},
-                              tailVecMask, tailVecPadding));
+                              tailVecMask, constantPadding)
+              // builder.create<ShuffleOp>(loc, tailVecRem, tailKernelVec, shuffleVals)
+              );
 
           // Pixel indices with respect to the actual image
           Value imRow = builder.create<SubIOp>(loc, currRow, centerY);
