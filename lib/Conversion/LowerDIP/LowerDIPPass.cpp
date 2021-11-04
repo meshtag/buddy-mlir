@@ -93,8 +93,6 @@ public:
     unsigned int boundaryOption = 1;
 
     unsigned int stride = 3;
-    unsigned int tailCorrection = 2;
-    unsigned int tailCorrectionRem = stride - tailCorrection;
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
     FloatType f32 = mlir::FloatType::getF32(ctx);
@@ -122,11 +120,7 @@ public:
     VectorType vectorTy32 = mlir::VectorType::get({stride}, f32);
     VectorType vectorMask = mlir::VectorType::get({stride}, i1);
 
-    VectorType vectorTyTailZero = mlir::VectorType::get({tailCorrectionRem}, f32);
-    VectorType vectorTyTailElem = mlir::VectorType::get({tailCorrection}, f32);
-
-    Value constantPadding = rewriter.create<BroadcastOp>(loc, vectorTy32, zeroPaddingElem);
-    Value tailVecRem = rewriter.create<BroadcastOp>(loc, vectorTyTailZero, zeroPaddingElem);
+    Value zeroPadding = rewriter.create<BroadcastOp>(loc, vectorTy32, zeroPaddingElem);
 
     Value pseudoColHelper = rewriter.create<AddIOp>(loc, inputCol, kernelSize);
     Value pseudoCol = rewriter.create<SubIOp>(loc, pseudoColHelper, c1);
@@ -149,10 +143,8 @@ public:
           Value currCol = builder.create<SelectOp>(loc, tailCond, 
               builder.create<AddIOp>(loc, ivs[2], ivs[3]),
               builder.create<SubIOp>(loc, tailColHelper, extraElem));
-
           Value kernelValue = builder.create<LoadOp>(
               loc, vectorTy1, kernel, ValueRange{ivs[1], ivs[3]});
-          Value tailKernelVec = builder.create<BroadcastOp>(loc, vectorTyTailElem, kernelValue);
 
           SmallVector<int64_t, 3> shuffleVals(3);
           std::iota(shuffleVals.begin(), shuffleVals.end(), 0);
@@ -165,7 +157,7 @@ public:
               builder.create<BroadcastOp>(loc, vectorTy32, kernelValue),
               builder.create<vector::MaskedLoadOp>(
                               loc, vectorTy32, kernel, ValueRange{ivs[1], c0},
-                              tailVecMask, constantPadding)
+                              tailVecMask, zeroPadding)
               // builder.create<ShuffleOp>(loc, tailVecRem, tailKernelVec, shuffleVals)
               );
 
