@@ -142,8 +142,6 @@ public:
           Value colEndDistance = builder.create<SubIOp>(loc, pseudoCol, ivs[2]);
           Value tailCond = 
               rewriter.create<CmpIOp>(loc, CmpIPredicate::sge, colEndDistance, tailChecker);
-
-          Value tailColHelper = builder.create<AddIOp>(loc, ivs[2], ivs[3]);
           Value extraElem = builder.create<SubIOp>(loc, tailChecker, colEndDistance);
 
           // Indices of current pixel with respect to pseudo image containing
@@ -151,17 +149,29 @@ public:
           Value currRow = builder.create<AddIOp>(loc, ivs[0], ivs[1]);
           Value currCol = builder.create<SelectOp>(loc, tailCond, 
               builder.create<AddIOp>(loc, ivs[2], ivs[3]),
-              builder.create<SubIOp>(loc, tailColHelper, extraElem));
+              builder.create<AffineApplyOp>(loc, calcHelper, ValueRange{ivs[2], ivs[3], extraElem}));
 
           Value kernelValue = builder.create<memref::LoadOp>(
               loc, kernel, ValueRange{ivs[1], ivs[3]});
+
+          
+
+        //   VectorType vectorTy1 = mlir::VectorType::get({1}, f32);
+        //   Value kernelValue = builder.create<LoadOp>(
+        //       loc, vectorTy1, kernel, ValueRange{ivs[1], ivs[3]});
+
+        //   MemRefType checkType = MemRefType::get({1}, f32);
+        //   Value memC = kernelValue.dyn_cast<checkType.get()>();
+        //   ArrayRef<ReassociationIndices> reassociation1({1});
+        //   Value check = 
+        //       builder.create<memref::ExpandShapeOp>(loc, checkType, kernelValue, reassociation1);
+
           Value tailVecMask = createInvertedMask(builder, loc, strideVal, vectorMask, extraElem);
           Value kernelVec = builder.create<SelectOp>(loc, tailCond, 
               builder.create<BroadcastOp>(loc, vectorTy32, kernelValue),
               builder.create<vector::MaskedLoadOp>(
                               loc, vectorTy32, kernel, ValueRange{ivs[1], c0},
-                              tailVecMask, zeroPadding)
-              );
+                              tailVecMask, zeroPadding));
 
           // Pixel indices with respect to the actual image
           Value imRow = builder.create<SubIOp>(loc, currRow, centerY);

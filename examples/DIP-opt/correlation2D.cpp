@@ -8,14 +8,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <iostream>
 #include <opencv2/imgcodecs.hpp>
-
 #include <opencv2/opencv.hpp>
 
-#include <time.h>
+#include "../conv-opt/kernels.h"
 
-#include "/home/prathamesh/buddy-mlir/examples/conv-opt/kernels.h"
+#include <iostream>
+#include <time.h>
 
 using namespace cv;
 using namespace std;
@@ -111,13 +110,9 @@ bool testImplementation(int argc, char *argv[],
   int outputCols = image.cols;
   float *outputAlign = (float *)malloc(outputRows * outputCols * sizeof(float));
 
-  int k1 = 0;
-  for (int i = 0; i < image.rows; i++) {
-    for (int j = 0; j < image.cols; j++) {
-      outputAlign[k1] = 0;
-      k1++;
-    }
-  }
+  for (int i = 0; i < image.rows; i++)
+    for (int j = 0; j < image.cols; j++)
+      outputAlign[i * image.rows + j] = 0;
 
   // Define the allocated, sizes, and strides.
   float *allocated = (float *)malloc(1 * sizeof(float));
