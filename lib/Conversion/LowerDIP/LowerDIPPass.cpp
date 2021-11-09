@@ -96,7 +96,6 @@ public:
     Value centerX = op->getOperand(3);
     Value centerY = op->getOperand(4);
     // Value boundaryOptionVal = op->getOperand(5);
-
     unsigned int boundaryOption = 1;
 
     unsigned int stride = 3;
@@ -153,18 +152,6 @@ public:
 
           Value kernelValue = builder.create<memref::LoadOp>(
               loc, kernel, ValueRange{ivs[1], ivs[3]});
-
-          
-
-        //   VectorType vectorTy1 = mlir::VectorType::get({1}, f32);
-        //   Value kernelValue = builder.create<LoadOp>(
-        //       loc, vectorTy1, kernel, ValueRange{ivs[1], ivs[3]});
-
-        //   MemRefType checkType = MemRefType::get({1}, f32);
-        //   Value memC = kernelValue.dyn_cast<checkType.get()>();
-        //   ArrayRef<ReassociationIndices> reassociation1({1});
-        //   Value check = 
-        //       builder.create<memref::ExpandShapeOp>(loc, checkType, kernelValue, reassociation1);
 
           Value tailVecMask = createInvertedMask(builder, loc, strideVal, vectorMask, extraElem);
           Value kernelVec = builder.create<SelectOp>(loc, tailCond, 
