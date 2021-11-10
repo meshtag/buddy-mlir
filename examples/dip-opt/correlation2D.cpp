@@ -96,9 +96,11 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   }
 
   // Define the kernel.
-  float kernelAlign[9] = {1, 1, 1, 1, 1, 1, 1, 1, 1};
-  int kernelRows = 3;
-  int kernelCols = 3;
+  float kernelAlign[25] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                           1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                           1, 1, 1, 1, 1};
+  int kernelRows = 5;
+  int kernelCols = 5;
 
   // Define the output.
   int outputRows = image.rows;
@@ -126,7 +128,7 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   MemRef_descriptor output =
       MemRef_Descriptor(allocated, outputAlign, 0, sizesOutput, stridesOutput);
 
-  Mat kernel1 = Mat::ones(3, 3, CV_8UC1);
+  Mat kernel1 = Mat::ones(5, 5, CV_8UC1);
 
   // Call the MLIR Corr2D function.
   _mlir_ciface_dipCorr2D(input, kernel, output, x, y, 0);
