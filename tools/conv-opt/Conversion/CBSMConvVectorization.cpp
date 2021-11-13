@@ -15,6 +15,7 @@
 
 using namespace mlir;
 using namespace vector;
+using namespace mlir::arith;
 
 //===----------------------------------------------------------------------===//
 // Rewrite Pattern
