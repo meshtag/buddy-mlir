@@ -20,3 +20,6 @@ add_executable(correlation2D correlation2D.cpp)
 add_dependencies(correlation2D dip-opt)
 target_link_libraries(correlation2D ${OpenCV_LIBS} Corr2D)
 
+add_executable(testcorr_2d testcorr_2d.cpp)
+add_dependencies(testcorr_2d dip-opt)
+target_link_libraries(testcorr_2d ${OpenCV_LIBS} Corr2D)

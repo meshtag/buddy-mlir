@@ -86,22 +86,29 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
 
   // Define the input with the image.
   float *inputAlign = (float *)malloc(inputSize * sizeof(float));
+  int k = 0;
   for (int i = 0; i < image.rows; i++) {
     for (int j = 0; j < image.cols; j++) {
       float pixelValue = (float)image.at<uchar>(i, j);
-      inputAlign[i * image.rows + j] = pixelValue;
+      inputAlign[k] = pixelValue;
+      k++;
     }
   }
 
   // Define the kernel.
-  float kernelAlign[9] = {1, 1, 1, 1, 1, 1, 1, 1, 1};
-  int kernelRows = 3;
-  int kernelCols = 3;
+  // float kernelAlign[9] = {1, 1, 1, 1, 1, 1, 1, 1, 1};
+  float *kernelAlign = sobel9x9KernelAlign;
+  int kernelRows = 9;
+  int kernelCols = 9;
 
   // Define the output.
   int outputRows = image.rows;
   int outputCols = image.cols;
   float *outputAlign = (float *)malloc(outputRows * outputCols * sizeof(float));
+
+  for (int i = 0; i < image.rows; i++)
+    for (int j = 0; j < image.cols; j++)
+      outputAlign[i * image.rows + j] = 0;
 
   // Define the allocated, sizes, and strides.
   float *allocated = (float *)malloc(1 * sizeof(float));
@@ -120,7 +127,8 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   MemRef_descriptor output =
       MemRef_Descriptor(allocated, outputAlign, 0, sizesOutput, stridesOutput);
 
-  Mat kernel1 = Mat::ones(3, 3, CV_8UC1);
+  // Mat kernel1 = Mat::ones(3, 3, CV_8UC1);
+  Mat kernel1 = Mat(9, 9, CV_32FC1, sobel9x9KernelAlign);
 
   // Call the MLIR Corr2D function.
   _mlir_ciface_corr_2d(input, kernel, output, x, y, 0);

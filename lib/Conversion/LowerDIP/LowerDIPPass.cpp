@@ -100,7 +100,7 @@ public:
     // Value boundaryOptionVal = op->getOperand(5);
     unsigned int boundaryOption = 1;
 
-    unsigned int stride = 3;
+    unsigned int stride = 9;
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
     FloatType f32 = FloatType::getF32(ctx);
@@ -561,5 +561,5 @@ void LowerDIPPass::runOnOperation() {
 namespace mlir {
 namespace buddy {
 void registerLowerDIPPass() { PassRegistration<LowerDIPPass>(); }
-} // namespace Buddy
+} // namespace buddy
 } // namespace mlir
