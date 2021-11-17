@@ -102,6 +102,10 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   int outputCols = image.cols;
   float *outputAlign = (float *)malloc(outputRows * outputCols * sizeof(float));
 
+  for (int i = 0; i < image.rows; i++)
+    for (int j = 0; j < image.cols; j++)
+      outputAlign[i * image.rows + j] = 0;
+
   // Define the allocated, sizes, and strides.
   float *allocated = (float *)malloc(1 * sizeof(float));
   intptr_t sizesInput[2] = {image.rows, image.cols};
@@ -137,6 +141,11 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   Mat o2;
   filter2D(image, o2, CV_8UC1, kernel1, cv::Point(x, y), 0.0,
            cv::BORDER_REPLICATE);
+
+  // std::cout << image << "\n\n";
+  // std::cout << kernel1 << "\n\n";
+  // std::cout << o1 << " \nbuddy \n\n";
+  // std::cout << o2 << " \nOpenCV \n\n";
 
   if (!testImages(o1, o2)) {
     std::cout << "x, y = " << x << ", " << y << "\n";
