@@ -100,7 +100,7 @@ public:
     // Value boundaryOptionVal = op->getOperand(5);
     unsigned int boundaryOption = 1;
 
-    unsigned int stride = 100;
+    unsigned int stride = 20;
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
     FloatType f32 = FloatType::getF32(ctx);
