@@ -8,23 +8,51 @@ This operation is used for performing 2D correlation on an image. The 2D correla
 applications in which boundary extrapolation is not explicitly required. Due to this, dimensions of output are always less than the input dimensions after
 using linalg dialect's 2D correlation API.
 
-dip.corr_2d performs boundary extrapolation for making the size of the output image equal to the size of the input image. Boundary extrapolation can be done using
+dip.corr_2d performs boundary extrapolation for making the size of output image equal to the size of input image and then uses coefficient broadcasting and strip mining(CBSM) approach for performing correlation as shown in following schematic : 
+
+![](./Images/ConstantPadding+TailProcessing.png)
+
+Boundary extrapolation can be done using
 different methods, supported options are :
  - Constant Padding : Uses a constant for padding whole extra region in input image
    for obtaining the boundary extrapolated output image. (kkk|abcdefg|kkk)
  - b. Replicate Padding : Uses last/first element of respective column/row for padding
    the extra region used for creating the boundary extrapolated output image. (aaa|abcdefg|ggg)
 
+Effects of above mentioned boundary extrapolation methods are as follows : 
+
+![](./Images/BoundaryExtrapolationStrategies.png)
+
 For example:
  ```mlir
    dip.corr_2d %inputImage, %kernel, %output, %centerX, %centerY, %boundaryOption :
                memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, index, index, index
  ```
+ where : 
+  - inputImage : First argument for 2D correlation.
+  - kernel : Second argument for 2D correlation.
+  - output : Container for storing the result of 2D correlation.
+  - centerX : x co-ordinate of anchor point
+  - centerY : y co-ordinate of anchor point
+  - boundaryOption : Specifies desired type of boundary extrapolation(constant padding or replicate padding).
+ 
 
 #### Algorithm : 
-We use coefficient broadcasting and strip mining approach for correlating a 2D image with a 2D kernel. This technique involves processing several pixel elements together in a vectorized fashion(utilizing variable length vector registers of RISC-V). As a result, we can process multiple pixels in the same number of steps which would otherwise be required during typical single pixel processing. Variable length vector registers of RISC-V architecture help in further improving the performance as we can choose the suitable size of register to be used in required calculations.
+We use a modified version of coefficient broadcasting and strip mining(CBSM) approach for correlating a 2D image with a 2D kernel. CBSM involves processing several pixel elements together in a vectorized fashion. As a result, we can process multiple pixels in the same number of steps which would otherwise be required during typical single pixel processing. Variable length vector registers of RISC-V architecture help in further improving the performance as we can choose the suitable size of register to be used in required calculations. 
+
+This can be depicted by the following schematic : 
+
+![](./Images/NORMALvsCBCONV.png)
 
 The process of 2D correlation results in smaller dimensions of output as compared to input. In order to equate the dimensions of input image and output image, we assume a pseudo input Image which is created after applying boundary extrapolation techniques on the original input image for dip.corr_2d. This pseudo image when correlated with the given kernel produces an output image having its dimensions equal to the original input image. Please note that the pseudo input image is never created/stored in memory, instead we will use some techniques to mimic the processing for producing expected results.
+
+The differences in working of CBSM approach and our implementation are further demonstrated by following schematics : 
+
+#### CBSM approach
+![](./Images/CoefficientsBroadcasting.png)
+
+#### Our implementation
+![](./Images/ConstantPadding+TailProcessing.png)
 
 Our technique involves the separation of pseudo input image into 9 different regions. Each of these regions can then be processed separately and used for producing the output image without actually creating a pseudo input image of larger dimensions in memory.
 
@@ -44,3 +72,7 @@ On the basis of above mentioned 4 types, we can divide the pseudo input image in
 7. Lower row left col : Apply left and lower extrapolation.
 8. Lower row mid col : Apply lower extrapolation.
 9. Lower row right col : Apply right and lower extrapolation.
+
+Following schematic depicts the process(with boundary extrapolation and variable anchor point positioning) for two dimensional correlation between a 5x5 images and a 3x3 kernel
+
+![](./Images/AnchorPointAndBoundaryExtrapolation.png)
