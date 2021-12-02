@@ -73,6 +73,6 @@ On the basis of above mentioned 4 types, we can divide the pseudo input image in
 8. Lower row mid col : Apply lower extrapolation.
 9. Lower row right col : Apply right and lower extrapolation.
 
-Following schematic depicts the process(with boundary extrapolation and variable anchor point positioning) for two dimensional correlation between a 5x5 images and a 3x3 kernel
+Following schematic depicts the process(with boundary extrapolation and variable anchor point positioning) for two dimensional correlation between a 5x5 image and a 3x3 kernel
 
 ![](./Images/AnchorPointAndBoundaryExtrapolation.png)
