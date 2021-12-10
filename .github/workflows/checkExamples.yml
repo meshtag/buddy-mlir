@@ -34,10 +34,34 @@ jobs:
         ninja 
         ninja check-mlir
 
+    - name: Check OpenCV cache
+      id: cache-opencv
+      uses: actions/cache@v2
+      with:
+        path: llvm
+        key: ${{ runner.os }}-python3-opencv
+
+    - name: Install OpenCV
+      if: steps.cache-opencv.outputs.cache-hit != 'true'
+      run: |
+        sudo apt update
+        sudo apt install python3-opencv
+
+    - name: Check Ninja cache
+      id: cache-ninja
+      uses: actions/cache@v2
+      with:
+        path: llvm
+        key: ${{ runner.os }}-ninja-build
+
+    - name: Install OpenCV
+      if: steps.cache-ninja.outputs.cache-hit != 'true'
+      run: |
+        sudo apt update
+        sudo apt-get install ninja-build 
+
     - name: Build buddy-mlir examples
       run: |
-        sudo apt-get update
-        sudo apt-get install ninja-build 
         mkdir build 
         cd build
         cmake -G Ninja .. -DMLIR_DIR=$PWD/../llvm/build/lib/cmake/mlir -DLLVM_DIR=$PWD/../llvm/build/lib/cmake/llvm -DLLVM_ENABLE_ASSERTIONS=ON -DCMAKE_BUILD_TYPE=RELEASE
