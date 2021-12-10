@@ -1,0 +1,64 @@
+name : Install Buddy-mlir
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - GitHubActions # For debugging
+
+jobs:
+  installBuddy-mlir: 
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+
+    - name: Check LLVM cache
+      id: cache-llvm
+      uses: actions/cache@v2
+      with:
+        path: llvm
+        key: ${{ runner.os }}-llvm
+
+    - name: Install dependencies
+      if: steps.cache-llvm-build.outputs.cache-hit != 'true'
+      run: |
+        sudo apt-get update
+        sudo apt-get install ninja-build 
+
+    - name: Build LLVM
+      if: steps.cache-llvm-build.outputs.cache-hit != 'true'
+      run: |
+        ls
+        mkdir llvm/build
+        cd llvm/build
+        cmake -G Ninja ../llvm -DLLVM_ENABLE_PROJECTS=mlir -DLLVM_TARGETS_TO_BUILD="host" -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_ASSERTIONS=ON
+        cmake --build . --target check-mlir 
+        ninja 
+        ninja check-mlir
+
+    - name: Build buddy-mlir
+      run: |
+        cd ../..
+        mkdir build 
+        cd build
+        cmake -G Ninja .. -DMLIR_DIR=$PWD/../llvm/build/lib/cmake/mlir -DLLVM_DIR=$PWD/../llvm/build/lib/cmake/llvm -DLLVM_ENABLE_ASSERTIONS=ON -DCMAKE_BUILD_TYPE=RELEASE
+        ninja
+
+    - name: Check ConvOpt
+      run: |
+        cmake -G Ninja .. -DBUDDY_EXAMPLES=ON -DBUDDY_CONV_OPT_STRIP_MINING=256 
+        ninja edge-detection
+        cd bin 
+        ./edge-detection ../../examples/ConvOpt/images/YuTu.png result.png
+
+    - name: Check DIPDialect
+      run: |
+        cd ..
+        cmake -G Ninja .. -DBUDDY_EXAMPLES=ON
+        ninja correlation2D
+        cd bin 
+        ./correlation2D ../../examples/ConvOpt/images/YuTu.png result-dip.png
