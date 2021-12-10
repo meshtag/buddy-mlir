@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - GitHubActions # For debugging
+      - GitHubActions # For debugging 
 
 jobs:
   installBuddy-mlir: 
