@@ -23,12 +23,6 @@ jobs:
         path: llvm
         key: ${{ runner.os }}-mlir
 
-    - name: Install dependencies
-      if: steps.cache-llvm.outputs.cache-hit != 'true'
-      run: |
-        sudo apt-get update
-        sudo apt-get install ninja-build 
-
     - name: Build LLVM
       if: steps.cache-llvm.outputs.cache-hit != 'true'
       run: |
@@ -39,15 +33,14 @@ jobs:
         cmake --build . --target check-mlir 
         ninja 
         ninja check-mlir
+        sudo apt-get update
+        sudo apt-get install ninja-build 
 
     - name: Build buddy-mlir examples
       run: |
-        sudo apt-get update
-        sudo apt-get install ninja-build 
         mkdir build 
         cd build
         cmake -G Ninja .. -DMLIR_DIR=$PWD/../llvm/build/lib/cmake/mlir -DLLVM_DIR=$PWD/../llvm/build/lib/cmake/llvm -DLLVM_ENABLE_ASSERTIONS=ON -DCMAKE_BUILD_TYPE=RELEASE
-        ninja
         cmake -G Ninja .. -DBUDDY_EXAMPLES=ON -DBUDDY_CONV_OPT_STRIP_MINING=256 
         ninja edge-detection
         ninja correlation2D
