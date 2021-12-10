@@ -33,11 +33,11 @@ jobs:
         cmake --build . --target check-mlir 
         ninja 
         ninja check-mlir
-        sudo apt-get update
-        sudo apt-get install ninja-build 
 
     - name: Build buddy-mlir examples
       run: |
+        sudo apt-get update
+        sudo apt-get install ninja-build 
         mkdir build 
         cd build
         cmake -G Ninja .. -DMLIR_DIR=$PWD/../llvm/build/lib/cmake/mlir -DLLVM_DIR=$PWD/../llvm/build/lib/cmake/llvm -DLLVM_ENABLE_ASSERTIONS=ON -DCMAKE_BUILD_TYPE=RELEASE
