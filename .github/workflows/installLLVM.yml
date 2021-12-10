@@ -28,6 +28,7 @@ jobs:
     - name: Build MLIR
       if: steps.cache-mlir-build.outputs.cache-hit != 'true'
       run: |
+        ls
         cd buddy-mlir
         mkdir llvm/build
         cd llvm/build
