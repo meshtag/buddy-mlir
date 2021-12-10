@@ -40,7 +40,7 @@ jobs:
         ninja 
         ninja check-mlir
 
-    - name: Build buddy-mlir
+    - name: Build buddy-mlir examples
       run: |
         sudo apt-get update
         sudo apt-get install ninja-build 
@@ -48,19 +48,6 @@ jobs:
         cd build
         cmake -G Ninja .. -DMLIR_DIR=$PWD/../llvm/build/lib/cmake/mlir -DLLVM_DIR=$PWD/../llvm/build/lib/cmake/llvm -DLLVM_ENABLE_ASSERTIONS=ON -DCMAKE_BUILD_TYPE=RELEASE
         ninja
-
-    - name: Check ConvOpt
-      run: |
-        cd build
         cmake -G Ninja .. -DBUDDY_EXAMPLES=ON -DBUDDY_CONV_OPT_STRIP_MINING=256 
-        ninja edge-detection
-        cd bin 
         ./edge-detection ../../examples/ConvOpt/images/YuTu.png result.png
-
-    - name: Check DIPDialect
-      run: |
-        cd build
-        cmake -G Ninja .. -DBUDDY_EXAMPLES=ON
-        ninja correlation2D
-        cd bin 
         ./correlation2D ../../examples/ConvOpt/images/YuTu.png result-dip.png
