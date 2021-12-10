@@ -24,13 +24,13 @@ jobs:
         key: ${{ runner.os }}-mlir
 
     - name: Install dependencies
-      if: steps.cache-llvm-build.outputs.cache-hit != 'true'
+      if: steps.cache-llvm.outputs.cache-hit != 'true'
       run: |
         sudo apt-get update
         sudo apt-get install ninja-build 
 
     - name: Build LLVM
-      if: steps.cache-llvm-build.outputs.cache-hit != 'true'
+      if: steps.cache-llvm.outputs.cache-hit != 'true'
       run: |
         ls
         mkdir llvm/build
