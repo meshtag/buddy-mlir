@@ -72,3 +72,10 @@ jobs:
         ninja correlation2D
         ./edge-detection ../../examples/ConvOpt/images/YuTu.png result.png
         ./correlation2D ../../examples/ConvOpt/images/YuTu.png result-dip.png
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
