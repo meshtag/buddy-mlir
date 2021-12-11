@@ -161,10 +161,7 @@ jobs:
         sudo apt-get install ninja-build 
     - name: Build and run buddy-mlir
       run: |
-        mkdir build 
         cd build
-        export OpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4/OpenCVConfig.cmake
-        cd ..
         cmake -G Ninja .. -DMLIR_DIR=$PWD/../llvm/build/lib/cmake/mlir -DLLVM_DIR=$PWD/../llvm/build/lib/cmake/llvm -DLLVM_ENABLE_ASSERTIONS=ON -DCMAKE_BUILD_TYPE=RELEASE
         ninja
         cmake -G Ninja .. -DBUDDY_EXAMPLES=ON -DBUDDY_CONV_OPT_STRIP_MINING=256 
