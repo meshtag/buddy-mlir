@@ -112,7 +112,6 @@ Value createInvertedMask(OpBuilder &builder, Location loc, Value strideVal,
   Value maskInverter =
       builder.create<CreateMaskOp>(loc, vectorMaskTy, strideVal);
   Value rightMask = builder.create<SubIOp>(loc, maskInverter, leftMask);
-  // ToDo : Compare performance with XoR.
   return rightMask;
 }
 

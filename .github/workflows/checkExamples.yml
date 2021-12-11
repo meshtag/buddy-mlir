@@ -1,128 +1,28 @@
-# name : Install Buddy-mlir
-
-# on:
-#   pull_request:
-#   push:
-#     branches:
-#       - main
-#       - GitHubActions # For debugging 
-
-# jobs:
-#   installBuddy-mlir: 
-#     runs-on: ubuntu-latest
-
-#     steps:
-#     - uses: actions/checkout@v2
-#       with:
-#         submodules: 'recursive'
-
-#     - name: Check LLVM cache
-#       id: cache-llvm
-#       uses: actions/cache@v2
-#       with:
-#         path: llvm
-#         key: ${{ runner.os }}-mlir
-
-#     - name: Build LLVM
-#       if: steps.cache-llvm.outputs.cache-hit != 'true'
-#       run: |
-#         ls
-#         mkdir llvm/build
-#         cd llvm/build
-#         cmake -G Ninja ../llvm -DLLVM_ENABLE_PROJECTS=mlir -DLLVM_TARGETS_TO_BUILD="host" -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_ASSERTIONS=ON
-#         cmake --build . --target check-mlir 
-#         ninja 
-#         ninja check-mlir
-
-#     # - name: Download ccache
-#     #   id: ccache
-#     #   shell: cmake -P {0}
-#     #   run: |
-#     #     set(ccache_url "https://github.com/cristianadam/ccache/releases/download/v$ENV{CCACHE_VERSION}/${{ runner.os }}.tar.xz")
-#     #     file(DOWNLOAD "${ccache_url}" ./ccache.tar.xz SHOW_PROGRESS)
-#     #     execute_process(COMMAND ${CMAKE_COMMAND} -E tar xvf ./ccache.tar.xz)
-
-#     # - name: Prepare ccache timestamp
-#     #   id: ccache_cache_timestamp
-#     #   shell: cmake -P {0}
-#     #   run: |
-#     #     string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
-#     #     message("::set-output name=timestamp::${current_date}")
-
-#     # - name: ccache cache files
-#     #   uses: actions/cache@v1.1.0
-#     #   with:
-#     #     path: .ccache
-#     #     key: ${{ matrix.config.name }}-ccache-${{ steps.ccache_cache_timestamp.outputs.timestamp }}
-#     #     restore-keys: |
-#     #       ${{ matrix.config.name }}-ccache-
-
-#     - name: Install OpenCV
-#       run: |
-      #   wget -O opencv.zip https://github.com/opencv/opencv/archive/master.zip
-      #   unzip opencv.zip
-      # # Create build directory
-      #   mkdir -p build && cd build
-      # # Configure
-      #   cmake  ../opencv-master 
-      # # Build
-      #   cmake --build . 
-
-#     - name: Check Ninja cache
-#       id: cache-ninja
-#       uses: actions/cache@v2
-#       with:
-#         path: llvm
-#         key: ${{ runner.os }}-ninja-build 
-
-#     - name: Install Ninja
-#       if: steps.cache-ninja.outputs.cache-hit != 'true'
-#       run: |
-#         sudo apt update
-#         sudo apt-get install ninja-build 
-
-#     - name: Build and run buddy-mlir
-#       run: |
-#         mkdir build 
-#         cd build
-#         cmake -G Ninja .. -DMLIR_DIR=$PWD/../llvm/build/lib/cmake/mlir -DLLVM_DIR=$PWD/../llvm/build/lib/cmake/llvm -DLLVM_ENABLE_ASSERTIONS=ON -DCMAKE_BUILD_TYPE=RELEASE
-#         ninja
-#         cmake -G Ninja .. -DBUDDY_EXAMPLES=ON -DBUDDY_CONV_OPT_STRIP_MINING=256 
-#         ninja edge-detection
-#         ninja correlation2D
-#         ./edge-detection ../../examples/ConvOpt/images/YuTu.png result.png
-#         ./correlation2D ../../examples/ConvOpt/images/YuTu.png result-dip.png
-
-#   build:
-#     runs-on: ubuntu-latest
-#     steps:
-#     - uses: actions/checkout@v2
-#     - name: Setup tmate session
-#       uses: mxschmitt/action-tmate@v3
-
-
-
-
 name : Install Buddy-mlir
+
 on:
   pull_request:
   push:
     branches:
       - main
       - GitHubActions # For debugging 
+
 jobs:
   installBuddy-mlir: 
     runs-on: ubuntu-latest
+
     steps:
     - uses: actions/checkout@v2
       with:
         submodules: 'recursive'
+
     - name: Check LLVM cache
       id: cache-llvm
       uses: actions/cache@v2
       with:
         path: llvm
         key: ${{ runner.os }}-mlir
+
     - name: Build LLVM
       if: steps.cache-llvm.outputs.cache-hit != 'true'
       run: |
@@ -133,34 +33,20 @@ jobs:
         cmake --build . --target check-mlir 
         ninja 
         ninja check-mlir
-    - name: Check OpenCV cache
-      id: cache-opencv
-      uses: actions/cache@v2
-      with:
-        path: llvm
-        key: ${{ runner.os }}-python3-opencv
+
     - name: Install OpenCV
-      if: steps.cache-opencv.outputs.cache-hit != 'true'
       run: |
-        sudo apt update && sudo apt install -y cmake g++ wget unzip
         wget -O opencv.zip https://github.com/opencv/opencv/archive/master.zip
         unzip opencv.zip
         mkdir -p build && cd build
         cmake  ../opencv-master 
         cmake --build . 
-    - name: Check Ninja cache
-      id: cache-ninja
-      uses: actions/cache@v2
-      with:
-        path: llvm
-        key: ${{ runner.os }}-ninja-build 
-    - name: Install Ninja
-      if: steps.cache-ninja.outputs.cache-hit != 'true'
+
+    - name: Build and run buddy-mlir
       run: |
         sudo apt update
         sudo apt-get install ninja-build 
-    - name: Build and run buddy-mlir
-      run: |
+        mkdir build 
         cd build
         cmake -G Ninja .. -DMLIR_DIR=$PWD/../llvm/build/lib/cmake/mlir -DLLVM_DIR=$PWD/../llvm/build/lib/cmake/llvm -DLLVM_ENABLE_ASSERTIONS=ON -DCMAKE_BUILD_TYPE=RELEASE
         ninja
@@ -169,6 +55,7 @@ jobs:
         ninja correlation2D
         ./edge-detection ../../examples/ConvOpt/images/YuTu.png result.png
         ./correlation2D ../../examples/ConvOpt/images/YuTu.png result-dip.png
+
   build:
     runs-on: ubuntu-latest
     steps:
