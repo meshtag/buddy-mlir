@@ -64,9 +64,9 @@ jobs:
       # Create build directory
         mkdir -p build && cd build
       # Configure
-        cmake  ../opencv-master -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        cmake  ../opencv-master 
       # Build
-        cmake --build . -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        cmake --build . 
 
     - name: Check Ninja cache
       id: cache-ninja
