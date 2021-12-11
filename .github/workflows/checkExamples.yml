@@ -52,7 +52,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: llvm
-        key: ${{ runner.os }}-ninja-build
+        key: ${{ runner.os }}-ninja-build 
 
     - name: Install OpenCV
       if: steps.cache-ninja.outputs.cache-hit != 'true'
