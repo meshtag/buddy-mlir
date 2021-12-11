@@ -142,13 +142,11 @@ jobs:
     - name: Install OpenCV
       if: steps.cache-opencv.outputs.cache-hit != 'true'
       run: |
+        sudo apt update && sudo apt install -y cmake g++ wget unzip
         wget -O opencv.zip https://github.com/opencv/opencv/archive/master.zip
         unzip opencv.zip
-      # Create build directory
         mkdir -p build && cd build
-      # Configure
         cmake  ../opencv-master 
-      # Build
         cmake --build . 
     - name: Check Ninja cache
       id: cache-ninja
