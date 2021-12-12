@@ -40,16 +40,17 @@ jobs:
 
     - name: Build and run buddy-mlir
       run: |
-        # sudo apt update
-        # sudo apt-get install ninja-build 
-        # cd build
-        # cmake -G Ninja .. -DMLIR_DIR=$PWD/../llvm/build/lib/cmake/mlir -DLLVM_DIR=$PWD/../llvm/build/lib/cmake/llvm -DLLVM_ENABLE_ASSERTIONS=ON -DCMAKE_BUILD_TYPE=RELEASE
-        # ninja
-        # cmake -G Ninja .. -DBUDDY_EXAMPLES=ON -DBUDDY_CONV_OPT_STRIP_MINING=256 
-        # ninja edge-detection
-        # ninja correlation2D
-        # ./edge-detection ../../examples/ConvOpt/images/YuTu.png result.png
-        # ./correlation2D ../../examples/ConvOpt/images/YuTu.png result-dip.png
+        sudo apt update
+        sudo apt-get install ninja-build 
+        mkdir build
+        cd build
+        cmake -G Ninja .. -DMLIR_DIR=$PWD/../llvm/build/lib/cmake/mlir -DLLVM_DIR=$PWD/../llvm/build/lib/cmake/llvm -DLLVM_ENABLE_ASSERTIONS=ON -DCMAKE_BUILD_TYPE=RELEASE
+        ninja
+        cmake -G Ninja .. -DBUDDY_EXAMPLES=ON -DBUDDY_CONV_OPT_STRIP_MINING=256 
+        ninja edge-detection
+        ninja correlation2D
+        ./edge-detection ../../examples/ConvOpt/images/YuTu.png result.png
+        ./correlation2D ../../examples/ConvOpt/images/YuTu.png result-dip.png
 
   build:
     runs-on: ubuntu-latest
