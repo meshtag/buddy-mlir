@@ -32,7 +32,7 @@ OUT=$(patsubst tempFile/%.mlir, %.out, $(SOURCE))
 all:$(OUT) 
 	$(shell rm -rf tempFile)
 
-BUDDY_OPT_OPTIONS := -conv-vectorization="strip-mining=${STRIP}" -lower-affine -convert-scf-to-std -convert-vector-to-llvm -convert-memref-to-llvm -convert-arith-to-llvm -convert-std-to-llvm -reconcile-unrealized-casts
+BUDDY_OPT_OPTIONS := -conv-vectorization="strip-mining=${STRIP}" -linalg-bufferize -tensor-bufferize -tosa-infer-shapes -tosa-to-linalg -tosa-to-linalg-named -tosa-to-scf -lower-affine -convert-scf-to-std -convert-vector-to-llvm -convert-memref-to-llvm -convert-arith-to-llvm -convert-std-to-llvm -reconcile-unrealized-casts
 MLIR_OPT_OPTIONS := -convert-linalg-to-loops -lower-affine -convert-scf-to-std -convert-memref-to-llvm -convert-vector-to-llvm -convert-arith-to-llvm -convert-std-to-llvm -reconcile-unrealized-casts
 
 $(OUT):$(SOURCE)
@@ -40,6 +40,3 @@ $(OUT):$(SOURCE)
 	@${BUDDY_OPT} tempFile/$*.mlir ${BUDDY_OPT_OPTIONS} | \
 	${MLIR_CPU_RUNNER} ${OPT_FLAG} -e main -entry-point-result=void -shared-libs=${MLIR_RUNNER_UTILS} -shared-libs=${MLIR_C_RUNNER_UTILS}
 
-	@${MLIR_OPT} tempFile/$*.mlir ${MLIR_OPT_OPTIONS} | \
-	${MLIR_CPU_RUNNER} ${OPT_FLAG} -e main -entry-point-result=void -shared-libs=${MLIR_RUNNER_UTILS} -shared-libs=${MLIR_C_RUNNER_UTILS}
-	@echo
