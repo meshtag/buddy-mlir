@@ -1,43 +1,38 @@
-func private @print_memref_f32(memref<*xf32>)
+module {
+  func private @print_memref_f32(memref<*xf32>)
 
-func @tensor_check(%arg10: index, %arg11: index) -> memref<?x?xf32> {
-  %c0 = arith.constant 0 : index
-  %c1 = arith.constant 1 : index
-  %c0_f32 = arith.constant 0.0 : f32
-  %0 = memref.alloc(%arg10, %arg11) : memref<?x?xf32>    
-  %out = linalg.init_tensor [2, 2] : tensor<2x2xf32>
-  %arg0 = arith.constant 2 : index
-  %arg1 = arith.constant 2 : index
-
-  %out_1 = linalg.fill(%c0_f32, %out) : f32, tensor<2x2xf32> -> tensor<2x2xf32>
-  %out_2 = bufferization.to_memref %out_1 : memref<2x2xf32>
-
-  // Print output.
-  %print_output = memref.cast %out_2 : memref<2x2xf32> to memref<*xf32>
-  // call @print_memref_f32(%print_output) : (memref<*xf32>) -> ()
-
-  scf.for %arg3 = %c0 to %arg0 step %c1 {
-    scf.for %arg4 = %c0 to %arg1 step %c1 {
-      // %a = tensor.extract %out[%arg3, %arg4] : tensor<2x2xf64>
-      // %b = tensor.extract %out_1[%arg3, %arg4] : tensor<2x2xf64>
-
-      // vector.print %arg0 : index
-      // vector.print %a : f64
-      // vector.print %out_1[%arg3, %arg4] : f64
-      // %result = vector.load %out_2[%arg3, %arg4] : memref<2x2xf64>, vector<1xf64>
-      %result = memref.load %out_2[%arg3, %arg4] : memref<2x2xf32>
-      
-      vector.print %result : f32
+  func @alloc_2d_filled_f32(%arg0: index, %arg1: index, %arg2: f32) -> memref<?x?xf32> {
+    %c0 = arith.constant 0 : index
+    %c1 = arith.constant 1 : index
+    %0 = memref.alloc(%arg0, %arg1) : memref<?x?xf32>
+    scf.for %arg3 = %c0 to %arg0 step %c1 {
+      scf.for %arg4 = %c0 to %arg1 step %c1 {
+        memref.store %arg2, %0[%arg3, %arg4] : memref<?x?xf32>
+      }
     }
+
+    return %0 : memref<?x?xf32>
   }
-  return %0 : memref<?x?xf32>
-}
 
-func @main() {
-  %dummy1 = arith.constant 4 : index
-  %dummy2 = arith.constant 4 : index
+  func @main() {
+    %c2 = arith.constant 2 : index
+    %c3 = arith.constant 3 : index
 
-  %dummy3 = call @tensor_check(%dummy1, %dummy2) : (index, index) -> memref<?x?xf32>
+    %cst = arith.constant 2.000000e+00 : f32
 
-  return 
+    %current_filter = arith.constant TEMPLATE_FILTER : index
+
+    // Filter.
+    %filter = call @alloc_2d_filled_f32(%current_filter, %current_filter, %cst) : (index, index, f32) -> memref<?x?xf32>
+    %real_out = bufferization.to_tensor %filter : memref<?x?xf32>
+
+    %real_out_memref = bufferization.to_memref %real_out : memref<?x?xf32>
+
+    // Print output.
+    %print_output = memref.cast %real_out_memref : memref<?x?xf32> to memref<*xf32>
+    call @print_memref_f32(%print_output) : (memref<*xf32>) -> ()
+    
+    memref.dealloc %filter : memref<?x?xf32>
+    return
+  }
 }
