@@ -6,10 +6,10 @@ OPT_FLAG := -O3
 
 STRIP := 64
 FILTER_min := 3
-FILTER_max := 19
+FILTER_max := 3
 FILTER_step := 4
 OUTPUT_min := 64
-OUTPUT_max := 1024
+OUTPUT_max := 64
 OUTPUT_step := 64
 
 ifeq ($(shell uname),Linux)
@@ -33,7 +33,7 @@ all:$(OUT)
 	$(shell rm -rf tempFile)
 
 BUDDY_OPT_OPTIONS := -conv-vectorization="strip-mining=${STRIP}" -lower-affine -convert-scf-to-std -convert-vector-to-llvm -convert-memref-to-llvm -convert-arith-to-llvm -convert-std-to-llvm -reconcile-unrealized-casts
-MLIR_OPT_OPTIONS := -convert-linalg-to-loops -lower-affine -convert-scf-to-std -convert-vector-to-llvm -convert-memref-to-llvm -convert-arith-to-llvm -convert-std-to-llvm -reconcile-unrealized-casts
+MLIR_OPT_OPTIONS := -convert-linalg-to-loops -lower-affine -convert-scf-to-std -convert-memref-to-llvm -convert-vector-to-llvm -convert-arith-to-llvm -convert-std-to-llvm -reconcile-unrealized-casts
 
 $(OUT):$(SOURCE)
 	@echo $*
