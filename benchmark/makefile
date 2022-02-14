@@ -32,7 +32,7 @@ OUT=$(patsubst tempFile/%.mlir, %.out, $(SOURCE))
 all:$(OUT) 
 	$(shell rm -rf tempFile)
 
-BUDDY_OPT_OPTIONS := -conv-vectorization="strip-mining=${STRIP}" -tosa-to-linalg -linalg-bufferize -tensor-bufferize -convert-linalg-to-loops -convert-bufferization-to-memref -lower-affine -convert-scf-to-std -convert-vector-to-llvm -convert-memref-to-llvm -convert-arith-to-llvm -convert-std-to-llvm -reconcile-unrealized-casts
+BUDDY_OPT_OPTIONS := -conv-vectorization="strip-mining=${STRIP}" -linalg-bufferize -tensor-bufferize -tosa-to-linalg -convert-linalg-to-loops -lower-affine -convert-scf-to-std -convert-vector-to-llvm -convert-memref-to-llvm -convert-arith-to-llvm -convert-std-to-llvm -reconcile-unrealized-casts
 
 $(OUT):$(SOURCE)
 	@echo $*
