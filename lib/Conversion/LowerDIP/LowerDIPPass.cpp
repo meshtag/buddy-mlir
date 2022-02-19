@@ -557,11 +557,69 @@ public:
 private:
   int64_t stride;
 };
+
+Value* shearTransform(OpBuilder &builder, Location loc, Value originalX, Value originalY, 
+                            Value sinVec, Value tanVec)
+{
+    Value yTan1 = builder.create<arith::MulFOp>(loc, originalY, tanVec);
+    Value xIntermediate = builder.create<arith::SubFOp>(loc, originalX, yTan1);
+    // round xIntermediate
+
+    Value xSin = builder.create<arith::MulFOp>(loc, xIntermediate, sinVec);
+    Value newY = builder.create<arith::AddFOp>(loc, xSin, originalY);
+    // round newY
+    
+    Value yTan2 = builder.create<arith::MulFOp>(loc, newY, tanVec);
+    Value newX = builder.create<arith::SubFOp>(loc, xIntermediate, yTan2);
+    // round newX
+
+    Value res[2] = {newX, newY};
+
+    return res;
+}
+
+class DIPRotate2DOpLowering : public OpRewritePattern<dip::Rotate2DOp> {
+public:
+  using OpRewritePattern<dip::Rotate2DOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(dip::Rotate2DOp op,
+                                PatternRewriter &rewriter) const override {
+    auto loc = op->getLoc();
+    auto ctx = op->getContext();
+
+    // Register operand values.
+    Value input = op->getOperand(0);
+    Value output = op->getOperand(1);
+    Value angle = op->getOperand(2);
+
+    // Create constant indices.
+    Value c0 = rewriter.create<ConstantIndexOp>(loc, 0);
+    Value c1 = rewriter.create<ConstantIndexOp>(loc, 1);
+
+    Value inputRow = rewriter.create<memref::DimOp>(loc, input, c0);
+    Value inputCol = rewriter.create<memref::DimOp>(loc, input, c1);
+
+    SmallVector<Value, 8> lowerBounds(2, c0);
+    SmallVector<Value, 8> upperBounds{inputRow, inputCol};
+    SmallVector<Value, 8> steps(2, c1);
+
+    // buildAffineLoopNest(
+    //     rewriter, loc, lowerBounds, upperBounds, steps,
+    //     [&](OpBuilder &builder, Location loc, ValueRange ivs) {
+
+    // });
+
+    // Remove the origin convolution operation.
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
 } // end anonymous namespace
 
 void populateLowerDIPConversionPatterns(RewritePatternSet &patterns,
                                         int64_t stride) {
   patterns.add<DIPCorr2DLowering>(patterns.getContext(), stride);
+  patterns.add<DIPRotate2DOpLowering>(patterns.getContext());
 }
 
 //===----------------------------------------------------------------------===//

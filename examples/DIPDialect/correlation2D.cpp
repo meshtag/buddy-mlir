@@ -50,6 +50,8 @@ extern "C" {
 void _mlir_ciface_corr_2d(MemRef_descriptor input, MemRef_descriptor kernel,
                           MemRef_descriptor output, unsigned int centerX,
                           unsigned int centerY, int boundaryOption);
+
+void _mlir_ciface_rotate_2d(MemRef_descriptor input, int angle, MemRef_descriptor output);
 }
 
 bool testImages(cv::Mat img1, cv::Mat img2) {
@@ -146,6 +148,8 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
     std::cout << "x, y = " << x << ", " << y << "\n";
     return 0;
   }
+
+  _mlir_ciface_rotate_2d(input, 90, output);
 
   free(input);
   free(kernel);

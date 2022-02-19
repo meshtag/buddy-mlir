@@ -3,3 +3,9 @@ func @corr_2d(%inputImage : memref<?x?xf32>, %kernel : memref<?x?xf32>, %outputI
   dip.corr_2d %inputImage, %kernel, %outputImage, %centerX, %centerY, %boundaryOption : memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, index, index, index
   return
 }
+
+func @rotate_2d(%inputImage : memref<?x?xf32>, %angle : index, %outputImage : memref<?x?xf32>)
+{
+  dip.rotate_2d %inputImage, %angle, %outputImage : memref<?x?xf32>, index, memref<?x?xf32>
+  return
+}
