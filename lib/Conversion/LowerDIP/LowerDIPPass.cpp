@@ -601,13 +601,27 @@ public:
 
     SmallVector<Value, 8> lowerBounds(2, c0);
     SmallVector<Value, 8> upperBounds{inputRow, inputCol};
-    SmallVector<Value, 8> steps(2, c1);
+    SmallVector<intptr_t, 8> steps(2, 1);
 
-    // buildAffineLoopNest(
-    //     rewriter, loc, lowerBounds, upperBounds, steps,
-    //     [&](OpBuilder &builder, Location loc, ValueRange ivs) {
+    FloatType f32 = FloatType::getF32(ctx);
+    VectorType vectorTy32 = VectorType::get({6}, f32);
 
-    // });
+    Value zeroPaddingElem =
+            rewriter.create<ConstantFloatOp>(loc, (APFloat)(float)0, f32);
+    Value zeroPadding =
+            rewriter.create<BroadcastOp>(loc, vectorTy32, zeroPaddingElem);
+
+
+    buildAffineLoopNest(
+        rewriter, loc, lowerBounds, upperBounds, steps,
+        [&](OpBuilder &builder, Location loc, ValueRange ivs) {
+
+        
+        builder.create<StoreOp>(loc, zeroPadding, output,
+                                ValueRange{ivs[0], ivs[1]});
+
+      // builder.create<AffineYieldOp>(loc);
+    });
 
     // Remove the origin convolution operation.
     rewriter.eraseOp(op);

@@ -151,6 +151,15 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
 
   _mlir_ciface_rotate_2d(input, 90, output);
 
+   // Define a cv::Mat with the output of the conv2d.
+  Mat outputImageCheck(outputCols, outputRows, CV_32FC1, output->aligned);
+
+  // Choose a PNG compression level
+  vector<int> compression_params1;
+  compression_params1.push_back(IMWRITE_PNG_COMPRESSION);
+  compression_params1.push_back(9);
+  imwrite("checkCheck.png", outputImageCheck);
+
   free(input);
   free(kernel);
   free(output);
