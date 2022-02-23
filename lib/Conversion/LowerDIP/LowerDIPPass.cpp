@@ -558,24 +558,73 @@ private:
   int64_t stride;
 };
 
-Value* shearTransform(OpBuilder &builder, Location loc, Value originalX, Value originalY, 
-                            Value sinVec, Value tanVec)
-{
-    Value yTan1 = builder.create<arith::MulFOp>(loc, originalY, tanVec);
-    Value xIntermediate = builder.create<arith::SubFOp>(loc, originalX, yTan1);
-    // round xIntermediate
+// Value* shearTransform(OpBuilder &builder, Location loc, Value originalX, Value originalY, 
+//                             Value sinVec, Value tanVec)
+// {
+//     Value yTan1 = builder.create<arith::MulFOp>(loc, originalY, tanVec);
+//     Value xIntermediate = builder.create<arith::SubFOp>(loc, originalX, yTan1);
+//     // round xIntermediate
 
-    Value xSin = builder.create<arith::MulFOp>(loc, xIntermediate, sinVec);
-    Value newY = builder.create<arith::AddFOp>(loc, xSin, originalY);
-    // round newY
+//     Value xSin = builder.create<arith::MulFOp>(loc, xIntermediate, sinVec);
+//     Value newY = builder.create<arith::AddFOp>(loc, xSin, originalY);
+//     // round newY
     
-    Value yTan2 = builder.create<arith::MulFOp>(loc, newY, tanVec);
-    Value newX = builder.create<arith::SubFOp>(loc, xIntermediate, yTan2);
-    // round newX
+//     Value yTan2 = builder.create<arith::MulFOp>(loc, newY, tanVec);
+//     Value newX = builder.create<arith::SubFOp>(loc, xIntermediate, yTan2);
+//     // round newX
 
-    Value res[2] = {newX, newY};
+//     Value res[2] = {newX, newY};
 
-    return res;
+//     return res;
+// }
+
+Value getCenter(OpBuilder &builder, Location loc, MLIRContext *ctx, Value dim)
+{
+    FloatType f32 = FloatType::getF32(ctx);
+    Value c1 = builder.create<ConstantIndexOp>(loc, 1);
+    Value c2 = builder.create<ConstantIndexOp>(loc, 2);
+    
+    Value temp1 = builder.create<arith::AddIOp>(loc, dim, c1);
+    Value temp2 = builder.create<arith::DivUIOp>(loc, temp1, c2);
+    Value center = builder.create<arith::SubIOp>(loc, dim, c1);
+    // round center
+
+    return center; 
+}
+
+Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx, Value lowerBound, 
+              Value upperBound, VectorType vecType)
+{
+    FloatType f32 = FloatType::getF32(ctx);
+    IntegerType i8 = IntegerType::get(ctx, 8);
+    MemRefType tempMemrefType = MemRefType::get({6}, f32);
+    Value tempMemref = builder.create<memref::AllocOp>(loc, tempMemrefType);
+
+    Value c0 = builder.create<ConstantIndexOp>(loc, 0);
+
+    SmallVector<Value, 8> lowerBounds{lowerBound};
+    SmallVector<Value, 8> upperBounds{upperBound};
+    SmallVector<intptr_t, 8> steps{1};
+
+    Value checkF = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)(float)2, f32);
+
+    buildAffineLoopNest(
+        builder, loc, lowerBounds, upperBounds, steps,
+        [&](OpBuilder &builder, Location loc, ValueRange ivs) {
+            Value index = builder.create<arith::SubIOp>(loc, ivs[0], lowerBound);
+            auto origType = ivs[0].getType();
+            ivs[0].setType(f32);
+            builder.create<memref::StoreOp>(loc, checkF, tempMemref, ValueRange{index});
+            ivs[0].setType(origType);
+
+            // checkF = builder.create<arith::AddFOp>(loc, checkF, checkF);
+
+    });
+
+    // Value resVec = builder.create<vector::LoadOp>(loc, vecType, tempMemref, ValueRange{c0});
+    // return resVec;
+
+    return upperBound;
 }
 
 class DIPRotate2DOpLowering : public OpRewritePattern<dip::Rotate2DOp> {
@@ -589,8 +638,12 @@ public:
 
     // Register operand values.
     Value input = op->getOperand(0);
-    Value output = op->getOperand(1);
-    Value angle = op->getOperand(2);
+    Value output = op->getOperand(2);
+
+    Value strideVal = rewriter.create<ConstantIndexOp>(loc, 6);
+
+    Value angleVal = op->getOperand(1);
+    float angle = 90;
 
     // Create constant indices.
     Value c0 = rewriter.create<ConstantIndexOp>(loc, 0);
@@ -599,31 +652,40 @@ public:
     Value inputRow = rewriter.create<memref::DimOp>(loc, input, c0);
     Value inputCol = rewriter.create<memref::DimOp>(loc, input, c1);
 
+    Value outputRow = rewriter.create<memref::DimOp>(loc, output, c0);
+    Value outputCol = rewriter.create<memref::DimOp>(loc, output, c1);
+
     SmallVector<Value, 8> lowerBounds(2, c0);
     SmallVector<Value, 8> upperBounds{inputRow, inputCol};
     SmallVector<intptr_t, 8> steps(2, 1);
 
+    Value inputCenterY = getCenter(rewriter, loc, ctx, inputRow);
+    Value inputCenterX = getCenter(rewriter, loc, ctx, inputCol);
+
+    Value outputCenterY = getCenter(rewriter, loc, ctx, outputRow);
+    Value outputCenterX = getCenter(rewriter, loc, ctx, outputCol);
+
     FloatType f32 = FloatType::getF32(ctx);
     VectorType vectorTy32 = VectorType::get({6}, f32);
-
-    Value zeroPaddingElem =
-            rewriter.create<ConstantFloatOp>(loc, (APFloat)(float)0, f32);
-    Value zeroPadding =
-            rewriter.create<BroadcastOp>(loc, vectorTy32, zeroPaddingElem);
-
 
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, upperBounds, steps,
         [&](OpBuilder &builder, Location loc, ValueRange ivs) {
+            Value yUpperBound = builder.create<arith::AddIOp>(
+                loc, ivs[0], strideVal);
+            Value xUpperBound = builder.create<arith::AddIOp>(
+                loc, ivs[1], strideVal);
+            
+            Value yVec = 
+                iotaVec(builder, loc, ctx, c0, inputRow, vectorTy32);
+            Value xVec = 
+                iotaVec(builder, loc, ctx, c0, inputCol, vectorTy32);
 
-        
-        builder.create<StoreOp>(loc, zeroPadding, output,
-                                ValueRange{ivs[0], ivs[1]});
+            
 
-      // builder.create<AffineYieldOp>(loc);
     });
 
-    // Remove the origin convolution operation.
+    // Remove the origin rotation operation.
     rewriter.eraseOp(op);
     return success();
   }
