@@ -162,6 +162,25 @@ public:
                                      kernelSize};
     SmallVector<int64_t, 8> steps{1, 1, stride, 1};
 
+    SmallVector<Value, 8> lowerBounds1(2, c0);
+    
+    ValueRange lowerBounds11(lowerBounds1);
+    
+    SmallVector<Value, 8> lowerBounds2(2, c0);
+
+    SmallVector<Value, 8> upperBounds1{c1, c1};
+    
+    ValueRange upperBounds11(upperBounds1);
+
+    SmallVector<Value, 8> upperBounds2{inputCol, kernelSize};
+
+    SmallVector<int64_t, 8> steps1{1, 1};
+
+    ValueRange steps11{c1, c1};
+
+    SmallVector<int64_t, 8> steps2{stride, 1};
+
+
     VectorType vectorTy32 = VectorType::get({stride}, f32);
     VectorType vectorMaskTy = VectorType::get({stride}, i1);
 
@@ -177,6 +196,46 @@ public:
 
     Value pseudoCol = rewriter.create<AffineApplyOp>(
         loc, calcHelper, ValueRange{inputCol, kernelSize, c1});
+
+
+    // rewriter.create<scf::ParallelOp>(loc, lowerBounds1, upperBounds1, steps1);
+
+    // rewriter.create<scf::ParallelOp>(loc, lowerBounds1, upperBounds1, steps1, nullptr, 
+    //     [&](OpBuilder &builder, Location loc, ValueRange iv) {
+
+    //     });
+
+
+    // rewriter.create<scf::ParallelOp>(loc, lowerBounds11, upperBounds11, steps11, 
+    //     [&](OpBuilder &builder, Location loc, ValueRange iv) {
+    //         // Create constant indices.
+    // // Value c0 = rewriter.create<ConstantIndexOp>(loc, 0);
+    // // Value c1 = rewriter.create<ConstantIndexOp>(loc, 1);
+
+    //         // builder.create<scf::YieldOp>(loc);
+    //     });
+
+
+    Value lb = rewriter.create<ConstantIndexOp>(loc, 0);
+    Value ub = rewriter.create<ConstantIndexOp>(loc, 9);
+    Value st = rewriter.create<ConstantIndexOp>(loc, 1);
+    Value c0f = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)(float)0, f32);
+
+    ValueRange lb_vr{lb};
+    ValueRange ub_vr{ub};
+    ValueRange st_vr{st};
+
+    MemRefType mT = MemRefType::get({9}, f32);
+    Value mR = rewriter.create<memref::AllocOp>(loc, mT);
+
+    rewriter.create<scf::ParallelOp>(loc, lb_vr, ub_vr, st_vr, 
+        [&](OpBuilder &builder, Location loc, ValueRange vr){
+            builder.create<memref::StoreOp>(loc, c0f, mR, ValueRange{vr});
+
+            builder.create<scf::YieldOp>(loc);
+        });
+    
+
 
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, uperBounds, steps,
