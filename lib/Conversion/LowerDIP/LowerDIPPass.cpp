@@ -178,14 +178,6 @@ public:
     Value pseudoCol = rewriter.create<AffineApplyOp>(
         loc, calcHelper, ValueRange{inputCol, kernelSize, c1});
 
-    // Value strideCond = rewriter.create<CmpIOp>(
-    //                    loc, CmpIPredicate::sgt, strideVal, inputCol);
-    // rewriter.create<scf::IfOp>(loc, strideCond, 
-    //         [&](OpBuilder &builder, Location loc)
-    //         {
-    //             strideVal = rewriter.create<memref::DimOp>(loc, input, c1);
-    //         });
-
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, uperBounds, steps,
         [&](OpBuilder &builder, Location loc, ValueRange ivs) {
@@ -253,16 +245,27 @@ public:
                             output, ivs[0], ivs[2]);
 
                         builder.create<scf::YieldOp>(loc);
-                      },
-                      [&](OpBuilder &builder, Location loc) {
-                        // (colMid or colRight) & rowUp
+                      });
+                      
                         Value colMidCond = builder.create<CmpIOp>(
                             loc, CmpIPredicate::sle, colLastElem, colMidHelper);
+                        Value colMidCond2 = builder.create<CmpIOp>(
+                            loc, CmpIPredicate::sge, currCol, centerX);
+
+                        Value colMidCondCheck = builder.create<arith::AndIOp>(
+                            loc, colMidCond, colMidCond2);
 
                         builder.create<scf::IfOp>(
                             loc, colMidCond,
                             [&](OpBuilder &builder, Location loc) {
-                              // colMid & rowUp
+                              
+
+                              builder.create<scf::IfOp>(
+                                  loc, colMidCond2,
+                                  [&](OpBuilder &builder, Location loc) {
+
+
+                                      // colMid & rowUp
                               Value inputVec;
                               if (boundaryOption == 1) {
                                 inputVec = builder.create<LoadOp>(
@@ -274,6 +277,11 @@ public:
                                   output, ivs[0], ivs[2]);
 
                               builder.create<scf::YieldOp>(loc);
+
+
+                                  });
+
+                                 builder.create<scf::YieldOp>(loc);
                             },
                             [&](OpBuilder &builder, Location loc) {
                               // colRight & rowUp
@@ -308,8 +316,7 @@ public:
 
                               builder.create<scf::YieldOp>(loc);
                             });
-                        builder.create<scf::YieldOp>(loc);
-                      });
+                        
                 }
                 builder.create<scf::YieldOp>(loc);
               },
