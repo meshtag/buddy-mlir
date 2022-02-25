@@ -224,16 +224,35 @@ public:
     ValueRange lb_vr{lb};
     ValueRange ub_vr{ub};
     ValueRange st_vr{st};
+    ValueRange c0f_vr{c0f};
+
+    SmallVector<Value, 8> lb_vec;
+    SmallVector<Value, 8> ub_vec;
+    SmallVector<Value, 8> st_vec;
+
+    lb_vec.push_back(lb);
+    ub_vec.push_back(ub);
+    st_vec.push_back(st);
+
+    scf::ParallelOp checkVal = rewriter.create<scf::ParallelOp>(
+        loc, lb_vec, ub_vec, st_vec, nullptr);
+
+    rewriter.create<scf::ParallelOp>(loc, lb_vec, ub_vec, st_vec, 
+        [&](OpBuilder &builder, Location loc, ValueRange ivss){
+
+        });
 
     MemRefType mT = MemRefType::get({9}, f32);
     Value mR = rewriter.create<memref::AllocOp>(loc, mT);
 
-    rewriter.create<scf::ParallelOp>(loc, lb_vr, ub_vr, st_vr, 
-        [&](OpBuilder &builder, Location loc, ValueRange vr){
-            builder.create<memref::StoreOp>(loc, c0f, mR, ValueRange{vr});
+    // rewriter.create<scf::ParallelOp>(loc, lb_vr, ub_vr, st_vr, c0f_vr, 
+    //     [&](OpBuilder &builder, Location loc, ValueRange check, ValueRange check1){
+    //         // builder.create<memref::StoreOp>(loc, c0f, mR, ValueRange{vr});
 
-            builder.create<scf::YieldOp>(loc);
-        });
+    //         // builder.create<scf::YieldOp>(loc);
+    //     });
+
+    // rewriter.create<scf::ParallelOp>(loc, lb_vr, ub_vr, st_vr, nullptr);
     
 
 
