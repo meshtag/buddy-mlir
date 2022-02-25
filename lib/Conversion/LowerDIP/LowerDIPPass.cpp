@@ -157,29 +157,16 @@ public:
     Value rowMidHelper = rewriter.create<AddIOp>(loc, inputRow, centerY);
     Value colMidHelper = rewriter.create<AddIOp>(loc, inputCol, centerX);
 
-    SmallVector<Value, 8> lowerBounds(4, c0);
-    SmallVector<Value, 8> uperBounds{inputRow, kernelSize, inputCol,
-                                     kernelSize};
-    SmallVector<int64_t, 8> steps{1, 1, stride, 1};
-
-    SmallVector<Value, 8> lowerBounds1(2, c0);
+    SmallVector<Value, 8> parallelLowerBounds(2, c0);
+    SmallVector<Value, 8> parallelUpperBounds{inputRow, kernelSize};
     
-    ValueRange lowerBounds11(lowerBounds1);
-    
-    SmallVector<Value, 8> lowerBounds2(2, c0);
+    SmallVector<Value, 8> parallelSteps;
+    SmallVector<int64_t, 8> seqSteps{stride, 1};
+    parallelSteps.push_back(c1);
+    parallelSteps.push_back(c1);
 
-    SmallVector<Value, 8> upperBounds1{c1, c1};
-    
-    ValueRange upperBounds11(upperBounds1);
-
-    SmallVector<Value, 8> upperBounds2{inputCol, kernelSize};
-
-    SmallVector<int64_t, 8> steps1{1, 1};
-
-    ValueRange steps11{c1, c1};
-
-    SmallVector<int64_t, 8> steps2{stride, 1};
-
+    SmallVector<Value, 8> seqLowerBounds(2, c0);
+    SmallVector<Value, 8> seqUpperBounds{inputCol, kernelSize};
 
     VectorType vectorTy32 = VectorType::get({stride}, f32);
     VectorType vectorMaskTy = VectorType::get({stride}, i1);
@@ -197,75 +184,19 @@ public:
     Value pseudoCol = rewriter.create<AffineApplyOp>(
         loc, calcHelper, ValueRange{inputCol, kernelSize, c1});
 
-
-    // rewriter.create<scf::ParallelOp>(loc, lowerBounds1, upperBounds1, steps1);
-
-    // rewriter.create<scf::ParallelOp>(loc, lowerBounds1, upperBounds1, steps1, nullptr, 
-    //     [&](OpBuilder &builder, Location loc, ValueRange iv) {
-
-    //     });
-
-
-    // rewriter.create<scf::ParallelOp>(loc, lowerBounds11, upperBounds11, steps11, 
-    //     [&](OpBuilder &builder, Location loc, ValueRange iv) {
-    //         // Create constant indices.
-    // // Value c0 = rewriter.create<ConstantIndexOp>(loc, 0);
-    // // Value c1 = rewriter.create<ConstantIndexOp>(loc, 1);
-
-    //         // builder.create<scf::YieldOp>(loc);
-    //     });
-
-
-    Value lb = rewriter.create<ConstantIndexOp>(loc, 0);
-    Value ub = rewriter.create<ConstantIndexOp>(loc, 9);
-    Value st = rewriter.create<ConstantIndexOp>(loc, 1);
-    Value c0f = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)(float)0, f32);
-
-    ValueRange lb_vr{lb};
-    ValueRange ub_vr{ub};
-    ValueRange st_vr{st};
-    ValueRange c0f_vr{c0f};
-
-    SmallVector<Value, 8> lb_vec;
-    SmallVector<Value, 8> ub_vec;
-    SmallVector<Value, 8> st_vec;
-
-    lb_vec.push_back(lb);
-    ub_vec.push_back(ub);
-    st_vec.push_back(st);
-
-    scf::ParallelOp checkVal = rewriter.create<scf::ParallelOp>(
-        loc, lb_vec, ub_vec, st_vec, nullptr);
-
-    rewriter.create<scf::ParallelOp>(loc, lb_vec, ub_vec, st_vec, 
-        [&](OpBuilder &builder, Location loc, ValueRange ivss){
-
-        });
-
-    MemRefType mT = MemRefType::get({9}, f32);
-    Value mR = rewriter.create<memref::AllocOp>(loc, mT);
-
-    // rewriter.create<scf::ParallelOp>(loc, lb_vr, ub_vr, st_vr, c0f_vr, 
-    //     [&](OpBuilder &builder, Location loc, ValueRange check, ValueRange check1){
-    //         // builder.create<memref::StoreOp>(loc, c0f, mR, ValueRange{vr});
-
-    //         // builder.create<scf::YieldOp>(loc);
-    //     });
-
-    // rewriter.create<scf::ParallelOp>(loc, lb_vr, ub_vr, st_vr, nullptr);
-    
-
+    rewriter.create<scf::ParallelOp>(loc, parallelLowerBounds, parallelUpperBounds, parallelSteps, 
+        [&](OpBuilder &builder, Location loc, ValueRange ivpCheck) {
 
     buildAffineLoopNest(
-        rewriter, loc, lowerBounds, uperBounds, steps,
-        [&](OpBuilder &builder, Location loc, ValueRange ivs) {
+        rewriter, loc, seqLowerBounds, seqUpperBounds, seqSteps,
+        [&](OpBuilder &builder, Location loc, ValueRange ivsCheck) {
           // Indices of current pixel with respect to pseudo image containing
           // extrapolated boundaries.
-          Value currRow = builder.create<AddIOp>(loc, ivs[0], ivs[1]);
-          Value currCol = builder.create<AddIOp>(loc, ivs[2], ivs[3]);
+          Value currRow = builder.create<AddIOp>(loc, ivpCheck[0], ivpCheck[1]);
+          Value currCol = builder.create<AddIOp>(loc, ivsCheck[0], ivsCheck[1]);
 
           Value kernelValue = builder.create<memref::LoadOp>(
-              loc, kernel, ValueRange{ivs[1], ivs[3]});
+              loc, kernel, ValueRange{ivpCheck[1], ivsCheck[1]});
           Value kernelVec =
               builder.create<BroadcastOp>(loc, vectorTy32, kernelValue);
 
@@ -289,7 +220,7 @@ public:
 
                   calcAndStoreFMAwoTailProcessing(builder, loc, vectorTy32,
                                                   inputVec, kernelVec, output,
-                                                  ivs[0], ivs[2]);
+                                                  ivpCheck[0], ivsCheck[0]);
                 } else {
                   Value colLeftCond = builder.create<CmpIOp>(
                       loc, CmpIPredicate::slt, currCol, centerX);
@@ -320,7 +251,7 @@ public:
                         }
                         calcAndStoreFMAwoTailProcessing(
                             builder, loc, vectorTy32, inputVec, kernelVec,
-                            output, ivs[0], ivs[2]);
+                            output, ivpCheck[0], ivsCheck[0]);
 
                         builder.create<scf::YieldOp>(loc);
                       },
@@ -341,7 +272,7 @@ public:
                               }
                               calcAndStoreFMAwoTailProcessing(
                                   builder, loc, vectorTy32, inputVec, kernelVec,
-                                  output, ivs[0], ivs[2]);
+                                  output, ivpCheck[0], ivsCheck[0]);
 
                               builder.create<scf::YieldOp>(loc);
                             },
@@ -370,10 +301,10 @@ public:
                               }
                               Value tailCond = tailChecker(
                                   builder, loc, calcHelper, strideVal,
-                                  kernelSize, c1, pseudoCol, ivs[2]);
+                                  kernelSize, c1, pseudoCol, ivsCheck[0]);
                               calcAndStoreFMAwTailProcessing(
                                   builder, loc, vectorTy32, inputVec, kernelVec,
-                                  output, ivs[0], ivs[2], tailCond, zeroPadding,
+                                  output, ivpCheck[0], ivsCheck[0], tailCond, zeroPadding,
                                   inputCol, vectorMaskTy);
 
                               builder.create<scf::YieldOp>(loc);
@@ -431,7 +362,7 @@ public:
                             }
                             calcAndStoreFMAwoTailProcessing(
                                 builder, loc, vectorTy32, inputVec, kernelVec,
-                                output, ivs[0], ivs[2]);
+                                output, ivpCheck[0], ivsCheck[0]);
 
                             builder.create<scf::YieldOp>(loc);
                           },
@@ -450,7 +381,7 @@ public:
                                       ValueRange{imRow, imCol});
                                   calcAndStoreFMAwoTailProcessing(
                                       builder, loc, vectorTy32, inputVec,
-                                      kernelVec, output, ivs[0], ivs[2]);
+                                      kernelVec, output, ivpCheck[0], ivsCheck[0]);
 
                                   builder.create<scf::YieldOp>(loc);
                                 },
@@ -491,10 +422,10 @@ public:
                                   }
                                   Value tailCond = tailChecker(
                                       builder, loc, calcHelper, strideVal,
-                                      kernelSize, c1, pseudoCol, ivs[2]);
+                                      kernelSize, c1, pseudoCol, ivsCheck[0]);
                                   calcAndStoreFMAwTailProcessing(
                                       builder, loc, vectorTy32, inputVec,
-                                      kernelVec, output, ivs[0], ivs[2],
+                                      kernelVec, output, ivpCheck[0], ivsCheck[0],
                                       tailCond, zeroPadding, inputCol,
                                       vectorMaskTy);
 
@@ -512,7 +443,7 @@ public:
 
                         calcAndStoreFMAwoTailProcessing(
                             builder, loc, vectorTy32, inputVec, kernelVec,
-                            output, ivs[0], ivs[2]);
+                            output, ivpCheck[0], ivsCheck[0]);
                       } else {
                         Value colLeftCond = builder.create<CmpIOp>(
                             loc, CmpIPredicate::slt, currCol, centerX);
@@ -547,7 +478,7 @@ public:
                               }
                               calcAndStoreFMAwoTailProcessing(
                                   builder, loc, vectorTy32, inputVec, kernelVec,
-                                  output, ivs[0], ivs[2]);
+                                  output, ivpCheck[0], ivsCheck[0]);
 
                               builder.create<scf::YieldOp>(loc);
                             },
@@ -571,7 +502,7 @@ public:
                                     }
                                     calcAndStoreFMAwoTailProcessing(
                                         builder, loc, vectorTy32, inputVec,
-                                        kernelVec, output, ivs[0], ivs[2]);
+                                        kernelVec, output, ivpCheck[0], ivsCheck[0]);
 
                                     builder.create<scf::YieldOp>(loc);
                                   },
@@ -610,10 +541,10 @@ public:
                                     }
                                     Value tailCond = tailChecker(
                                         builder, loc, calcHelper, strideVal,
-                                        kernelSize, c1, pseudoCol, ivs[2]);
+                                        kernelSize, c1, pseudoCol, ivsCheck[0]);
                                     calcAndStoreFMAwTailProcessing(
                                         builder, loc, vectorTy32, inputVec,
-                                        kernelVec, output, ivs[0], ivs[2],
+                                        kernelVec, output, ivpCheck[0], ivsCheck[0],
                                         tailCond, zeroPadding, inputCol,
                                         vectorMaskTy);
 
@@ -627,6 +558,7 @@ public:
                 builder.create<scf::YieldOp>(loc);
               });
         });
+    });
     // Remove the origin convolution operation.
     rewriter.eraseOp(op);
     return success();
