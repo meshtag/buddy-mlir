@@ -178,6 +178,14 @@ public:
     Value pseudoCol = rewriter.create<AffineApplyOp>(
         loc, calcHelper, ValueRange{inputCol, kernelSize, c1});
 
+    // Value strideCond = rewriter.create<CmpIOp>(
+    //                    loc, CmpIPredicate::sgt, strideVal, inputCol);
+    // rewriter.create<scf::IfOp>(loc, strideCond, 
+    //         [&](OpBuilder &builder, Location loc)
+    //         {
+    //             strideVal = rewriter.create<memref::DimOp>(loc, input, c1);
+    //         });
+
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, uperBounds, steps,
         [&](OpBuilder &builder, Location loc, ValueRange ivs) {
