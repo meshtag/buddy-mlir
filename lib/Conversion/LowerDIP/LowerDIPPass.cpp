@@ -161,9 +161,13 @@ public:
     SmallVector<Value, 8> parallelUpperBounds{inputRow, kernelSize};
     
     SmallVector<Value, 8> parallelSteps;
-    SmallVector<int64_t, 8> seqSteps{stride, 1};
+    // SmallVector<int64_t, 8> seqSteps{stride, 1};
     parallelSteps.push_back(c1);
     parallelSteps.push_back(c1);
+    SmallVector<Value, 8> seqSteps;
+    seqSteps.push_back(strideVal);
+    seqSteps.push_back(c1);
+
 
     SmallVector<Value, 8> seqLowerBounds(2, c0);
     SmallVector<Value, 8> seqUpperBounds{inputCol, kernelSize};
@@ -187,8 +191,11 @@ public:
     rewriter.create<scf::ParallelOp>(loc, parallelLowerBounds, parallelUpperBounds, parallelSteps, 
         [&](OpBuilder &builder, Location loc, ValueRange ivpCheck) {
 
-    buildAffineLoopNest(
-        rewriter, loc, seqLowerBounds, seqUpperBounds, seqSteps,
+    // buildAffineLoopNest(
+    //     rewriter, loc, seqLowerBounds, seqUpperBounds, seqSteps,
+    //     [&](OpBuilder &builder, Location loc, ValueRange ivsCheck) {
+
+    rewriter.create<scf::ParallelOp>(loc, seqLowerBounds, seqUpperBounds, seqSteps,
         [&](OpBuilder &builder, Location loc, ValueRange ivsCheck) {
           // Indices of current pixel with respect to pseudo image containing
           // extrapolated boundaries.
