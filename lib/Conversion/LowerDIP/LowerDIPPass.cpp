@@ -198,6 +198,10 @@ public:
           // Index of pixel used for determining right region.
           Value colLastElem = builder.create<AddIOp>(loc, currCol, strideVal);
 
+          // Check if stride is greater than inputCol
+          Value strideBoundCond = 
+              builder.create<CmpIOp>(loc, CmpIPredicate::sle, strideVal, inputCol);
+
           Value rowUpCond =
               builder.create<CmpIOp>(loc, CmpIPredicate::slt, currRow, centerY);
 
@@ -215,6 +219,8 @@ public:
                 } else {
                   Value colLeftCond = builder.create<CmpIOp>(
                       loc, CmpIPredicate::slt, currCol, centerX);
+                  colLeftCond = builder.create<arith::AndIOp>(
+                      loc, strideBoundCond, colLeftCond);
 
                   builder.create<scf::IfOp>(
                       loc, colLeftCond,
@@ -245,27 +251,18 @@ public:
                             output, ivs[0], ivs[2]);
 
                         builder.create<scf::YieldOp>(loc);
-                      });
-                      
+                      },
+                      [&](OpBuilder &builder, Location loc) {
+                        // (colMid or colRight) & rowUp
                         Value colMidCond = builder.create<CmpIOp>(
                             loc, CmpIPredicate::sle, colLastElem, colMidHelper);
-                        Value colMidCond2 = builder.create<CmpIOp>(
-                            loc, CmpIPredicate::sge, currCol, centerX);
-
-                        Value colMidCondCheck = builder.create<arith::AndIOp>(
-                            loc, colMidCond, colMidCond2);
+                        colMidCond = builder.create<arith::AndIOp>(
+                            loc, strideBoundCond, colMidCond);
 
                         builder.create<scf::IfOp>(
                             loc, colMidCond,
                             [&](OpBuilder &builder, Location loc) {
-                              
-
-                              builder.create<scf::IfOp>(
-                                  loc, colMidCond2,
-                                  [&](OpBuilder &builder, Location loc) {
-
-
-                                      // colMid & rowUp
+                              // colMid & rowUp
                               Value inputVec;
                               if (boundaryOption == 1) {
                                 inputVec = builder.create<LoadOp>(
@@ -277,14 +274,13 @@ public:
                                   output, ivs[0], ivs[2]);
 
                               builder.create<scf::YieldOp>(loc);
-
-
-                                  });
-
-                                 builder.create<scf::YieldOp>(loc);
                             },
                             [&](OpBuilder &builder, Location loc) {
-                              // colRight & rowUp
+
+                              builder.create<scf::IfOp>(loc, strideBoundCond, 
+                                [&](OpBuilder &builder, Location loc) {
+
+                                    // colRight & rowUp
                               Value inputVec;
                               Value rightMaskHelper = builder.create<SubIOp>(
                                   loc, colLastElem, colMidHelper);
@@ -315,8 +311,17 @@ public:
                                   inputCol, vectorMaskTy);
 
                               builder.create<scf::YieldOp>(loc);
+
+                                }, 
+                                [&](OpBuilder &builder, Location loc) {
+
+
+                                    builder.create<scf::YieldOp>(loc);
+                                });
+                                builder.create<scf::YieldOp>(loc);
                             });
-                        
+                        builder.create<scf::YieldOp>(loc);
+                      });
                 }
                 builder.create<scf::YieldOp>(loc);
               },
@@ -331,6 +336,8 @@ public:
                       // rowMid
                       Value colLeftCond = builder.create<CmpIOp>(
                           loc, CmpIPredicate::slt, currCol, centerX);
+                      colLeftCond = builder.create<arith::AndIOp>(
+                          loc, strideBoundCond, colLeftCond);
 
                       builder.create<scf::IfOp>(
                           loc, colLeftCond,
@@ -377,6 +384,8 @@ public:
                             Value colMidCond = builder.create<CmpIOp>(
                                 loc, CmpIPredicate::sle, colLastElem,
                                 colMidHelper);
+                            colMidCond = builder.create<arith::AndIOp>(
+                                loc, strideBoundCond, colMidCond);
 
                             builder.create<scf::IfOp>(
                                 loc, colMidCond,
@@ -392,7 +401,10 @@ public:
                                   builder.create<scf::YieldOp>(loc);
                                 },
                                 [&](OpBuilder &builder, Location loc) {
-                                  // colRight & rowMid
+
+                                  builder.create<scf::IfOp>(loc, strideBoundCond,
+                                    [&](OpBuilder &builder, Location loc) {
+                                        // colRight & rowMid
                                   Value inputVec;
                                   Value rightMaskHelper =
                                       builder.create<SubIOp>(loc, colLastElem,
@@ -436,6 +448,14 @@ public:
                                       vectorMaskTy);
 
                                   builder.create<scf::YieldOp>(loc);
+                                    },
+                                    [&](OpBuilder &builder, Location loc) {
+
+
+                                        builder.create<scf::YieldOp>(loc);
+                                    });
+
+                                  builder.create<scf::YieldOp>(loc);
                                 });
                             builder.create<scf::YieldOp>(loc);
                           });
@@ -453,6 +473,8 @@ public:
                       } else {
                         Value colLeftCond = builder.create<CmpIOp>(
                             loc, CmpIPredicate::slt, currCol, centerX);
+                        colLeftCond = builder.create<arith::AndIOp>(
+                            loc, strideBoundCond, colLeftCond);
 
                         builder.create<scf::IfOp>(
                             loc, colLeftCond,
@@ -493,6 +515,8 @@ public:
                               Value colMidCond = builder.create<CmpIOp>(
                                   loc, CmpIPredicate::sle, colLastElem,
                                   colMidHelper);
+                              colMidCond = builder.create<arith::AndIOp>(
+                                  loc, strideBoundCond, colMidCond);
 
                               builder.create<scf::IfOp>(
                                   loc, colMidCond,
@@ -513,7 +537,10 @@ public:
                                     builder.create<scf::YieldOp>(loc);
                                   },
                                   [&](OpBuilder &builder, Location loc) {
-                                    // colRight & rowDown
+
+                                    builder.create<scf::IfOp>(loc, strideBoundCond, 
+                                      [&](OpBuilder &builder, Location loc) {
+                                          // colRight & rowDown
                                     Value inputVec;
                                     Value rightMaskHelper =
                                         builder.create<SubIOp>(loc, colLastElem,
@@ -553,6 +580,14 @@ public:
                                         kernelVec, output, ivs[0], ivs[2],
                                         tailCond, zeroPadding, inputCol,
                                         vectorMaskTy);
+
+                                    builder.create<scf::YieldOp>(loc);
+                                      }, 
+                                      [&](OpBuilder &builder, Location loc) {
+
+
+                                          builder.create<scf::YieldOp>(loc);
+                                      });
 
                                     builder.create<scf::YieldOp>(loc);
                                   });
