@@ -319,6 +319,57 @@ public:
                                     builder.create<scf::YieldOp>(loc);
                                   },
                                   [&](OpBuilder &builder, Location loc) {
+                                    Value inputVec;
+                                    Value leftMaskElem =
+                                        builder.create<SubIOp>(loc, centerX, currCol);
+                                    Value leftMask =
+                                        createInvertedMask(builder, loc, strideVal,
+                                               vectorMaskTy, leftMaskElem);
+
+                                    Value rightOffShoot = builder.create<SubIOp>(
+                                        loc, colLastElem, colMidHelper);
+                                    Value rightPaddingIndex = builder.create<SubIOp>(
+                                        loc, strideVal, rightOffShoot);
+
+                                    Value rightMaskHelper = builder.create<SubIOp>(
+                                  loc, colLastElem, colMidHelper);
+                              Value rightMaskElem = builder.create<SubIOp>(
+                                  loc, strideVal, rightMaskHelper);
+                              Value rightMask = builder.create<CreateMaskOp>(
+                                  loc, vectorMaskTy, rightMaskElem);
+
+                                    if (boundaryOption == 1) {
+                                        Value leftPaddingVal = builder.create<memref::LoadOp>(
+                                            loc, input, ValueRange{c0, c0});
+                                        Value leftPadding = builder.create<BroadcastOp>(
+                                            loc, vectorTy32, leftPaddingVal);
+
+                                        Value rightRange =
+                                            builder.create<SubIOp>(loc, inputCol, c1);
+                                        Value rightPaddingVal =
+                                            builder.create<memref::LoadOp>(
+                                            loc, input, ValueRange{c0, rightRange});
+                                        Value rightPadding = builder.create<BroadcastOp>(
+                                            loc, vectorTy32, rightPaddingVal);
+                                        
+
+                                        Value leftPaddingOffset =
+                                            builder.create<SubIOp>(loc, c0, leftMaskElem);
+                                        inputVec = builder.create<vector::MaskedLoadOp>(
+                                            loc, vectorTy32, input,
+                                            ValueRange{c0, leftPaddingOffset}, leftMask,
+                                            leftPadding);
+
+                                        inputVec = builder.create<MaskedLoadOp>(
+                                            loc, vectorTy32, input,
+                                            ValueRange{c0, imCol}, rightMask, rightPadding);
+                                        
+                                        // inputVec = builder.create<MaskedLoadOp>(
+                                        //     loc, vectorTy32, inputVec,
+                                        //     ValueRange{c0, imCol}, rightMask, rightPadding);
+
+                                    }
+
                                     builder.create<scf::YieldOp>(loc);
                                   });
                               builder.create<scf::YieldOp>(loc);
