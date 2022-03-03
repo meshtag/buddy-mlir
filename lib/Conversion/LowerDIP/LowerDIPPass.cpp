@@ -319,6 +319,7 @@ public:
                                     builder.create<scf::YieldOp>(loc);
                                   },
                                   [&](OpBuilder &builder, Location loc) {
+                                    // stride > inputCol
                                     Value inputVec;
                                     Value leftMaskElem =
                                         builder.create<SubIOp>(loc, centerX, currCol);
@@ -335,8 +336,10 @@ public:
                                   loc, colLastElem, colMidHelper);
                               Value rightMaskElem = builder.create<SubIOp>(
                                   loc, strideVal, rightMaskHelper);
-                              Value rightMask = builder.create<CreateMaskOp>(
-                                  loc, vectorMaskTy, rightMaskElem);
+                            //   Value rightMask = builder.create<CreateMaskOp>(
+                            //       loc, vectorMaskTy, rightMaskElem);
+                            Value rightMask = createInvertedMask(
+                                            builder, loc, strideVal, vectorMaskTy, rightMaskElem);
 
                                     if (boundaryOption == 1) {
                                         Value leftPaddingVal = builder.create<memref::LoadOp>(
@@ -360,9 +363,17 @@ public:
                                             ValueRange{c0, leftPaddingOffset}, leftMask,
                                             leftPadding);
 
-                                        inputVec = builder.create<MaskedLoadOp>(
-                                            loc, vectorTy32, input,
-                                            ValueRange{c0, imCol}, rightMask, rightPadding);
+                                        inputVec = builder.create<vector::GatherOp>(
+                                            loc, vectorTy32, f32, );
+
+                                        // inputVec = builder.create<vector::MaskedLoadOp>(
+                                        //     loc, vectorTy32, inputVec,
+                                        //     ValueRange{c0}, rightMask,
+                                        //     rightPadding);
+
+                                        // inputVec = builder.create<MaskedLoadOp>(
+                                        //     loc, vectorTy32, input,
+                                        //     ValueRange{c0, imCol}, rightMask, rightPadding);
                                         
                                         // inputVec = builder.create<MaskedLoadOp>(
                                         //     loc, vectorTy32, inputVec,
