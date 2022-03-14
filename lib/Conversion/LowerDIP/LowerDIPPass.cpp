@@ -558,25 +558,27 @@ private:
   int64_t stride;
 };
 
-// Value* shearTransform(OpBuilder &builder, Location loc, Value originalX, Value originalY, 
-//                             Value sinVec, Value tanVec)
-// {
-//     Value yTan1 = builder.create<arith::MulFOp>(loc, originalY, tanVec);
-//     Value xIntermediate = builder.create<arith::SubFOp>(loc, originalX, yTan1);
-//     // round xIntermediate
+Value* shearTransform(OpBuilder &builder, Location loc, Value originalX, Value originalY, 
+                            Value sinVec, Value tanVec)
+{
+    // Value yTan1 = builder.create<arith::MulFOp>(loc, originalY, tanVec);
+    // Value xIntermediate = builder.create<arith::SubFOp>(loc, originalX, yTan1);
+    // round xIntermediate
 
-//     Value xSin = builder.create<arith::MulFOp>(loc, xIntermediate, sinVec);
-//     Value newY = builder.create<arith::AddFOp>(loc, xSin, originalY);
-//     // round newY
+    // Value xSin = builder.create<arith::MulFOp>(loc, xIntermediate, sinVec);
+    // Value newY = builder.create<arith::AddFOp>(loc, xSin, originalY);
+    // round newY
     
-//     Value yTan2 = builder.create<arith::MulFOp>(loc, newY, tanVec);
-//     Value newX = builder.create<arith::SubFOp>(loc, xIntermediate, yTan2);
-//     // round newX
+    // Value yTan2 = builder.create<arith::MulFOp>(loc, newY, tanVec);
+    // Value newX = builder.create<arith::SubFOp>(loc, xIntermediate, yTan2);
+    // round newX
 
-//     Value res[2] = {newX, newY};
+    Value newX, newY;
 
-//     return res;
-// }
+    Value res[2] = {newX, newY};
+
+    return res;
+}
 
 Value getCenter(OpBuilder &builder, Location loc, MLIRContext *ctx, Value dim)
 {
@@ -596,35 +598,30 @@ Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx, Value lowerBou
               Value upperBound, VectorType vecType)
 {
     FloatType f32 = FloatType::getF32(ctx);
-    IntegerType i8 = IntegerType::get(ctx, 8);
     MemRefType tempMemrefType = MemRefType::get({6}, f32);
-    Value tempMemref = builder.create<memref::AllocOp>(loc, tempMemrefType);
-
+    VectorType vectorTy32 = VectorType::get({6}, f32);
     Value c0 = builder.create<ConstantIndexOp>(loc, 0);
+
+    Value tempMemref = builder.create<memref::AllocOp>(loc, tempMemrefType);
+    Value tempVec = builder.create<vector::LoadOp>(loc, vectorTy32, tempMemref, 
+                                                   ValueRange{c0});
 
     SmallVector<Value, 8> lowerBounds{lowerBound};
     SmallVector<Value, 8> upperBounds{upperBound};
     SmallVector<intptr_t, 8> steps{1};
 
-    Value checkF = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)(float)2, f32);
-
     buildAffineLoopNest(
         builder, loc, lowerBounds, upperBounds, steps,
         [&](OpBuilder &builder, Location loc, ValueRange ivs) {
             Value index = builder.create<arith::SubIOp>(loc, ivs[0], lowerBound);
-            auto origType = ivs[0].getType();
-            ivs[0].setType(f32);
-            builder.create<memref::StoreOp>(loc, checkF, tempMemref, ValueRange{index});
-            ivs[0].setType(origType);
+            Value elemInt32 = builder.create<arith::IndexCastOp>(loc, builder.getI32Type(), ivs[0]);
+            Value elemF32 = builder.create<arith::SIToFPOp>(loc, f32, elemInt32);
 
-            // checkF = builder.create<arith::AddFOp>(loc, checkF, checkF);
-
+            tempVec = 
+                builder.create<vector::InsertElementOp>(loc, elemF32, tempVec, index);
     });
 
-    // Value resVec = builder.create<vector::LoadOp>(loc, vecType, tempMemref, ValueRange{c0});
-    // return resVec;
-
-    return upperBound;
+    return tempVec;
 }
 
 class DIPRotate2DOpLowering : public OpRewritePattern<dip::Rotate2DOp> {
@@ -642,8 +639,13 @@ public:
 
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, 6);
 
-    Value angleVal = op->getOperand(1);
+    FloatType f32 = FloatType::getF32(ctx);
+    VectorType vectorTy32 = VectorType::get({6}, f32);
+
+    // Value angleVal = op->getOperand(1);
     float angle = 90;
+    Value angleVal = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)(float)90, f32);
+    // Value angleVal = rewriter.create<ConstantIndexOp>(loc, 90);
 
     // Create constant indices.
     Value c0 = rewriter.create<ConstantIndexOp>(loc, 0);
@@ -665,9 +667,6 @@ public:
     Value outputCenterY = getCenter(rewriter, loc, ctx, outputRow);
     Value outputCenterX = getCenter(rewriter, loc, ctx, outputCol);
 
-    FloatType f32 = FloatType::getF32(ctx);
-    VectorType vectorTy32 = VectorType::get({6}, f32);
-
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, upperBounds, steps,
         [&](OpBuilder &builder, Location loc, ValueRange ivs) {
@@ -677,11 +676,18 @@ public:
                 loc, ivs[1], strideVal);
             
             Value yVec = 
-                iotaVec(builder, loc, ctx, c0, inputRow, vectorTy32);
-            Value xVec = 
                 iotaVec(builder, loc, ctx, c0, inputCol, vectorTy32);
+            Value xVec = 
+                iotaVec(builder, loc, ctx, c0, inputRow, vectorTy32);
 
-            
+            Value sinVal = builder.create<math::SinOp>(loc, angleVal);
+            Value sinVec = builder.create<vector::BroadcastOp>(loc, vectorTy32, sinVal);
+
+            Value cosVal = builder.create<math::CosOp>(loc, angleVal);
+            Value tanVal = builder.create<arith::DivFOp>(loc, sinVal, cosVal);
+            Value tanVec = builder.create<vector::BroadcastOp>(loc, vectorTy32, tanVal);
+
+            Value *resIndices = shearTransform(builder, loc, xVec, yVec, sinVec, tanVec);
 
     });
 
@@ -717,7 +723,7 @@ public:
   void getDependentDialects(DialectRegistry &registry) const override {
     registry.insert<buddy::dip::DIPDialect, func::FuncDialect,
                     memref::MemRefDialect, scf::SCFDialect, VectorDialect,
-                    AffineDialect, arith::ArithmeticDialect>();
+                    AffineDialect, arith::ArithmeticDialect, math::MathDialect>();
   }
 
   Option<int64_t> stride{*this, "DIP-strip-mining",
@@ -733,7 +739,7 @@ void LowerDIPPass::runOnOperation() {
   ConversionTarget target(*context);
   target.addLegalDialect<AffineDialect, scf::SCFDialect, func::FuncDialect,
                          memref::MemRefDialect, VectorDialect,
-                         arith::ArithmeticDialect>();
+                         arith::ArithmeticDialect, math::MathDialect>();
   target.addLegalOp<ModuleOp, FuncOp, func::ReturnOp>();
 
   RewritePatternSet patterns(context);
