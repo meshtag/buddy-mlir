@@ -561,7 +561,7 @@ private:
 Value* shearTransform(OpBuilder &builder, Location loc, Value originalX, Value originalY, 
                             Value sinVec, Value tanVec)
 {
-    // Value yTan1 = builder.create<arith::MulFOp>(loc, originalY, tanVec);
+    Value yTan1 = builder.create<arith::MulFOp>(loc, originalY, tanVec);
     // Value xIntermediate = builder.create<arith::SubFOp>(loc, originalX, yTan1);
     // round xIntermediate
 
@@ -595,7 +595,7 @@ Value getCenter(OpBuilder &builder, Location loc, MLIRContext *ctx, Value dim)
 }
 
 Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx, Value lowerBound, 
-              Value upperBound, VectorType vecType)
+              Value strideVal, VectorType vecType)
 {
     FloatType f32 = FloatType::getF32(ctx);
     MemRefType tempMemrefType = MemRefType::get({6}, f32);
@@ -606,19 +606,19 @@ Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx, Value lowerBou
     Value tempVec = builder.create<vector::LoadOp>(loc, vectorTy32, tempMemref, 
                                                    ValueRange{c0});
 
-    SmallVector<Value, 8> lowerBounds{lowerBound};
-    SmallVector<Value, 8> upperBounds{upperBound};
+    SmallVector<Value, 8> lowerBounds{c0};
+    SmallVector<Value, 8> upperBounds{strideVal};
     SmallVector<intptr_t, 8> steps{1};
 
     buildAffineLoopNest(
         builder, loc, lowerBounds, upperBounds, steps,
         [&](OpBuilder &builder, Location loc, ValueRange ivs) {
-            Value index = builder.create<arith::SubIOp>(loc, ivs[0], lowerBound);
-            Value elemInt32 = builder.create<arith::IndexCastOp>(loc, builder.getI32Type(), ivs[0]);
-            Value elemF32 = builder.create<arith::SIToFPOp>(loc, f32, elemInt32);
+            Value val = builder.create<arith::AddIOp>(loc, ivs[0], lowerBound);
+            Value valI32 = builder.create<arith::IndexCastOp>(loc, builder.getI32Type(), val);
+            Value valF32 = builder.create<arith::SIToFPOp>(loc, f32, valI32);
 
             tempVec = 
-                builder.create<vector::InsertElementOp>(loc, elemF32, tempVec, index);
+                builder.create<vector::InsertElementOp>(loc, valF32, tempVec, ivs[0]);
     });
 
     return tempVec;
@@ -643,7 +643,7 @@ public:
     VectorType vectorTy32 = VectorType::get({6}, f32);
 
     // Value angleVal = op->getOperand(1);
-    float angle = 90;
+    // float angle = 90;
     Value angleVal = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)(float)90, f32);
     // Value angleVal = rewriter.create<ConstantIndexOp>(loc, 90);
 
@@ -670,15 +670,13 @@ public:
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, upperBounds, steps,
         [&](OpBuilder &builder, Location loc, ValueRange ivs) {
-            Value yUpperBound = builder.create<arith::AddIOp>(
-                loc, ivs[0], strideVal);
-            Value xUpperBound = builder.create<arith::AddIOp>(
-                loc, ivs[1], strideVal);
+            Value yLowerBound = builder.create<arith::DivUIOp>(loc, ivs[0], strideVal);
+            Value xLowerBound = builder.create<arith::DivUIOp>(loc, ivs[1], strideVal);
             
             Value yVec = 
-                iotaVec(builder, loc, ctx, c0, inputCol, vectorTy32);
+                iotaVec(builder, loc, ctx, yLowerBound, strideVal, vectorTy32);
             Value xVec = 
-                iotaVec(builder, loc, ctx, c0, inputRow, vectorTy32);
+                iotaVec(builder, loc, ctx, xLowerBound, strideVal, vectorTy32);
 
             Value sinVal = builder.create<math::SinOp>(loc, angleVal);
             Value sinVec = builder.create<vector::BroadcastOp>(loc, vectorTy32, sinVal);
