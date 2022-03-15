@@ -561,19 +561,17 @@ private:
 Value* shearTransform(OpBuilder &builder, Location loc, Value originalX, Value originalY, 
                             Value sinVec, Value tanVec)
 {
-    Value yTan1 = builder.create<arith::MulFOp>(loc, originalY, tanVec);
-    // Value xIntermediate = builder.create<arith::SubFOp>(loc, originalX, yTan1);
+    Value yTan1 = builder.create<arith::MulFOp>(loc, tanVec, originalY);
+    Value xIntermediate = builder.create<arith::SubFOp>(loc, originalX, yTan1);
     // round xIntermediate
 
-    // Value xSin = builder.create<arith::MulFOp>(loc, xIntermediate, sinVec);
-    // Value newY = builder.create<arith::AddFOp>(loc, xSin, originalY);
+    Value xSin = builder.create<arith::MulFOp>(loc, xIntermediate, sinVec);
+    Value newY = builder.create<arith::AddFOp>(loc, xSin, originalY);
     // round newY
     
-    // Value yTan2 = builder.create<arith::MulFOp>(loc, newY, tanVec);
-    // Value newX = builder.create<arith::SubFOp>(loc, xIntermediate, yTan2);
+    Value yTan2 = builder.create<arith::MulFOp>(loc, newY, tanVec);
+    Value newX = builder.create<arith::SubFOp>(loc, xIntermediate, yTan2);
     // round newX
-
-    Value newX, newY;
 
     Value res[2] = {newX, newY};
 
@@ -582,7 +580,6 @@ Value* shearTransform(OpBuilder &builder, Location loc, Value originalX, Value o
 
 Value getCenter(OpBuilder &builder, Location loc, MLIRContext *ctx, Value dim)
 {
-    FloatType f32 = FloatType::getF32(ctx);
     Value c1 = builder.create<ConstantIndexOp>(loc, 1);
     Value c2 = builder.create<ConstantIndexOp>(loc, 2);
     
@@ -595,16 +592,11 @@ Value getCenter(OpBuilder &builder, Location loc, MLIRContext *ctx, Value dim)
 }
 
 Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx, Value lowerBound, 
-              Value strideVal, VectorType vecType)
+              Value strideVal, VectorType vecType, FloatType f32)
 {
-    FloatType f32 = FloatType::getF32(ctx);
-    MemRefType tempMemrefType = MemRefType::get({6}, f32);
-    VectorType vectorTy32 = VectorType::get({6}, f32);
     Value c0 = builder.create<ConstantIndexOp>(loc, 0);
-
-    Value tempMemref = builder.create<memref::AllocOp>(loc, tempMemrefType);
-    Value tempVec = builder.create<vector::LoadOp>(loc, vectorTy32, tempMemref, 
-                                                   ValueRange{c0});
+    Value c0f32 = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)(float)0, f32);
+    Value tempVec = builder.create<vector::SplatOp>(loc, vecType, c0f32);
 
     SmallVector<Value, 8> lowerBounds{c0};
     SmallVector<Value, 8> upperBounds{strideVal};
@@ -617,8 +609,7 @@ Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx, Value lowerBou
             Value valI32 = builder.create<arith::IndexCastOp>(loc, builder.getI32Type(), val);
             Value valF32 = builder.create<arith::SIToFPOp>(loc, f32, valI32);
 
-            tempVec = 
-                builder.create<vector::InsertElementOp>(loc, valF32, tempVec, ivs[0]);
+            builder.create<vector::InsertElementOp>(loc, valF32, tempVec, ivs[0]);
     });
 
     return tempVec;
@@ -674,9 +665,9 @@ public:
             Value xLowerBound = builder.create<arith::DivUIOp>(loc, ivs[1], strideVal);
             
             Value yVec = 
-                iotaVec(builder, loc, ctx, yLowerBound, strideVal, vectorTy32);
+                iotaVec(builder, loc, ctx, yLowerBound, strideVal, vectorTy32, f32);
             Value xVec = 
-                iotaVec(builder, loc, ctx, xLowerBound, strideVal, vectorTy32);
+                iotaVec(builder, loc, ctx, xLowerBound, strideVal, vectorTy32, f32);
 
             Value sinVal = builder.create<math::SinOp>(loc, angleVal);
             Value sinVec = builder.create<vector::BroadcastOp>(loc, vectorTy32, sinVal);
@@ -686,7 +677,6 @@ public:
             Value tanVec = builder.create<vector::BroadcastOp>(loc, vectorTy32, tanVal);
 
             Value *resIndices = shearTransform(builder, loc, xVec, yVec, sinVec, tanVec);
-
     });
 
     // Remove the origin rotation operation.
