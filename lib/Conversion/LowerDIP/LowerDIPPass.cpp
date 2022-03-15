@@ -630,6 +630,31 @@ Value pixelScaling(OpBuilder &builder, Location loc, Value imageDImF32Vec, Value
     return res;
 }
 
+void fillPixels(OpBuilder &builder, Location loc, Value resXVec, Value resYVec, 
+                Value xVec, Value yVec, Value input, Value output, Value c0, Value strideVal)
+{
+    SmallVector<Value, 8> lowerBounds{c0};
+    SmallVector<Value, 8> upperBounds{strideVal};
+    SmallVector<intptr_t, 8> steps{1};
+    VectorType vecType = VectorType::get({1}, builder.getF32Type());
+
+    buildAffineLoopNest(
+        builder, loc, lowerBounds, upperBounds, steps,
+        [&](OpBuilder &builder, Location loc, ValueRange ivs) {
+            Value resXPos = builder.create<vector::ExtractElementOp>(loc, resXVec, ivs[0]);
+            Value resYPos = builder.create<vector::ExtractElementOp>(loc, resYVec, ivs[0]);
+
+            Value xPos = builder.create<vector::ExtractElementOp>(loc, xVec, ivs[0]);
+            Value yPos = builder.create<vector::ExtractElementOp>(loc, yVec, ivs[0]);
+
+            Value xPosIndex = builder.create<arith::FPToUIOp>(loc, builder.getI32Type(), xPos);
+
+
+            // Value pixelVal = builder.create<memref::LoadOp>(loc, vecType, input, 
+            //                     ValueRange{xPosIndex, yPos});
+    });
+}
+
 class DIPRotate2DOpLowering : public OpRewritePattern<dip::Rotate2DOp> {
 public:
   using OpRewritePattern<dip::Rotate2DOp>::OpRewritePattern;
@@ -697,9 +722,12 @@ public:
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, upperBounds, steps,
         [&](OpBuilder &builder, Location loc, ValueRange ivs) {
-            Value yLowerBound = builder.create<arith::DivUIOp>(loc, ivs[0], strideVal);
-            Value xLowerBound = builder.create<arith::DivUIOp>(loc, ivs[1], strideVal);
-            
+            Value yLowerBoundMult = builder.create<arith::DivUIOp>(loc, ivs[0], strideVal);
+            Value xLowerBoundMult = builder.create<arith::DivUIOp>(loc, ivs[1], strideVal);
+
+            Value yLowerBound = builder.create<arith::MulIOp>(loc, strideVal, yLowerBoundMult);
+            Value xLowerBound = builder.create<arith::MulIOp>(loc, strideVal, xLowerBoundMult);
+
             Value yVec = 
                 iotaVec(builder, loc, ctx, yLowerBound, strideVal, vectorTy32, f32);
             Value xVec = 
@@ -722,6 +750,8 @@ public:
 
             Value resYVec = builder.create<arith::SubFOp>(loc, outputCenterYF32Vec, resIndices[1]);
             Value resXVec = builder.create<arith::SubFOp>(loc, outputCenterXF32Vec, resIndices[0]);
+    
+            fillPixels(builder, loc, resXVec, resYVec, xVec, yVec, input, output, c0, strideVal);
     });
 
     // Remove the origin rotation operation.
