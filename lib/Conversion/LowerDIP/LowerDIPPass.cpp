@@ -28,6 +28,7 @@
 
 #include "DIP/DIPDialect.h"
 #include "DIP/DIPOps.h"
+#include <vector>
 
 using namespace mlir;
 using namespace buddy;
@@ -558,7 +559,15 @@ private:
   int64_t stride;
 };
 
-Value* shearTransform(OpBuilder &builder, Location loc, Value originalX, Value originalY, 
+Value indexToF32(OpBuilder &builder, Location loc, Value val)
+{
+    Value interm1 = builder.create<arith::IndexCastOp>(loc, builder.getI32Type(), val);
+    Value res = builder.create<arith::SIToFPOp>(loc, builder.getF32Type(), interm1);
+
+    return res;
+}
+
+std::vector<Value> shearTransform(OpBuilder &builder, Location loc, Value originalX, Value originalY, 
                             Value sinVec, Value tanVec)
 {
     Value yTan1 = builder.create<arith::MulFOp>(loc, tanVec, originalY);
@@ -573,9 +582,7 @@ Value* shearTransform(OpBuilder &builder, Location loc, Value originalX, Value o
     Value newX = builder.create<arith::SubFOp>(loc, xIntermediate, yTan2);
     // round newX
 
-    Value res[2] = {newX, newY};
-
-    return res;
+    return {newX, newY};
 }
 
 Value getCenter(OpBuilder &builder, Location loc, MLIRContext *ctx, Value dim)
@@ -585,7 +592,7 @@ Value getCenter(OpBuilder &builder, Location loc, MLIRContext *ctx, Value dim)
     
     Value temp1 = builder.create<arith::AddIOp>(loc, dim, c1);
     Value temp2 = builder.create<arith::DivUIOp>(loc, temp1, c2);
-    Value center = builder.create<arith::SubIOp>(loc, dim, c1);
+    Value center = builder.create<arith::SubIOp>(loc, temp2, c1);
     // round center
 
     return center; 
@@ -606,13 +613,21 @@ Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx, Value lowerBou
         builder, loc, lowerBounds, upperBounds, steps,
         [&](OpBuilder &builder, Location loc, ValueRange ivs) {
             Value val = builder.create<arith::AddIOp>(loc, ivs[0], lowerBound);
-            Value valI32 = builder.create<arith::IndexCastOp>(loc, builder.getI32Type(), val);
-            Value valF32 = builder.create<arith::SIToFPOp>(loc, f32, valI32);
-
+            Value valF32 = indexToF32(builder, loc, val);
             builder.create<vector::InsertElementOp>(loc, valF32, tempVec, ivs[0]);
     });
 
     return tempVec;
+}
+
+Value pixelScaling(OpBuilder &builder, Location loc, Value imageDImF32Vec, Value coordVec,
+                   Value imageCenterF32Vec, Value c1f32Vec)
+{
+    Value interm1 = builder.create<arith::SubFOp>(loc, imageDImF32Vec, coordVec);
+    Value interm2 = builder.create<arith::SubFOp>(loc, interm1, imageCenterF32Vec);
+    Value res = builder.create<arith::SubFOp>(loc, interm2, c1f32Vec);
+
+    return res;
 }
 
 class DIPRotate2DOpLowering : public OpRewritePattern<dip::Rotate2DOp> {
@@ -645,6 +660,12 @@ public:
     Value inputRow = rewriter.create<memref::DimOp>(loc, input, c0);
     Value inputCol = rewriter.create<memref::DimOp>(loc, input, c1);
 
+    Value inputRowF32 = indexToF32(rewriter, loc, inputRow);
+    Value inputRowF32Vec = rewriter.create<vector::SplatOp>(loc, vectorTy32, inputRowF32);
+
+    Value inputColF32 = indexToF32(rewriter, loc, inputCol);
+    Value inputColF32Vec = rewriter.create<vector::SplatOp>(loc, vectorTy32, inputColF32);
+
     Value outputRow = rewriter.create<memref::DimOp>(loc, output, c0);
     Value outputCol = rewriter.create<memref::DimOp>(loc, output, c1);
 
@@ -655,8 +676,23 @@ public:
     Value inputCenterY = getCenter(rewriter, loc, ctx, inputRow);
     Value inputCenterX = getCenter(rewriter, loc, ctx, inputCol);
 
+    Value inputCenterYF32 = indexToF32(rewriter, loc, inputCenterY);
+    Value inputCenterYF32Vec = rewriter.create<vector::SplatOp>(loc, vectorTy32, inputCenterYF32);
+
+    Value inputCenterXF32 = indexToF32(rewriter, loc, inputCenterX);
+    Value inputCenterXF32Vec = rewriter.create<vector::SplatOp>(loc, vectorTy32, inputCenterXF32);
+
     Value outputCenterY = getCenter(rewriter, loc, ctx, outputRow);
     Value outputCenterX = getCenter(rewriter, loc, ctx, outputCol);
+
+    Value outputCenterYF32 = indexToF32(rewriter, loc, outputCenterY);
+    Value outputCenterYF32Vec = rewriter.create<vector::SplatOp>(loc, vectorTy32, outputCenterYF32);
+
+    Value outputCenterXF32 = indexToF32(rewriter, loc, outputCenterX);
+    Value outputCenterXF32Vec = rewriter.create<vector::SplatOp>(loc, vectorTy32, outputCenterXF32);
+
+    Value c1f32 = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)(float)1, f32);
+    Value c1f32Vec = rewriter.create<vector::SplatOp>(loc, vectorTy32, c1f32);
 
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, upperBounds, steps,
@@ -669,6 +705,11 @@ public:
             Value xVec = 
                 iotaVec(builder, loc, ctx, xLowerBound, strideVal, vectorTy32, f32);
 
+            Value yVecModified = pixelScaling(builder, loc, inputRowF32Vec, yVec, 
+                                              inputCenterYF32Vec, c1f32Vec);
+            Value xVecModified = pixelScaling(builder, loc, inputColF32Vec, xVec, 
+                                              inputCenterXF32Vec, c1f32Vec);
+
             Value sinVal = builder.create<math::SinOp>(loc, angleVal);
             Value sinVec = builder.create<vector::BroadcastOp>(loc, vectorTy32, sinVal);
 
@@ -676,7 +717,11 @@ public:
             Value tanVal = builder.create<arith::DivFOp>(loc, sinVal, cosVal);
             Value tanVec = builder.create<vector::BroadcastOp>(loc, vectorTy32, tanVal);
 
-            Value *resIndices = shearTransform(builder, loc, xVec, yVec, sinVec, tanVec);
+            std::vector<Value> resIndices = 
+                shearTransform(builder, loc, xVecModified, yVecModified, sinVec, tanVec);
+
+            Value resYVec = builder.create<arith::SubFOp>(loc, outputCenterYF32Vec, resIndices[1]);
+            Value resXVec = builder.create<arith::SubFOp>(loc, outputCenterXF32Vec, resIndices[0]);
     });
 
     // Remove the origin rotation operation.
