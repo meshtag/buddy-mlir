@@ -567,6 +567,14 @@ Value indexToF32(OpBuilder &builder, Location loc, Value val)
     return res;
 }
 
+Value F32ToIndex(OpBuilder &builder, Location loc, Value val)
+{
+    Value interm1 = builder.create<arith::FPToUIOp>(loc, builder.getI32Type(), val);
+    Value res = builder.create<arith::IndexCastOp>(loc, builder.getIndexType(), interm1);
+
+    return res;
+}
+
 std::vector<Value> shearTransform(OpBuilder &builder, Location loc, Value originalX, Value originalY, 
                             Value sinVec, Value tanVec)
 {
@@ -636,7 +644,7 @@ void fillPixels(OpBuilder &builder, Location loc, Value resXVec, Value resYVec,
     SmallVector<Value, 8> lowerBounds{c0};
     SmallVector<Value, 8> upperBounds{strideVal};
     SmallVector<intptr_t, 8> steps{1};
-    VectorType vecType = VectorType::get({1}, builder.getF32Type());
+    // check vector usage for loading and storing
 
     buildAffineLoopNest(
         builder, loc, lowerBounds, upperBounds, steps,
@@ -644,14 +652,19 @@ void fillPixels(OpBuilder &builder, Location loc, Value resXVec, Value resYVec,
             Value resXPos = builder.create<vector::ExtractElementOp>(loc, resXVec, ivs[0]);
             Value resYPos = builder.create<vector::ExtractElementOp>(loc, resYVec, ivs[0]);
 
+            Value resXPosIndex = F32ToIndex(builder, loc, resXPos);
+            Value resYPosIndex = F32ToIndex(builder, loc, resYPos);
+
             Value xPos = builder.create<vector::ExtractElementOp>(loc, xVec, ivs[0]);
             Value yPos = builder.create<vector::ExtractElementOp>(loc, yVec, ivs[0]);
 
-            Value xPosIndex = builder.create<arith::FPToUIOp>(loc, builder.getI32Type(), xPos);
+            Value xPosIndex = F32ToIndex(builder, loc, xPos);
+            Value yPosIndex = F32ToIndex(builder, loc, yPos);
 
-
-            // Value pixelVal = builder.create<memref::LoadOp>(loc, vecType, input, 
-            //                     ValueRange{xPosIndex, yPos});
+            Value pixelVal = builder.create<memref::LoadOp>(loc, builder.getF32Type(), input, 
+                                ValueRange{xPosIndex, yPosIndex});
+            // builder.create<memref::StoreOp>(loc, pixelVal, output, 
+            //                     ValueRange{resXPosIndex, resYPosIndex});
     });
 }
 
@@ -719,6 +732,13 @@ public:
     Value c1f32 = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)(float)1, f32);
     Value c1f32Vec = rewriter.create<vector::SplatOp>(loc, vectorTy32, c1f32);
 
+    Value sinVal = rewriter.create<math::SinOp>(loc, angleVal);
+    Value sinVec = rewriter.create<vector::BroadcastOp>(loc, vectorTy32, sinVal);
+
+    Value cosVal = rewriter.create<math::CosOp>(loc, angleVal);
+    Value tanVal = rewriter.create<arith::DivFOp>(loc, sinVal, cosVal);
+    Value tanVec = rewriter.create<vector::BroadcastOp>(loc, vectorTy32, tanVal);
+
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, upperBounds, steps,
         [&](OpBuilder &builder, Location loc, ValueRange ivs) {
@@ -737,13 +757,6 @@ public:
                                               inputCenterYF32Vec, c1f32Vec);
             Value xVecModified = pixelScaling(builder, loc, inputColF32Vec, xVec, 
                                               inputCenterXF32Vec, c1f32Vec);
-
-            Value sinVal = builder.create<math::SinOp>(loc, angleVal);
-            Value sinVec = builder.create<vector::BroadcastOp>(loc, vectorTy32, sinVal);
-
-            Value cosVal = builder.create<math::CosOp>(loc, angleVal);
-            Value tanVal = builder.create<arith::DivFOp>(loc, sinVal, cosVal);
-            Value tanVec = builder.create<vector::BroadcastOp>(loc, vectorTy32, tanVal);
 
             std::vector<Value> resIndices = 
                 shearTransform(builder, loc, xVecModified, yVecModified, sinVec, tanVec);
