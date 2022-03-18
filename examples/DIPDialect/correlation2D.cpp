@@ -149,7 +149,21 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
     return 0;
   }
 
-  _mlir_ciface_rotate_2d(input, 90, output);
+  int output1Rows = image.cols;
+  int output1Cols = image.rows;
+  float *output1Align = (float *)malloc(output1Rows * output1Cols * sizeof(float));
+
+  for (int i = 0; i < image.cols; i++)
+    for (int j = 0; j < image.rows; j++)
+      output1Align[i * image.rows + j] = 0;
+
+  intptr_t sizesOutput1[2] = {output1Rows, output1Cols};
+  intptr_t stridesOutput1[2] = {output1Rows, output1Cols};
+
+  MemRef_descriptor output1 =
+    MemRef_Descriptor(allocated, output1Align, 0, sizesOutput1, stridesOutput1);
+
+  _mlir_ciface_rotate_2d(input, 90, output1);
 
    // Define a cv::Mat with the output of the conv2d.
   Mat outputImageCheck(outputCols, outputRows, CV_32FC1, output->aligned);

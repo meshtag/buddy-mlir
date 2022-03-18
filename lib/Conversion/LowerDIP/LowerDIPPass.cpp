@@ -590,7 +590,14 @@ std::vector<Value> shearTransform(OpBuilder &builder, Location loc, Value origin
     Value newX = builder.create<arith::SubFOp>(loc, xIntermediate, yTan2);
     // round newX
 
+    // Value c0f32 = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)(float)-1000, builder.getF32Type());
+    // VectorType vecType = VectorType::get({6}, builder.getF32Type());
+    // Value newX = builder.create<vector::SplatOp>(loc, vecType, c0f32);
+    // Value newY = builder.create<vector::SplatOp>(loc, vecType, c0f32);
+
     return {newX, newY};
+
+    // return {originalX, originalY};
 }
 
 Value getCenter(OpBuilder &builder, Location loc, MLIRContext *ctx, Value dim)
@@ -624,6 +631,8 @@ Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx, Value lowerBou
             Value valF32 = indexToF32(builder, loc, val);
             builder.create<vector::InsertElementOp>(loc, valF32, tempVec, ivs[0]);
     });
+
+    // builder.create<vector::PrintOp>(loc, tempVec);
 
     return tempVec;
 }
@@ -688,7 +697,7 @@ public:
 
     // Value angleVal = op->getOperand(1);
     // float angle = 90;
-    Value angleVal = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)(float)90, f32);
+    Value angleVal = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)90.0f, f32);
     // Value angleVal = rewriter.create<ConstantIndexOp>(loc, 90);
 
     // Create constant indices.
@@ -709,6 +718,7 @@ public:
 
     SmallVector<Value, 8> lowerBounds(2, c0);
     SmallVector<Value, 8> upperBounds{inputRow, inputCol};
+    // SmallVector<Value, 8> upperBounds{c1, c1};
     SmallVector<intptr_t, 8> steps(2, 1);
 
     Value inputCenterY = getCenter(rewriter, loc, ctx, inputRow);
@@ -830,3 +840,8 @@ namespace buddy {
 void registerLowerDIPPass() { PassRegistration<LowerDIPPass>(); }
 } // namespace buddy
 } // namespace mlir
+
+
+// ./buddy-opt ../../examples/DIPDialect/TestCorr2D.mlir -lower-dip -lower-affine -convert-scf-to-std -convert-vector-to-llvm -convert-memref-to-llvm -convert-std-to-llvm -reconcile-unrealized-casts | ../../llvm/build/bin/mlir-cpu-runner -e main -entry-point-result=void -shared-libs=../../llvm/build/lib/libmlir_c_runner_utils.so -shared-libs=../../llvm/build/lib/libmlir_runner_utils.so
+
+// ./buddy-opt ../../examples/DIPDialect/corr2d.mlir -lower-dip="DIP-strip-mining=6" -lower-affine -convert-scf-to-cf --convert-math-to-llvm -convert-vector-to-llvm -convert-memref-to-llvm -convert-func-to-llvm='emit-c-wrappers=1' -reconcile-unrealized-casts | ../../llvm/build/bin/mlir-cpu-runner -e main -entry-point-result=void -shared-libs=../../llvm/build/lib/libmlir_c_runner_utils.so -shared-libs=../../llvm/build/lib/libmlir_runner_utils.so
