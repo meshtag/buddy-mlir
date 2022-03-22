@@ -620,18 +620,93 @@ Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx, Value lowerBou
     Value c0f32 = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)(float)0, f32);
     Value tempVec = builder.create<vector::SplatOp>(loc, vecType, c0f32);
 
+    Value c1 = builder.create<ConstantIndexOp>(loc, 1);
+    Value c2 = builder.create<ConstantIndexOp>(loc, 2);
+    Value c3 = builder.create<ConstantIndexOp>(loc, 3);
+    Value c4 = builder.create<ConstantIndexOp>(loc, 4);
+    Value c5 = builder.create<ConstantIndexOp>(loc, 5);
+
     SmallVector<Value, 8> lowerBounds{c0};
     SmallVector<Value, 8> upperBounds{strideVal};
     SmallVector<intptr_t, 8> steps{1};
+    SmallVector<Value, 8> steps_scf{c1};
 
-    buildAffineLoopNest(
-        builder, loc, lowerBounds, upperBounds, steps,
-        [&](OpBuilder &builder, Location loc, ValueRange ivs) {
-            Value val = builder.create<arith::AddIOp>(loc, ivs[0], lowerBound);
-            Value valF32 = indexToF32(builder, loc, val);
-            builder.create<vector::InsertElementOp>(loc, valF32, tempVec, ivs[0]);
-    });
+    Value resVec1 = builder.create<vector::SplatOp>(loc, vecType, c0f32);
+    SmallVector<Value, 8> iterArg{resVec1};
 
+    // buildAffineLoopNest(
+    //     builder, loc, lowerBounds, upperBounds, steps,
+    //     [&](OpBuilder &builder, Location loc, ValueRange ivs) {
+    //         // Value val = builder.create<arith::AddIOp>(loc, ivs[0], lowerBound);
+    //         // Value valF32 = indexToF32(builder, loc, val);
+    //         // tempVec = builder.create<vector::InsertElementOp>(loc, valF32, tempVec, ivs[0]);
+    //         // builder.create<vector::InsertElementOp>(loc, valF32, tempVec, ivs[0]);
+
+    //         // // iA[0] = builder.create<vector::InsertElementOp>(loc, valF32, iA[0], ivs[0]);
+    //         // // builder.create<AffineYieldOp>(loc, iA[0]);
+
+    //         // builder.create<vector::PrintOp>(loc, valF32);
+    //         // builder.create<vector::PrintOp>(loc, tempVec);
+    //         // builder.create<vector::PrintOp>(loc, tempVec2);
+
+    // });
+
+    AffineExpr d0;
+    bindDims(ctx, d0);
+    AffineMap stripMap = AffineMap::get(1, 0, {d0}, ctx);
+
+    Value p11 = builder.create<arith::AddIOp>(loc, lowerBound, c1);
+    Value p22 = builder.create<arith::AddIOp>(loc, lowerBound, c2);
+    Value p33 = builder.create<arith::AddIOp>(loc, lowerBound, c3);
+    Value p44 = builder.create<arith::AddIOp>(loc, lowerBound, c4);
+    Value p55 = builder.create<arith::AddIOp>(loc, lowerBound, c5);
+
+    Value p0 = indexToF32(builder, loc, lowerBound);
+    Value p1 = indexToF32(builder, loc, p11);
+    Value p2 = indexToF32(builder, loc, p22);
+    Value p3 = indexToF32(builder, loc, p33);
+    Value p4 = indexToF32(builder, loc, p44);
+    Value p5 = indexToF32(builder, loc, p55);
+    
+    tempVec = builder.create<vector::InsertElementOp>(loc, p0, tempVec, c0);
+    tempVec = builder.create<vector::InsertElementOp>(loc, p1, tempVec, c1);
+    tempVec = builder.create<vector::InsertElementOp>(loc, p2, tempVec, c2);
+    tempVec = builder.create<vector::InsertElementOp>(loc, p3, tempVec, c3);
+    tempVec = builder.create<vector::InsertElementOp>(loc, p4, tempVec, c4);
+    tempVec = builder.create<vector::InsertElementOp>(loc, p5, tempVec, c5);
+
+    // builder.create<vector::PrintOp>(loc, tempVec);
+    builder.create<vector::PrintOp>(loc, lowerBound);
+
+    // builder.create<AffineForOp>(loc, ValueRange{c0}, stripMap, 
+    //     ValueRange{strideVal}, stripMap, /*steps*/1, ValueRange{tempVec}, 
+    //     [&](OpBuilder &builder, Location loc, Value iv, ValueRange iterArg){
+    //         Value val = builder.create<arith::AddIOp>(loc, iv, lowerBound);
+    //         Value valF32 = indexToF32(builder, loc, val);
+    //         // iterArgs[0] = builder.create<vector::InsertElementOp>(loc, valF32, tempVec, iv);
+
+    //         // iterArgs[0] = builder.create<arith::AddIOp>(loc, iterArgs[0], iterArgs[0]);
+    //         // checktp = builder.create<arith::AddIOp>(loc, iterArgs[0], iterArgs[0]);
+    //         // Value c11 = builder.create<ConstantIndexOp>(loc, 111);
+
+    //         checktp = builder.create<vector::InsertElementOp>(loc, valF32, iterArg[0], iv);
+            
+    //         // builder.create<vector::PrintOp>(loc, checktp);
+    //         // builder.create<vector::PrintOp>(loc, iterArgs[0]);
+    //         // builder.create<vector::PrintOp>(loc, iterArgs[0]);
+    //         // builder.create<vector::PrintOp>(loc, tempVec);
+    //         // builder.create<vector::PrintOp>(loc, c11);
+    //         // builder.create<vector::PrintOp>(loc, iterArg[0]);
+
+    //         builder.create<AffineYieldOp>(loc, checktp);
+    //     });
+
+    // // builder.create<vector::PrintOp>(loc, c11);
+    // // builder.create<vector::PrintOp>(loc, checktp);
+    // // builder.create<vector::PrintOp>(loc, resVec);
+    // // builder.create<vector::PrintOp>(loc, lowerBound);
+    // // builder.create<vector::PrintOp>(loc, strideVal);
+    // // builder.create<vector::PrintOp>(loc, tempVec2);
     // builder.create<vector::PrintOp>(loc, tempVec);
 
     return tempVec;
@@ -763,18 +838,18 @@ public:
             Value xVec = 
                 iotaVec(builder, loc, ctx, xLowerBound, strideVal, vectorTy32, f32);
 
-            Value yVecModified = pixelScaling(builder, loc, inputRowF32Vec, yVec, 
-                                              inputCenterYF32Vec, c1f32Vec);
-            Value xVecModified = pixelScaling(builder, loc, inputColF32Vec, xVec, 
-                                              inputCenterXF32Vec, c1f32Vec);
+            // Value yVecModified = pixelScaling(builder, loc, inputRowF32Vec, yVec, 
+            //                                   inputCenterYF32Vec, c1f32Vec);
+            // Value xVecModified = pixelScaling(builder, loc, inputColF32Vec, xVec, 
+            //                                   inputCenterXF32Vec, c1f32Vec);
 
-            std::vector<Value> resIndices = 
-                shearTransform(builder, loc, xVecModified, yVecModified, sinVec, tanVec);
+            // std::vector<Value> resIndices = 
+            //     shearTransform(builder, loc, xVecModified, yVecModified, sinVec, tanVec);
 
-            Value resYVec = builder.create<arith::SubFOp>(loc, outputCenterYF32Vec, resIndices[1]);
-            Value resXVec = builder.create<arith::SubFOp>(loc, outputCenterXF32Vec, resIndices[0]);
+            // Value resYVec = builder.create<arith::SubFOp>(loc, outputCenterYF32Vec, resIndices[1]);
+            // Value resXVec = builder.create<arith::SubFOp>(loc, outputCenterXF32Vec, resIndices[0]);
     
-            fillPixels(builder, loc, resXVec, resYVec, xVec, yVec, input, output, c0, strideVal);
+            // fillPixels(builder, loc, resXVec, resYVec, xVec, yVec, input, output, c0, strideVal);
     });
 
     // Remove the origin rotation operation.
