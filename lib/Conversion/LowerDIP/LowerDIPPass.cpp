@@ -577,10 +577,17 @@ Value F32ToIndex(OpBuilder &builder, Location loc, Value val)
 
 Value roundOff(OpBuilder &builder, Location loc, Value val, VectorType vecTypeI, VectorType vecTypeF)
 {
-    Value interm1 = builder.create<arith::FPToSIOp>(loc, vecTypeI, val);
-    Value interm2 = builder.create<arith::SIToFPOp>(loc, vecTypeF, interm1);
+    Value ceilVal = builder.create<math::CeilOp>(loc, val);
+    Value floorVal = builder.create<math::FloorOp>(loc, val);
+    
+    Value diffCeil = builder.create<arith::SubFOp>(loc, ceilVal, val);
+    Value diffFloor = builder.create<arith::SubFOp>(loc, val, floorVal);
 
-    return interm2;
+    Value diffCond = builder.create<arith::CmpFOp>(loc, CmpFPredicate::OGT, 
+                                                   diffCeil, diffFloor);
+    Value resVal = builder.create<arith::SelectOp>(loc, diffCond, floorVal, ceilVal);
+
+    return resVal;
 }
 
 std::vector<Value> shearTransform(OpBuilder &builder, Location loc, Value originalX, Value originalY, 
@@ -601,7 +608,7 @@ std::vector<Value> shearTransform(OpBuilder &builder, Location loc, Value origin
     Value newX = roundOff(builder, loc, newX1, vecTypeI, vecTypeF);
     // round newX
 
-    return {newX, newY};
+    return {newY, newX};
 }
 
 Value getCenter(OpBuilder &builder, Location loc, MLIRContext *ctx, Value dim)
@@ -704,6 +711,17 @@ Value castAndExpand(OpBuilder &builder, Location loc, Value val, VectorType vecT
     return interm2;
 }
 
+Value customTanVal(OpBuilder &builder, Location loc, Value angleVal)
+{
+    Value c2F32 = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)2.0f, builder.getF32Type());
+    Value angleVal_2 = builder.create<arith::DivFOp>(loc, angleVal, c2F32);
+
+    Value sinVal = builder.create<math::SinOp>(loc, angleVal_2);
+    Value cosVal = builder.create<math::CosOp>(loc, angleVal_2);
+
+    return builder.create<arith::DivFOp>(loc, sinVal, cosVal);
+}
+
 class DIPRotate2DOpLowering : public OpRewritePattern<dip::Rotate2DOp> {
 public:
   using OpRewritePattern<dip::Rotate2DOp>::OpRewritePattern;
@@ -725,7 +743,7 @@ public:
 
     // Value angleVal = op->getOperand(1);
     // float angle = 90;
-    Value angleVal = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)0.0f, f32);
+    Value angleVal = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)1.57f, f32);
     // Value angleVal = rewriter.create<ConstantIndexOp>(loc, 90);
 
     // Create constant indices.
@@ -743,7 +761,6 @@ public:
 
     SmallVector<Value, 8> lowerBounds(2, c0);
     SmallVector<Value, 8> upperBounds{inputRow, inputCol};
-    // SmallVector<Value, 8> upperBounds{c1, c1};
     SmallVector<intptr_t, 8> steps(2, 6);
 
     Value inputCenterY = getCenter(rewriter, loc, ctx, inputRow);
@@ -758,15 +775,17 @@ public:
     Value outputCenterYF32Vec = castAndExpand(rewriter, loc, outputCenterY, vectorTy32F);
     Value outputCenterXF32Vec = castAndExpand(rewriter, loc, outputCenterX, vectorTy32F);
 
-    Value c1f32 = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)(float)1, f32);
+    Value c1f32 = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)1.0f, f32);
     Value c1f32Vec = rewriter.create<vector::SplatOp>(loc, vectorTy32F, c1f32);
 
     Value sinVal = rewriter.create<math::SinOp>(loc, angleVal);
     Value sinVec = rewriter.create<vector::BroadcastOp>(loc, vectorTy32F, sinVal);
 
-    Value cosVal = rewriter.create<math::CosOp>(loc, angleVal);
-    Value tanVal = rewriter.create<arith::DivFOp>(loc, sinVal, cosVal);
+    Value tanVal = customTanVal(rewriter, loc, angleVal);
     Value tanVec = rewriter.create<vector::BroadcastOp>(loc, vectorTy32F, tanVal);
+
+    // rewriter.create<vector::PrintOp>(loc, sinVec);
+    // rewriter.create<vector::PrintOp>(loc, tanVec);
 
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, upperBounds, steps,
@@ -791,13 +810,13 @@ public:
                 shearTransform(builder, loc, xVecModified, yVecModified, sinVec, tanVec, 
                                vectorTy32I, vectorTy32F);
 
-            Value resYVec = builder.create<arith::SubFOp>(loc, outputCenterYF32Vec, resIndices[1]);
-            Value resXVec = builder.create<arith::SubFOp>(loc, outputCenterXF32Vec, resIndices[0]);
+            Value resYVec = builder.create<arith::SubFOp>(loc, outputCenterYF32Vec, resIndices[0]);
+            Value resXVec = builder.create<arith::SubFOp>(loc, outputCenterXF32Vec, resIndices[1]);
 
             builder.create<vector::PrintOp>(loc, resYVec);
             builder.create<vector::PrintOp>(loc, resXVec);
 
-            // fillPixels(builder, loc, resXVec, resYVec, xVec, yVec, input, output, c0, strideVal);
+            fillPixels(builder, loc, resXVec, resYVec, xVec, yVec, input, output, c0, strideVal);
     });
 
     // Remove the origin rotation operation.
