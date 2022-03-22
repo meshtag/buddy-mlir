@@ -575,7 +575,7 @@ Value F32ToIndex(OpBuilder &builder, Location loc, Value val)
     return res;
 }
 
-Value roundOff(OpBuilder &builder, Location loc, Value val, VectorType vecTypeI, VectorType vecTypeF)
+Value roundOff(OpBuilder &builder, Location loc, Value val)
 {
     Value ceilVal = builder.create<math::CeilOp>(loc, val);
     Value floorVal = builder.create<math::FloorOp>(loc, val);
@@ -591,37 +591,36 @@ Value roundOff(OpBuilder &builder, Location loc, Value val, VectorType vecTypeI,
 }
 
 std::vector<Value> shearTransform(OpBuilder &builder, Location loc, Value originalX, Value originalY, 
-                            Value sinVec, Value tanVec, VectorType vecTypeI, VectorType vecTypeF)
+                                  Value sinVec, Value tanVec)
 {
     Value yTan1 = builder.create<arith::MulFOp>(loc, tanVec, originalY);
     Value xIntermediate1 = builder.create<arith::SubFOp>(loc, originalX, yTan1);
-    Value xIntermediate = roundOff(builder, loc, xIntermediate1, vecTypeI, vecTypeF);
-    // round xIntermediate
+    Value xIntermediate = roundOff(builder, loc, xIntermediate1);
 
     Value xSin = builder.create<arith::MulFOp>(loc, xIntermediate, sinVec);
     Value newY1 = builder.create<arith::AddFOp>(loc, xSin, originalY);
-    Value newY = roundOff(builder, loc, newY1, vecTypeI, vecTypeF);
-    // round newY
+    Value newY = roundOff(builder, loc, newY1);
     
     Value yTan2 = builder.create<arith::MulFOp>(loc, newY, tanVec);
     Value newX1 = builder.create<arith::SubFOp>(loc, xIntermediate, yTan2);
-    Value newX = roundOff(builder, loc, newX1, vecTypeI, vecTypeF);
-    // round newX
+    Value newX = roundOff(builder, loc, newX1);
 
     return {newY, newX};
 }
 
 Value getCenter(OpBuilder &builder, Location loc, MLIRContext *ctx, Value dim)
 {
-    Value c1 = builder.create<ConstantIndexOp>(loc, 1);
-    Value c2 = builder.create<ConstantIndexOp>(loc, 2);
-    
-    Value temp1 = builder.create<arith::AddIOp>(loc, dim, c1);
-    Value temp2 = builder.create<arith::DivUIOp>(loc, temp1, c2);
-    Value center = builder.create<arith::SubIOp>(loc, temp2, c1);
-    // round center
+    Value dimF32 = indexToF32(builder, loc, dim);
+    Value c1f = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)1.0f, builder.getF32Type());
+    Value c2f = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)2.0f, builder.getF32Type());
 
-    return center; 
+    Value temp1 = builder.create<arith::AddFOp>(loc, dimF32, c1f);
+    Value temp2 = builder.create<arith::DivFOp>(loc, temp1, c2f);
+    Value center = builder.create<arith::SubFOp>(loc, temp2, c1f);
+    Value centerRound = roundOff(builder, loc, center);
+    Value centerRoundIndex = F32ToIndex(builder, loc, centerRound);
+
+    return centerRoundIndex; 
 }
 
 Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx, Value lowerBound, 
@@ -698,8 +697,8 @@ void fillPixels(OpBuilder &builder, Location loc, Value resXVec, Value resYVec,
 
             Value pixelVal = builder.create<memref::LoadOp>(loc, builder.getF32Type(), input, 
                                 ValueRange{xPosIndex, yPosIndex});
-            // builder.create<memref::StoreOp>(loc, pixelVal, output, 
-            //                     ValueRange{resXPosIndex, resYPosIndex});
+            builder.create<memref::StoreOp>(loc, pixelVal, output, 
+                                ValueRange{resXPosIndex, resYPosIndex});
     });
 }
 
@@ -738,8 +737,7 @@ public:
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, 6);
 
     FloatType f32 = FloatType::getF32(ctx);
-    VectorType vectorTy32F = VectorType::get({6}, f32);
-    VectorType vectorTy32I = VectorType::get({6}, rewriter.getI32Type());
+    VectorType vectorTy32 = VectorType::get({6}, f32);
 
     // Value angleVal = op->getOperand(1);
     // float angle = 90;
@@ -753,36 +751,36 @@ public:
     Value inputRow = rewriter.create<memref::DimOp>(loc, input, c0);
     Value inputCol = rewriter.create<memref::DimOp>(loc, input, c1);
 
-    Value inputRowF32Vec = castAndExpand(rewriter, loc, inputRow, vectorTy32F);
-    Value inputColF32Vec = castAndExpand(rewriter, loc, inputCol, vectorTy32F);
+    Value inputRowF32Vec = castAndExpand(rewriter, loc, inputRow, vectorTy32);
+    Value inputColF32Vec = castAndExpand(rewriter, loc, inputCol, vectorTy32);
 
     Value outputRow = rewriter.create<memref::DimOp>(loc, output, c0);
     Value outputCol = rewriter.create<memref::DimOp>(loc, output, c1);
 
     SmallVector<Value, 8> lowerBounds(2, c0);
     SmallVector<Value, 8> upperBounds{inputRow, inputCol};
-    SmallVector<intptr_t, 8> steps(2, 6);
+    SmallVector<intptr_t, 8> steps{1, 6};
 
     Value inputCenterY = getCenter(rewriter, loc, ctx, inputRow);
     Value inputCenterX = getCenter(rewriter, loc, ctx, inputCol);
 
-    Value inputCenterYF32Vec = castAndExpand(rewriter, loc, inputCenterY, vectorTy32F);
-    Value inputCenterXF32Vec = castAndExpand(rewriter, loc, inputCenterX, vectorTy32F);
+    Value inputCenterYF32Vec = castAndExpand(rewriter, loc, inputCenterY, vectorTy32);
+    Value inputCenterXF32Vec = castAndExpand(rewriter, loc, inputCenterX, vectorTy32);
 
     Value outputCenterY = getCenter(rewriter, loc, ctx, outputRow);
     Value outputCenterX = getCenter(rewriter, loc, ctx, outputCol);
 
-    Value outputCenterYF32Vec = castAndExpand(rewriter, loc, outputCenterY, vectorTy32F);
-    Value outputCenterXF32Vec = castAndExpand(rewriter, loc, outputCenterX, vectorTy32F);
+    Value outputCenterYF32Vec = castAndExpand(rewriter, loc, outputCenterY, vectorTy32);
+    Value outputCenterXF32Vec = castAndExpand(rewriter, loc, outputCenterX, vectorTy32);
 
     Value c1f32 = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)1.0f, f32);
-    Value c1f32Vec = rewriter.create<vector::SplatOp>(loc, vectorTy32F, c1f32);
+    Value c1f32Vec = rewriter.create<vector::SplatOp>(loc, vectorTy32, c1f32);
 
     Value sinVal = rewriter.create<math::SinOp>(loc, angleVal);
-    Value sinVec = rewriter.create<vector::BroadcastOp>(loc, vectorTy32F, sinVal);
+    Value sinVec = rewriter.create<vector::BroadcastOp>(loc, vectorTy32, sinVal);
 
     Value tanVal = customTanVal(rewriter, loc, angleVal);
-    Value tanVec = rewriter.create<vector::BroadcastOp>(loc, vectorTy32F, tanVal);
+    Value tanVec = rewriter.create<vector::BroadcastOp>(loc, vectorTy32, tanVal);
 
     // rewriter.create<vector::PrintOp>(loc, sinVec);
     // rewriter.create<vector::PrintOp>(loc, tanVec);
@@ -790,16 +788,18 @@ public:
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, upperBounds, steps,
         [&](OpBuilder &builder, Location loc, ValueRange ivs) {
-            Value yLowerBoundMult = builder.create<arith::DivUIOp>(loc, ivs[0], strideVal);
             Value xLowerBoundMult = builder.create<arith::DivUIOp>(loc, ivs[1], strideVal);
-
-            Value yLowerBound = builder.create<arith::MulIOp>(loc, strideVal, yLowerBoundMult);
             Value xLowerBound = builder.create<arith::MulIOp>(loc, strideVal, xLowerBoundMult);
 
-            Value yVec = 
-                iotaVec(builder, loc, ctx, yLowerBound, strideVal, vectorTy32F, f32);
-            Value xVec = 
-                iotaVec(builder, loc, ctx, xLowerBound, strideVal, vectorTy32F, f32);
+            Value ivs0F32 = indexToF32(builder, loc, ivs[0]);
+            Value yVec = builder.create<vector::SplatOp>(loc, vectorTy32, ivs0F32);
+            Value xVec = iotaVec(builder, loc, ctx, xLowerBound, strideVal, vectorTy32, f32);
+
+            // builder.create<vector::PrintOp>(loc, xLowerBound);
+            // builder.create<vector::PrintOp>(loc, ivs0F32);
+            // builder.create<vector::PrintOp>(loc, xVec);
+            // builder.create<vector::PrintOp>(loc, yVec);
+            // builder.create<vector::PrintOp>(loc, c0);
 
             Value yVecModified = pixelScaling(builder, loc, inputRowF32Vec, yVec, 
                                               inputCenterYF32Vec, c1f32Vec);
@@ -807,8 +807,7 @@ public:
                                               inputCenterXF32Vec, c1f32Vec);
 
             std::vector<Value> resIndices = 
-                shearTransform(builder, loc, xVecModified, yVecModified, sinVec, tanVec, 
-                               vectorTy32I, vectorTy32F);
+                shearTransform(builder, loc, xVecModified, yVecModified, sinVec, tanVec);
 
             Value resYVec = builder.create<arith::SubFOp>(loc, outputCenterYF32Vec, resIndices[0]);
             Value resXVec = builder.create<arith::SubFOp>(loc, outputCenterXF32Vec, resIndices[1]);
