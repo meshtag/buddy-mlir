@@ -64,7 +64,7 @@ func @rotate_2d(%inputImage : memref<?x?xf32>, %angle : index, %outputImage : me
   func @DIPCorr2D(%inputImage : memref<?x?xf32>, %kernel : memref<?x?xf32>) -> memref<?x?xf32>
   {
 
-    %outputSize = arith.constant 6 : index
+    %outputSize = arith.constant 18 : index
     %outputVal = arith.constant 0.0 : f32
     %output = call @alloc_2d_filled_f32(%outputSize, %outputSize, %outputVal) : (index, index, f32) -> memref<?x?xf32>
 
@@ -92,7 +92,7 @@ func @rotate_2d(%inputImage : memref<?x?xf32>, %angle : index, %outputImage : me
     %cI = arith.constant 2.0 : f32
     %cK = arith.constant 1.0 : f32
 
-    %inputSize = arith.constant 6 : index
+    %inputSize = arith.constant 18 : index
     %kernelSize = arith.constant 3 : index
 
     %inputImage = call @alloc_2d_filled_f32(%inputSize, %inputSize, %cI) : (index, index, f32) -> memref<?x?xf32>
