@@ -812,8 +812,8 @@ public:
             Value resYVec = builder.create<arith::SubFOp>(loc, outputCenterYF32Vec, resIndices[0]);
             Value resXVec = builder.create<arith::SubFOp>(loc, outputCenterXF32Vec, resIndices[1]);
 
-            builder.create<vector::PrintOp>(loc, resYVec);
-            builder.create<vector::PrintOp>(loc, resXVec);
+            // builder.create<vector::PrintOp>(loc, resYVec);
+            // builder.create<vector::PrintOp>(loc, resXVec);
 
             fillPixels(builder, loc, resXVec, resYVec, xVec, yVec, input, output, c0, strideVal);
     });
