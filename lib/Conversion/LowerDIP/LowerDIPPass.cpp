@@ -573,17 +573,13 @@ private:
 Value indexToF32(OpBuilder &builder, Location loc, Value val)
 {
     Value interm1 = builder.create<arith::IndexCastOp>(loc, builder.getI32Type(), val);
-    Value res = builder.create<arith::SIToFPOp>(loc, builder.getF32Type(), interm1);
-
-    return res;
+    return builder.create<arith::SIToFPOp>(loc, builder.getF32Type(), interm1);
 }
 
 Value F32ToIndex(OpBuilder &builder, Location loc, Value val)
 {
     Value interm1 = builder.create<arith::FPToUIOp>(loc, builder.getI32Type(), val);
-    Value res = builder.create<arith::IndexCastOp>(loc, builder.getIndexType(), interm1);
-
-    return res;
+    return builder.create<arith::IndexCastOp>(loc, builder.getIndexType(), interm1);
 }
 
 Value roundOff(OpBuilder &builder, Location loc, Value val)
@@ -596,9 +592,8 @@ Value roundOff(OpBuilder &builder, Location loc, Value val)
 
     Value diffCond = builder.create<arith::CmpFOp>(loc, CmpFPredicate::OGT, 
                                                    diffCeil, diffFloor);
-    Value resVal = builder.create<arith::SelectOp>(loc, diffCond, floorVal, ceilVal);
 
-    return resVal;
+    return builder.create<arith::SelectOp>(loc, diffCond, floorVal, ceilVal);
 }
 
 std::vector<Value> shearTransform(OpBuilder &builder, Location loc, Value originalX, Value originalY, 
@@ -629,9 +624,8 @@ Value getCenter(OpBuilder &builder, Location loc, MLIRContext *ctx, Value dim)
     Value temp2 = builder.create<arith::DivFOp>(loc, temp1, c2f);
     Value center = builder.create<arith::SubFOp>(loc, temp2, c1f);
     Value centerRound = roundOff(builder, loc, center);
-    Value centerRoundIndex = F32ToIndex(builder, loc, centerRound);
 
-    return centerRoundIndex; 
+    return F32ToIndex(builder, loc, centerRound);
 }
 
 Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx, Value lowerBound, 
@@ -696,23 +690,18 @@ Value pixelScaling(OpBuilder &builder, Location loc, Value imageDImF32Vec, Value
 {
     Value interm1 = builder.create<arith::SubFOp>(loc, imageDImF32Vec, coordVec);
     Value interm2 = builder.create<arith::SubFOp>(loc, interm1, imageCenterF32Vec);
-    Value res = builder.create<arith::SubFOp>(loc, interm2, c1f32Vec);
 
-    return res;
+    return builder.create<arith::SubFOp>(loc, interm2, c1f32Vec);
 }
 
 void fillPixels(OpBuilder &builder, Location loc, Value resXVec, Value resYVec, 
                 Value xVec, Value yVec, Value input, Value output, Value c0, Value strideVal)
 {
-    SmallVector<Value, 8> lowerBounds{c0};
-    SmallVector<Value, 8> upperBounds{strideVal};
-    SmallVector<intptr_t, 8> steps{1};
     // check vector usage for loading and storing
-    // check usage of simple 'affine for' loop
 
-    buildAffineLoopNest(
-        builder, loc, lowerBounds, upperBounds, steps,
-        [&](OpBuilder &builder, Location loc, ValueRange ivs) {
+    builder.create<AffineForOp>(loc, ValueRange{c0}, builder.getDimIdentityMap(),
+        ValueRange{strideVal}, builder.getDimIdentityMap(), /*step*/ 1, llvm::None, 
+        [&](OpBuilder &builder, Location loc, ValueRange ivs, ValueRange iterArg) {
             Value resXPos = builder.create<vector::ExtractElementOp>(loc, resXVec, ivs[0]);
             Value resYPos = builder.create<vector::ExtractElementOp>(loc, resYVec, ivs[0]);
 
@@ -729,15 +718,15 @@ void fillPixels(OpBuilder &builder, Location loc, Value resXVec, Value resYVec,
                                 ValueRange{xPosIndex, yPosIndex});
             builder.create<memref::StoreOp>(loc, pixelVal, output, 
                                 ValueRange{resXPosIndex, resYPosIndex});
+
+            builder.create<AffineYieldOp>(loc);
     });
 }
 
 Value castAndExpand(OpBuilder &builder, Location loc, Value val, VectorType vecType)
 {
     Value interm1 = indexToF32(builder, loc, val);
-    Value interm2 = builder.create<vector::SplatOp>(loc, vecType, interm1);
-
-    return interm2;
+    return builder.create<vector::SplatOp>(loc, vecType, interm1);
 }
 
 Value customTanVal(OpBuilder &builder, Location loc, Value angleVal)
@@ -754,6 +743,11 @@ Value customTanVal(OpBuilder &builder, Location loc, Value angleVal)
 class DIPRotate2DOpLowering : public OpRewritePattern<dip::Rotate2DOp> {
 public:
   using OpRewritePattern<dip::Rotate2DOp>::OpRewritePattern;
+
+  explicit DIPRotate2DOpLowering(MLIRContext *context, int64_t strideParam)
+      : OpRewritePattern(context) {
+    stride = strideParam;
+  }
 
   LogicalResult matchAndRewrite(dip::Rotate2DOp op,
                                 PatternRewriter &rewriter) const override {
@@ -808,9 +802,6 @@ public:
     Value tanVal = customTanVal(rewriter, loc, angleVal);
     Value tanVec = rewriter.create<vector::BroadcastOp>(loc, vectorTy32, tanVal);
 
-    // rewriter.create<vector::PrintOp>(loc, sinVec);
-    // rewriter.create<vector::PrintOp>(loc, tanVec);
-
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, upperBounds, steps,
         [&](OpBuilder &builder, Location loc, ValueRange ivs) {
@@ -820,12 +811,6 @@ public:
             Value ivs0F32 = indexToF32(builder, loc, ivs[0]);
             Value yVec = builder.create<vector::SplatOp>(loc, vectorTy32, ivs0F32);
             Value xVec = iotaVec(builder, loc, ctx, xLowerBound, strideVal, vectorTy32, f32);
-
-            // builder.create<vector::PrintOp>(loc, xLowerBound);
-            // builder.create<vector::PrintOp>(loc, ivs0F32);
-            // builder.create<vector::PrintOp>(loc, xVec);
-            // builder.create<vector::PrintOp>(loc, yVec);
-            // builder.create<vector::PrintOp>(loc, c0);
 
             Value yVecModified = pixelScaling(builder, loc, inputRowF32Vec, yVec, 
                                               inputCenterYF32Vec, c1f32Vec);
@@ -838,9 +823,6 @@ public:
             Value resYVec = builder.create<arith::SubFOp>(loc, outputCenterYF32Vec, resIndices[0]);
             Value resXVec = builder.create<arith::SubFOp>(loc, outputCenterXF32Vec, resIndices[1]);
 
-            // builder.create<vector::PrintOp>(loc, resYVec);
-            // builder.create<vector::PrintOp>(loc, resXVec);
-
             fillPixels(builder, loc, resXVec, resYVec, xVec, yVec, input, output, c0, strideVal);
     });
 
@@ -848,13 +830,15 @@ public:
     rewriter.eraseOp(op);
     return success();
   }
+
+  int64_t stride;
 };
 } // end anonymous namespace
 
 void populateLowerDIPConversionPatterns(RewritePatternSet &patterns,
                                         int64_t stride) {
   patterns.add<DIPCorr2DLowering>(patterns.getContext(), stride);
-  patterns.add<DIPRotate2DOpLowering>(patterns.getContext());
+  patterns.add<DIPRotate2DOpLowering>(patterns.getContext(), stride);
 }
 
 //===----------------------------------------------------------------------===//
@@ -907,8 +891,3 @@ namespace buddy {
 void registerLowerDIPPass() { PassRegistration<LowerDIPPass>(); }
 } // namespace buddy
 } // namespace mlir
-
-
-// ./buddy-opt ../../examples/DIPDialect/TestCorr2D.mlir -lower-dip -lower-affine -convert-scf-to-std -convert-vector-to-llvm -convert-memref-to-llvm -convert-std-to-llvm -reconcile-unrealized-casts | ../../llvm/build/bin/mlir-cpu-runner -e main -entry-point-result=void -shared-libs=../../llvm/build/lib/libmlir_c_runner_utils.so -shared-libs=../../llvm/build/lib/libmlir_runner_utils.so
-
-// ./buddy-opt ../../examples/DIPDialect/corr2d.mlir -lower-dip="DIP-strip-mining=6" -lower-affine -convert-scf-to-cf --convert-math-to-llvm -convert-vector-to-llvm -convert-memref-to-llvm -convert-func-to-llvm='emit-c-wrappers=1' -reconcile-unrealized-casts | ../../llvm/build/bin/mlir-cpu-runner -e main -entry-point-result=void -shared-libs=../../llvm/build/lib/libmlir_c_runner_utils.so -shared-libs=../../llvm/build/lib/libmlir_runner_utils.so
