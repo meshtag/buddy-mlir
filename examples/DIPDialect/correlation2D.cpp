@@ -149,8 +149,8 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
     return 0;
   }
 
-  int output1Rows = image.cols;
-  int output1Cols = image.rows;
+  int output1Rows = image.rows + 1;
+  int output1Cols = image.cols + 1;
   float *output1Align = (float *)malloc(output1Rows * output1Cols * sizeof(float));
 
   for (int i = 0; i < image.cols; i++)
@@ -172,7 +172,7 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   vector<int> compression_params1;
   compression_params1.push_back(IMWRITE_PNG_COMPRESSION);
   compression_params1.push_back(9);
-  imwrite("checkCheck270.png", outputImageCheck);
+  imwrite("checkCheck.png", outputImageCheck);
 
   free(input);
   free(kernel);
