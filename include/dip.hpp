@@ -23,6 +23,8 @@
 
 #include <cmath>
 
+#include <iostream>
+
 // Define Memref Descriptor.
 typedef struct MemRef_descriptor_ *MemRef_descriptor;
 typedef struct MemRef_descriptor_ {
@@ -69,25 +71,36 @@ void _mlir_ciface_rotate_2d(
 } // namespace detail
 
 enum class BOUNDARY_OPTION { CONSTANT_PADDING, REPLICATE_PADDING };
+enum class ANGLE_TYPE { DEGREE, RADIAN};
 
 void Corr2D(MemRef_descriptor input, MemRef_descriptor kernel,
             MemRef_descriptor output, unsigned int centerX,
             unsigned int centerY, BOUNDARY_OPTION option,
             float constantValue = 0) {
   if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
-    // detail::_mlir_ciface_corr_2d_constant_padding(
-    //     input, kernel, output, centerX, centerY, constantValue);
+    detail::_mlir_ciface_corr_2d_constant_padding(
+        input, kernel, output, centerX, centerY, constantValue);
   } else if (option == BOUNDARY_OPTION::REPLICATE_PADDING) {
-    // detail::_mlir_ciface_corr_2d_replicate_padding(input, kernel, output,
-    //                                                centerX, centerY, 0);
+    detail::_mlir_ciface_corr_2d_replicate_padding(input, kernel, output,
+                                                   centerX, centerY, 0);
   }
 }
 
-MemRef_descriptor Rotate2D(MemRef_descriptor input, float angleDeg)
+MemRef_descriptor Rotate2D(MemRef_descriptor input, float angle, ANGLE_TYPE angleType)
 {
-  float angleRad = 180.0f * angleDeg / M_PI;
+  float angleRad;
+
+  if (angleType == ANGLE_TYPE::DEGREE)
+    angleRad = M_PI * angle / 180;
+  else 
+    angleRad = angle;
+
   float sinAngle = std::sin(angleRad);
   float cosAngle = std::cos(angleRad);
+
+  std::cout << angleRad << "\n";
+  std::cout << sinAngle << "\n";
+  std::cout << cosAngle << "\n";
 
   int outputRows = 
     std::round(std::abs(input->sizes[0] * cosAngle) + std::abs(input->sizes[1] * sinAngle)) + 1;
@@ -105,7 +118,7 @@ MemRef_descriptor Rotate2D(MemRef_descriptor input, float angleDeg)
   MemRef_descriptor output =
       MemRef_Descriptor(allocated, outputAlign, 0, sizesOutput, stridesOutput);
 
-  // detail::_mlir_ciface_rotate_2d(input, angleRad, output);
+  detail::_mlir_ciface_rotate_2d(input, angleRad, output);
   
   return output;
 }
