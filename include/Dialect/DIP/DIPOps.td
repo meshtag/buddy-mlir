@@ -81,7 +81,7 @@ def DIP_Rotate2DOp : DIP_Op<"rotate_2d">
 
   let arguments = (ins Arg<AnyRankedOrUnrankedMemRef, "inputMemref",
                            [MemRead]>:$memrefI,
-                       Index : $angle,
+                       F32 : $angle,
                        Arg<AnyRankedOrUnrankedMemRef, "outputMemref",
                            [MemRead]>:$memrefO);
 

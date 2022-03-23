@@ -771,7 +771,7 @@ public:
 
     // Value angleVal = op->getOperand(1);
     // float angle = 90;
-    Value angleVal = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)3.14f, f32);
+    Value angleVal = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)1.57f, f32);
     // Value angleVal = rewriter.create<ConstantIndexOp>(loc, 90);
 
     // Create constant indices.

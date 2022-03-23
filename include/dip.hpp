@@ -21,6 +21,8 @@
 #ifndef INCLUDE_DIP
 #define INCLUDE_DIP
 
+#include <cmath>
+
 // Define Memref Descriptor.
 typedef struct MemRef_descriptor_ *MemRef_descriptor;
 typedef struct MemRef_descriptor_ {
@@ -60,6 +62,9 @@ void _mlir_ciface_corr_2d_constant_padding(
 void _mlir_ciface_corr_2d_replicate_padding(
     MemRef_descriptor input, MemRef_descriptor kernel, MemRef_descriptor output,
     unsigned int centerX, unsigned int centerY, float constantValue);
+
+void _mlir_ciface_rotate_2d(
+  MemRef_descriptor input, float angleValue, MemRef_descriptor output);
 }
 } // namespace detail
 
@@ -70,12 +75,39 @@ void Corr2D(MemRef_descriptor input, MemRef_descriptor kernel,
             unsigned int centerY, BOUNDARY_OPTION option,
             float constantValue = 0) {
   if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
-    detail::_mlir_ciface_corr_2d_constant_padding(
-        input, kernel, output, centerX, centerY, constantValue);
+    // detail::_mlir_ciface_corr_2d_constant_padding(
+    //     input, kernel, output, centerX, centerY, constantValue);
   } else if (option == BOUNDARY_OPTION::REPLICATE_PADDING) {
-    detail::_mlir_ciface_corr_2d_replicate_padding(input, kernel, output,
-                                                   centerX, centerY, 0);
+    // detail::_mlir_ciface_corr_2d_replicate_padding(input, kernel, output,
+    //                                                centerX, centerY, 0);
   }
+}
+
+MemRef_descriptor Rotate2D(MemRef_descriptor input, float angleDeg)
+{
+  float angleRad = 180.0f * angleDeg / M_PI;
+  float sinAngle = std::sin(angleRad);
+  float cosAngle = std::cos(angleRad);
+
+  int outputRows = 
+    std::round(std::abs(input->sizes[0] * cosAngle) + std::abs(input->sizes[1] * sinAngle)) + 1;
+  int outputCols = 
+    std::round(std::abs(input->sizes[1] * cosAngle) + std::abs(input->sizes[0] * sinAngle)) + 1;
+  float *outputAlign = (float *)malloc(outputRows * outputCols * sizeof(float));
+
+  for (int i = 0; i < outputRows; ++i)
+    for (int j = 0; j < outputCols; ++j)
+      outputAlign[i * outputRows + j] = 0;
+
+  float *allocated = (float *)malloc(1 * sizeof(float));
+  intptr_t sizesOutput[2] = {outputRows, outputCols};
+  intptr_t stridesOutput[2] = {outputRows, outputCols};
+  MemRef_descriptor output =
+      MemRef_Descriptor(allocated, outputAlign, 0, sizesOutput, stridesOutput);
+
+  // detail::_mlir_ciface_rotate_2d(input, angleRad, output);
+  
+  return output;
 }
 } // namespace dip
 
