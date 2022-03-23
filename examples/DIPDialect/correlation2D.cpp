@@ -13,46 +13,12 @@
 
 #include "../ConvOpt/kernels.h"
 
+#include <dip.hpp>
 #include <iostream>
 #include <time.h>
 
 using namespace cv;
 using namespace std;
-
-// Define Memref Descriptor.
-typedef struct MemRef_descriptor_ *MemRef_descriptor;
-typedef struct MemRef_descriptor_ {
-  float *allocated;
-  float *aligned;
-  intptr_t offset;
-  intptr_t sizes[2];
-  intptr_t strides[2];
-} Memref;
-
-// Constructor
-MemRef_descriptor MemRef_Descriptor(float *allocated, float *aligned,
-                                    intptr_t offset, intptr_t sizes[2],
-                                    intptr_t strides[2]) {
-  MemRef_descriptor n = (MemRef_descriptor)malloc(sizeof(*n));
-  n->allocated = allocated;
-  n->aligned = aligned;
-  n->offset = offset;
-  for (int i = 0; i < 2; i++)
-    n->sizes[i] = sizes[i];
-  for (int j = 0; j < 2; j++)
-    n->strides[j] = strides[j];
-
-  return n;
-}
-
-// Declare the Corr2D C interface.
-extern "C" {
-void _mlir_ciface_corr_2d(MemRef_descriptor input, MemRef_descriptor kernel,
-                          MemRef_descriptor output, unsigned int centerX,
-                          unsigned int centerY, int boundaryOption);
-
-void _mlir_ciface_rotate_2d(MemRef_descriptor input, int angle, MemRef_descriptor output);
-}
 
 bool testImages(cv::Mat img1, cv::Mat img2) {
   if (img1.rows != img2.rows || img1.cols != img2.cols) {
@@ -128,7 +94,8 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   Mat kernel1 = Mat(3, 3, CV_32FC1, laplacianKernelAlign);
 
   // Call the MLIR Corr2D function.
-  _mlir_ciface_corr_2d(input, kernel, output, x, y, 0);
+  dip::Corr2D(input, kernel, output, x, y,
+              dip::BOUNDARY_OPTION::REPLICATE_PADDING);
 
   // Define a cv::Mat with the output of the conv2d.
   Mat outputImage(outputRows, outputCols, CV_32FC1, output->aligned);
@@ -148,31 +115,6 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
     std::cout << "x, y = " << x << ", " << y << "\n";
     return 0;
   }
-
-  int output1Rows = image.rows + 1;
-  int output1Cols = image.cols + 1;
-  float *output1Align = (float *)malloc(output1Rows * output1Cols * sizeof(float));
-
-  for (int i = 0; i < image.cols; i++)
-    for (int j = 0; j < image.rows; j++)
-      output1Align[i * image.rows + j] = 0;
-
-  intptr_t sizesOutput1[2] = {output1Rows, output1Cols};
-  intptr_t stridesOutput1[2] = {output1Rows, output1Cols};
-
-  MemRef_descriptor output1 =
-    MemRef_Descriptor(allocated, output1Align, 0, sizesOutput1, stridesOutput1);
-
-  _mlir_ciface_rotate_2d(input, 90, output1);
-
-   // Define a cv::Mat with the output of the conv2d.
-  Mat outputImageCheck(output1Cols, output1Rows, CV_32FC1, output1->aligned);
-
-  // Choose a PNG compression level
-  vector<int> compression_params1;
-  compression_params1.push_back(IMWRITE_PNG_COMPRESSION);
-  compression_params1.push_back(9);
-  imwrite("checkCheck.png", outputImageCheck);
 
   free(input);
   free(kernel);
