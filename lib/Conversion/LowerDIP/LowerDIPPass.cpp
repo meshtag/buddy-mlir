@@ -659,6 +659,24 @@ Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx, Value lowerBou
     // builder.create<vector::PrintOp>(loc, tempVec);
     // builder.create<vector::PrintOp>(loc, lowerBound);
 
+    // Value checkVec = builder.create<vector::SplatOp>(loc, vecType, c0f32);
+
+    // builder.create<AffineForOp>(loc, ValueRange{c0}, builder.getDimIdentityMap(), 
+    //     ValueRange{strideVal}, builder.getDimIdentityMap(), 1, ValueRange{checkVec}, 
+    //     [&](OpBuilder &builder, Location loc, Value iv, ValueRange iterArg){
+    //         Value ivF32 = indexToF32(builder, loc, iv);
+    //         Value t1 = builder.create<vector::InsertElementOp>(loc, ivF32, iterArg[0], iv);
+
+    //         builder.create<vector::PrintOp>(loc, checkVec);
+    //         builder.create<vector::PrintOp>(loc, t1);
+    //         builder.create<vector::PrintOp>(loc, iterArg[0]);
+    //         // checkVec = t1;
+
+    //         builder.create<AffineYieldOp>(loc, t1);
+    //     });
+
+    // builder.create<vector::PrintOp>(loc, checkVec);
+
     return tempVec;
 }
 
@@ -679,6 +697,7 @@ void fillPixels(OpBuilder &builder, Location loc, Value resXVec, Value resYVec,
     SmallVector<Value, 8> upperBounds{strideVal};
     SmallVector<intptr_t, 8> steps{1};
     // check vector usage for loading and storing
+    // check usage of simple 'affine for' loop
 
     buildAffineLoopNest(
         builder, loc, lowerBounds, upperBounds, steps,
@@ -741,7 +760,7 @@ public:
 
     // Value angleVal = op->getOperand(1);
     // float angle = 90;
-    Value angleVal = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)1.57f, f32);
+    Value angleVal = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)4.71f, f32);
     // Value angleVal = rewriter.create<ConstantIndexOp>(loc, 90);
 
     // Create constant indices.
