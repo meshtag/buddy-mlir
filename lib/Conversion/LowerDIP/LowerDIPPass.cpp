@@ -614,6 +614,21 @@ std::vector<Value> shearTransform(OpBuilder &builder, Location loc, Value origin
     return {newY, newX};
 }
 
+std::vector<Value> standardRotate(OpBuilder &builder, Location loc, Value originalX, Value originalY, 
+                                  Value sinVec, Value cosVec)
+{
+    Value ySin = builder.create<arith::MulFOp>(loc, originalY, sinVec);
+    Value yCos = builder.create<arith::MulFOp>(loc, originalY, cosVec);
+
+    Value xSin = builder.create<arith::MulFOp>(loc, originalX, sinVec);
+    Value xCos = builder.create<arith::MulFOp>(loc, originalX, cosVec);
+
+    Value newY1 = builder.create<arith::SubFOp>(loc, yCos, xSin);
+    Value newX1 = builder.create<arith::AddFOp>(loc, ySin, xCos);
+
+    return {roundOff(builder, loc, newY1), roundOff(builder, loc, newX1)};
+}
+
 Value getCenter(OpBuilder &builder, Location loc, MLIRContext *ctx, Value dim)
 {
     Value dimF32 = indexToF32(builder, loc, dim);
@@ -799,8 +814,16 @@ public:
     Value sinVal = rewriter.create<math::SinOp>(loc, angleVal);
     Value sinVec = rewriter.create<vector::BroadcastOp>(loc, vectorTy32, sinVal);
 
+    Value cosVal = rewriter.create<math::CosOp>(loc, angleVal);
+    Value cosVec = rewriter.create<vector::BroadcastOp>(loc, vectorTy32, cosVal);
+
     Value tanVal = customTanVal(rewriter, loc, angleVal);
     Value tanVec = rewriter.create<vector::BroadcastOp>(loc, vectorTy32, tanVal);
+
+    Value tanBound = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)8.10f, f32);
+    Value tanValAbs = rewriter.create<math::AbsOp>(loc, tanVal);
+    Value transformCond = 
+        rewriter.create<arith::CmpFOp>(loc, CmpFPredicate::OGT, tanBound, tanValAbs);
 
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, upperBounds, steps,
@@ -817,13 +840,30 @@ public:
             Value xVecModified = pixelScaling(builder, loc, inputColF32Vec, xVec, 
                                               inputCenterXF32Vec, c1f32Vec);
 
-            std::vector<Value> resIndices = 
-                shearTransform(builder, loc, xVecModified, yVecModified, sinVec, tanVec);
+            builder.create<scf::IfOp>(loc, transformCond, 
+                [&](OpBuilder &builder, Location loc){
+                    std::vector<Value> resIndices = 
+                        shearTransform(builder, loc, xVecModified, yVecModified, sinVec, tanVec);
+                    Value resYVec = builder.create<arith::SubFOp>(loc, outputCenterYF32Vec, 
+                                    resIndices[0]);
+                    Value resXVec = builder.create<arith::SubFOp>(loc, outputCenterXF32Vec, 
+                                    resIndices[1]);
 
-            Value resYVec = builder.create<arith::SubFOp>(loc, outputCenterYF32Vec, resIndices[0]);
-            Value resXVec = builder.create<arith::SubFOp>(loc, outputCenterXF32Vec, resIndices[1]);
+                    fillPixels(builder, loc, resXVec, resYVec, xVec, yVec, input, output, c0, 
+                               strideVal);
+                    builder.create<scf::YieldOp>(loc);
+                }, [&](OpBuilder &builder, Location loc){
+                    std::vector<Value> resIndices = 
+                        standardRotate(builder, loc, xVecModified, yVecModified, sinVec, cosVec);
+                    Value resYVec = builder.create<arith::SubFOp>(loc, outputCenterYF32Vec, 
+                                    resIndices[0]);
+                    Value resXVec = builder.create<arith::SubFOp>(loc, outputCenterXF32Vec, 
+                                    resIndices[1]);
 
-            fillPixels(builder, loc, resXVec, resYVec, xVec, yVec, input, output, c0, strideVal);
+                    fillPixels(builder, loc, resXVec, resYVec, xVec, yVec, input, output, c0, 
+                               strideVal);
+                    builder.create<scf::YieldOp>(loc);
+                });
     });
 
     // Remove the origin rotation operation.
