@@ -701,12 +701,12 @@ Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx, Value lowerBou
 }
 
 Value pixelScaling(OpBuilder &builder, Location loc, Value imageDImF32Vec, Value coordVec,
-                   Value imageCenterF32Vec, Value c1f32Vec)
+                   Value imageCenterF32Vec, Value c1F32Vec)
 {
     Value interm1 = builder.create<arith::SubFOp>(loc, imageDImF32Vec, coordVec);
     Value interm2 = builder.create<arith::SubFOp>(loc, interm1, imageCenterF32Vec);
 
-    return builder.create<arith::SubFOp>(loc, interm2, c1f32Vec);
+    return builder.create<arith::SubFOp>(loc, interm2, c1F32Vec);
 }
 
 void fillPixels(OpBuilder &builder, Location loc, Value resXVec, Value resYVec, 
@@ -808,8 +808,8 @@ public:
     Value outputCenterYF32Vec = castAndExpand(rewriter, loc, outputCenterY, vectorTy32);
     Value outputCenterXF32Vec = castAndExpand(rewriter, loc, outputCenterX, vectorTy32);
 
-    Value c1f32 = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)1.0f, f32);
-    Value c1f32Vec = rewriter.create<vector::SplatOp>(loc, vectorTy32, c1f32);
+    Value c1F32 = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)1.0f, f32);
+    Value c1F32Vec = rewriter.create<vector::SplatOp>(loc, vectorTy32, c1F32);
 
     Value sinVal = rewriter.create<math::SinOp>(loc, angleVal);
     Value sinVec = rewriter.create<vector::BroadcastOp>(loc, vectorTy32, sinVal);
@@ -836,9 +836,9 @@ public:
             Value xVec = iotaVec(builder, loc, ctx, xLowerBound, strideVal, vectorTy32, f32);
 
             Value yVecModified = pixelScaling(builder, loc, inputRowF32Vec, yVec, 
-                                              inputCenterYF32Vec, c1f32Vec);
+                                              inputCenterYF32Vec, c1F32Vec);
             Value xVecModified = pixelScaling(builder, loc, inputColF32Vec, xVec, 
-                                              inputCenterXF32Vec, c1f32Vec);
+                                              inputCenterXF32Vec, c1F32Vec);
 
             builder.create<scf::IfOp>(loc, transformCond, 
                 [&](OpBuilder &builder, Location loc){
