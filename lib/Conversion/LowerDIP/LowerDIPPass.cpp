@@ -570,18 +570,21 @@ private:
   int64_t stride;
 };
 
+// Cast a value from index type to f32 type
 Value indexToF32(OpBuilder &builder, Location loc, Value val)
 {
     Value interm1 = builder.create<arith::IndexCastOp>(loc, builder.getI32Type(), val);
     return builder.create<arith::SIToFPOp>(loc, builder.getF32Type(), interm1);
 }
 
+// Cast a value from f32 type to index type
 Value F32ToIndex(OpBuilder &builder, Location loc, Value val)
 {
     Value interm1 = builder.create<arith::FPToUIOp>(loc, builder.getI32Type(), val);
     return builder.create<arith::IndexCastOp>(loc, builder.getIndexType(), interm1);
 }
 
+// Round off floating point value to nearest integer type value
 Value roundOff(OpBuilder &builder, Location loc, Value val)
 {
     Value ceilVal = builder.create<math::CeilOp>(loc, val);
@@ -596,6 +599,7 @@ Value roundOff(OpBuilder &builder, Location loc, Value val)
     return builder.create<arith::SelectOp>(loc, diffCond, floorVal, ceilVal);
 }
 
+// Apply 3 shear method and return mapped values
 std::vector<Value> shearTransform(OpBuilder &builder, Location loc, Value originalX, Value originalY, 
                                   Value sinVec, Value tanVec)
 {
@@ -614,6 +618,7 @@ std::vector<Value> shearTransform(OpBuilder &builder, Location loc, Value origin
     return {newY, newX};
 }
 
+// Apply standard rotation matrix transformation and return mapped values
 std::vector<Value> standardRotate(OpBuilder &builder, Location loc, Value originalX, Value originalY, 
                                   Value sinVec, Value cosVec)
 {
@@ -629,6 +634,7 @@ std::vector<Value> standardRotate(OpBuilder &builder, Location loc, Value origin
     return {roundOff(builder, loc, newY1), roundOff(builder, loc, newX1)};
 }
 
+// Get center co-ordinates w.r.t given dimension
 Value getCenter(OpBuilder &builder, Location loc, MLIRContext *ctx, Value dim)
 {
     Value dimF32 = indexToF32(builder, loc, dim);
@@ -643,6 +649,7 @@ Value getCenter(OpBuilder &builder, Location loc, MLIRContext *ctx, Value dim)
     return F32ToIndex(builder, loc, centerRound);
 }
 
+// Similar to std::iota
 Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx, Value lowerBound, 
               Value strideVal, VectorType vecType, FloatType f32)
 {
@@ -700,6 +707,7 @@ Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx, Value lowerBou
     return tempVec;
 }
 
+// Scale pixel co-ordinates appropriately before calculating their rotated position(s)
 Value pixelScaling(OpBuilder &builder, Location loc, Value imageDImF32Vec, Value coordVec,
                    Value imageCenterF32Vec, Value c1F32Vec)
 {
@@ -709,6 +717,7 @@ Value pixelScaling(OpBuilder &builder, Location loc, Value imageDImF32Vec, Value
     return builder.create<arith::SubFOp>(loc, interm2, c1F32Vec);
 }
 
+// Fill appropriate pixel data in its corresponding rotated co-ordinate of output image
 void fillPixels(OpBuilder &builder, Location loc, Value resXVec, Value resYVec, 
                 Value xVec, Value yVec, Value input, Value output, Value c0, Value strideVal)
 {
@@ -738,12 +747,14 @@ void fillPixels(OpBuilder &builder, Location loc, Value resXVec, Value resYVec,
     });
 }
 
+// Cast index type value to f32 type and then expand it in a vector
 Value castAndExpand(OpBuilder &builder, Location loc, Value val, VectorType vecType)
 {
     Value interm1 = indexToF32(builder, loc, val);
     return builder.create<vector::SplatOp>(loc, vecType, interm1);
 }
 
+// Calculate tan(angle / 2) where angle is a function parameter
 Value customTanVal(OpBuilder &builder, Location loc, Value angleVal)
 {
     Value c2F32 = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)2.0f, builder.getF32Type());
@@ -783,12 +794,14 @@ public:
     Value c0 = rewriter.create<ConstantIndexOp>(loc, 0);
     Value c1 = rewriter.create<ConstantIndexOp>(loc, 1);
 
+    // Get input image dimensions
     Value inputRow = rewriter.create<memref::DimOp>(loc, input, c0);
     Value inputCol = rewriter.create<memref::DimOp>(loc, input, c1);
 
     Value inputRowF32Vec = castAndExpand(rewriter, loc, inputRow, vectorTy32);
     Value inputColF32Vec = castAndExpand(rewriter, loc, inputCol, vectorTy32);
 
+    // Get output image dimensions
     Value outputRow = rewriter.create<memref::DimOp>(loc, output, c0);
     Value outputCol = rewriter.create<memref::DimOp>(loc, output, c1);
 
@@ -796,12 +809,14 @@ public:
     SmallVector<Value, 8> upperBounds{inputRow, inputCol};
     SmallVector<intptr_t, 8> steps{1, 6};
 
+    // Get input image center
     Value inputCenterY = getCenter(rewriter, loc, ctx, inputRow);
     Value inputCenterX = getCenter(rewriter, loc, ctx, inputCol);
 
     Value inputCenterYF32Vec = castAndExpand(rewriter, loc, inputCenterY, vectorTy32);
     Value inputCenterXF32Vec = castAndExpand(rewriter, loc, inputCenterX, vectorTy32);
 
+    // Get output image center
     Value outputCenterY = getCenter(rewriter, loc, ctx, outputRow);
     Value outputCenterX = getCenter(rewriter, loc, ctx, outputCol);
 
@@ -811,15 +826,19 @@ public:
     Value c1F32 = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)1.0f, f32);
     Value c1F32Vec = rewriter.create<vector::SplatOp>(loc, vectorTy32, c1F32);
 
+    // Get sin(angle) which will be used in further calculations
     Value sinVal = rewriter.create<math::SinOp>(loc, angleVal);
     Value sinVec = rewriter.create<vector::BroadcastOp>(loc, vectorTy32, sinVal);
 
+    // Get cos(angle) which might be used in further calculations
     Value cosVal = rewriter.create<math::CosOp>(loc, angleVal);
     Value cosVec = rewriter.create<vector::BroadcastOp>(loc, vectorTy32, cosVal);
 
+    // Get tan(angle / 2) which might be used in further calculations
     Value tanVal = customTanVal(rewriter, loc, angleVal);
     Value tanVec = rewriter.create<vector::BroadcastOp>(loc, vectorTy32, tanVal);
 
+    // Determine the condition for chosing ideal rotation strategy
     Value tanBound = rewriter.create<ConstantFloatOp>(loc, (llvm::APFloat)8.10f, f32);
     Value tanValAbs = rewriter.create<math::AbsOp>(loc, tanVal);
     Value transformCond = 
