@@ -98,10 +98,6 @@ MemRef_descriptor Rotate2D(MemRef_descriptor input, float angle, ANGLE_TYPE angl
   float sinAngle = std::sin(angleRad);
   float cosAngle = std::cos(angleRad);
 
-  std::cout << angleRad << "\n";
-  std::cout << sinAngle << "\n";
-  std::cout << cosAngle << "\n";
-
   int outputRows = 
     std::round(std::abs(input->sizes[0] * cosAngle) + std::abs(input->sizes[1] * sinAngle)) + 1;
   int outputCols = 
