@@ -719,7 +719,8 @@ Value pixelScaling(OpBuilder &builder, Location loc, Value imageDImF32Vec, Value
 
 // Fill appropriate pixel data in its corresponding rotated co-ordinate of output image
 void fillPixels(OpBuilder &builder, Location loc, Value resXVec, Value resYVec, 
-                Value xVec, Value yVec, Value input, Value output, Value c0, Value strideVal)
+                Value xVec, Value yVec, Value input, Value output, Value c0, Value strideVal, 
+                Value outputRowLastElemF32, Value outputColLastElemF32)
 {
     // check vector usage for loading and storing
 
@@ -729,8 +730,14 @@ void fillPixels(OpBuilder &builder, Location loc, Value resXVec, Value resYVec,
             Value resXPos = builder.create<vector::ExtractElementOp>(loc, resXVec, ivs[0]);
             Value resYPos = builder.create<vector::ExtractElementOp>(loc, resYVec, ivs[0]);
 
-            Value resXPosIndex = F32ToIndex(builder, loc, resXPos);
-            Value resYPosIndex = F32ToIndex(builder, loc, resYPos);
+            // builder.create<vector::PrintOp>(loc, resXPos);
+            // builder.create<vector::PrintOp>(loc, outputColLastElem);
+
+            Value resXPosBound = builder.create<arith::MinFOp>(loc, resXPos, outputColLastElemF32);
+            Value resYPosBound = builder.create<arith::MinFOp>(loc, resYPos, outputRowLastElemF32);
+
+            Value resXPosIndex = F32ToIndex(builder, loc, resXPosBound);
+            Value resYPosIndex = F32ToIndex(builder, loc, resYPosBound);
 
             Value xPos = builder.create<vector::ExtractElementOp>(loc, xVec, ivs[0]);
             Value yPos = builder.create<vector::ExtractElementOp>(loc, yVec, ivs[0]);
@@ -742,6 +749,8 @@ void fillPixels(OpBuilder &builder, Location loc, Value resXVec, Value resYVec,
                                 ValueRange{xPosIndex, yPosIndex});
             builder.create<memref::StoreOp>(loc, pixelVal, output, 
                                 ValueRange{resXPosIndex, resYPosIndex});
+            // builder.create<memref::StoreOp>(loc, pixelVal, output,
+            //                         ValueRange{xPosIndex, yPosIndex});
 
             builder.create<AffineYieldOp>(loc);
     });
@@ -804,6 +813,16 @@ public:
     // Get output image dimensions
     Value outputRow = rewriter.create<memref::DimOp>(loc, output, c0);
     Value outputCol = rewriter.create<memref::DimOp>(loc, output, c1);
+
+    Value cp = rewriter.create<ConstantIndexOp>(loc, 20);
+
+    Value outputRowLastElem = rewriter.create<arith::SubIOp>(loc, outputRow, c1);
+    // Value outputRowLastElem = rewriter.create<ConstantIndexOp>(loc, 50);
+    Value outputRowLastElemF32 = indexToF32(rewriter, loc, outputRowLastElem);
+
+    Value outputColLastElem = rewriter.create<arith::SubIOp>(loc, outputCol, c1);
+    // Value outputColLastElem = rewriter.create<ConstantIndexOp>(loc, 50);
+    Value outputColLastElemF32 = indexToF32(rewriter, loc, outputColLastElem);
 
     SmallVector<Value, 8> lowerBounds(2, c0);
     SmallVector<Value, 8> upperBounds{inputRow, inputCol};
@@ -869,7 +888,7 @@ public:
                                     resIndices[1]);
 
                     fillPixels(builder, loc, resXVec, resYVec, xVec, yVec, input, output, c0, 
-                               strideVal);
+                               strideVal, outputRowLastElemF32, outputColLastElemF32);
                     builder.create<scf::YieldOp>(loc);
                 }, [&](OpBuilder &builder, Location loc){
                     std::vector<Value> resIndices = 
@@ -880,7 +899,7 @@ public:
                                     resIndices[1]);
 
                     fillPixels(builder, loc, resXVec, resYVec, xVec, yVec, input, output, c0, 
-                               strideVal);
+                               strideVal, outputRowLastElemF32, outputColLastElemF32);
                     builder.create<scf::YieldOp>(loc);
                 });
     });

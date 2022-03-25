@@ -97,7 +97,7 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   dip::Corr2D(input, kernel, output, x, y,
               dip::BOUNDARY_OPTION::REPLICATE_PADDING);
 
-  MemRef_descriptor outputRotate = dip::Rotate2D(input, 100, dip::ANGLE_TYPE::DEGREE);
+  MemRef_descriptor outputRotate = dip::Rotate2D(input, 180, dip::ANGLE_TYPE::DEGREE);
 
   // Define a cv::Mat with the output of the conv2d.
   // Mat outputImage(outputRows, outputCols, CV_32FC1, output->aligned);
