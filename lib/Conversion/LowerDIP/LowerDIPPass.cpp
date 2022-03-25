@@ -667,15 +667,15 @@ Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx, Value lowerBou
             Value ivF32 = indexToF32(builder, loc, iv);
             Value t1 = builder.create<vector::InsertElementOp>(loc, ivF32, iterArg[0], iv);
 
-            builder.create<vector::PrintOp>(loc, checkVec);
-            builder.create<vector::PrintOp>(loc, t1);
-            builder.create<vector::PrintOp>(loc, iterArg[0]);
+            // builder.create<vector::PrintOp>(loc, checkVec);
+            // builder.create<vector::PrintOp>(loc, t1);
+            // builder.create<vector::PrintOp>(loc, iterArg[0]);
             // checkVec = t1;
 
             builder.create<AffineYieldOp>(loc, t1);
         });
 
-    builder.create<vector::PrintOp>(loc, checkVec);
+    // builder.create<vector::PrintOp>(loc, checkVec);
 
     return tempVec;
 }
@@ -691,7 +691,8 @@ Value pixelScaling(OpBuilder &builder, Location loc, Value imageDImF32Vec, Value
 }
 
 void fillPixels(OpBuilder &builder, Location loc, Value resXVec, Value resYVec, 
-                Value xVec, Value yVec, Value input, Value output, Value c0, Value strideVal)
+                Value xVec, Value yVec, Value input, Value output, Value c0, Value strideVal, 
+                Value outputRowLastElemF32, Value outputColLastElemF32)
 {
     SmallVector<Value, 8> lowerBounds{c0};
     SmallVector<Value, 8> upperBounds{strideVal};
@@ -705,8 +706,16 @@ void fillPixels(OpBuilder &builder, Location loc, Value resXVec, Value resYVec,
             Value resXPos = builder.create<vector::ExtractElementOp>(loc, resXVec, ivs[0]);
             Value resYPos = builder.create<vector::ExtractElementOp>(loc, resYVec, ivs[0]);
 
-            Value resXPosIndex = F32ToIndex(builder, loc, resXPos);
-            Value resYPosIndex = F32ToIndex(builder, loc, resYPos);
+            Value resXPosBound = builder.create<arith::MinFOp>(loc, resXPos, outputColLastElemF32);
+            Value resYPosBound = builder.create<arith::MinFOp>(loc, resYPos, outputRowLastElemF32);
+
+            builder.create<vector::PrintOp>(loc, resXPos);
+            builder.create<vector::PrintOp>(loc, resXPosBound);
+            builder.create<vector::PrintOp>(loc, resYPos);
+            builder.create<vector::PrintOp>(loc, resYPosBound);
+
+            Value resXPosIndex = F32ToIndex(builder, loc, resXPosBound);
+            Value resYPosIndex = F32ToIndex(builder, loc, resYPosBound);
 
             Value xPos = builder.create<vector::ExtractElementOp>(loc, xVec, ivs[0]);
             Value yPos = builder.create<vector::ExtractElementOp>(loc, yVec, ivs[0]);
@@ -789,6 +798,14 @@ public:
     Value outputCenterY = getCenter(rewriter, loc, ctx, outputRow);
     Value outputCenterX = getCenter(rewriter, loc, ctx, outputCol);
 
+    // Value outputRowLastElem = rewriter.create<arith::SubIOp>(loc, outputRow, c1);
+    Value outputRowLastElem = rewriter.create<ConstantIndexOp>(loc, 5);
+    Value outputRowLastElemF32 = indexToF32(rewriter, loc, outputRowLastElem);
+
+    // Value outputColLastElem = rewriter.create<arith::SubIOp>(loc, outputCol, c1);
+    Value outputColLastElem = rewriter.create<ConstantIndexOp>(loc, 5);
+    Value outputColLastElemF32 = indexToF32(rewriter, loc, outputColLastElem);
+
     Value outputCenterYF32Vec = castAndExpand(rewriter, loc, outputCenterY, vectorTy32);
     Value outputCenterXF32Vec = castAndExpand(rewriter, loc, outputCenterX, vectorTy32);
 
@@ -834,7 +851,8 @@ public:
             // builder.create<vector::PrintOp>(loc, resYVec);
             // builder.create<vector::PrintOp>(loc, resXVec);
 
-            fillPixels(builder, loc, resXVec, resYVec, xVec, yVec, input, output, c0, strideVal);
+            fillPixels(builder, loc, resXVec, resYVec, xVec, yVec, input, output, c0, strideVal, 
+                       outputRowLastElemF32, outputColLastElemF32);
     });
 
     // Remove the origin rotation operation.
