@@ -659,23 +659,23 @@ Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx, Value lowerBou
     // builder.create<vector::PrintOp>(loc, tempVec);
     // builder.create<vector::PrintOp>(loc, lowerBound);
 
-    // Value checkVec = builder.create<vector::SplatOp>(loc, vecType, c0f32);
+    Value checkVec = builder.create<vector::SplatOp>(loc, vecType, c0f32);
 
-    // builder.create<AffineForOp>(loc, ValueRange{c0}, builder.getDimIdentityMap(), 
-    //     ValueRange{strideVal}, builder.getDimIdentityMap(), 1, ValueRange{checkVec}, 
-    //     [&](OpBuilder &builder, Location loc, Value iv, ValueRange iterArg){
-    //         Value ivF32 = indexToF32(builder, loc, iv);
-    //         Value t1 = builder.create<vector::InsertElementOp>(loc, ivF32, iterArg[0], iv);
+    builder.create<AffineForOp>(loc, ValueRange{c0}, builder.getDimIdentityMap(), 
+        ValueRange{strideVal}, builder.getDimIdentityMap(), 1, ValueRange{checkVec}, 
+        [&](OpBuilder &builder, Location loc, Value iv, ValueRange iterArg){
+            Value ivF32 = indexToF32(builder, loc, iv);
+            Value t1 = builder.create<vector::InsertElementOp>(loc, ivF32, iterArg[0], iv);
 
-    //         builder.create<vector::PrintOp>(loc, checkVec);
-    //         builder.create<vector::PrintOp>(loc, t1);
-    //         builder.create<vector::PrintOp>(loc, iterArg[0]);
-    //         // checkVec = t1;
+            builder.create<vector::PrintOp>(loc, checkVec);
+            builder.create<vector::PrintOp>(loc, t1);
+            builder.create<vector::PrintOp>(loc, iterArg[0]);
+            // checkVec = t1;
 
-    //         builder.create<AffineYieldOp>(loc, t1);
-    //     });
+            builder.create<AffineYieldOp>(loc, t1);
+        });
 
-    // builder.create<vector::PrintOp>(loc, checkVec);
+    builder.create<vector::PrintOp>(loc, checkVec);
 
     return tempVec;
 }
