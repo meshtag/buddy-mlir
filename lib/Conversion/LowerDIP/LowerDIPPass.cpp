@@ -660,6 +660,8 @@ Value getCenter(OpBuilder &builder, Location loc, MLIRContext *ctx, Value dim)
 Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx, Value lowerBound, 
               Value strideVal, VectorType vecType, Value c0, int64_t stride)
 {
+    // ToDo : Try to get rid of memref load/store, find less expensive ways of implementing
+    //        this function.
     MemRefType memTy = MemRefType::get({stride}, builder.getF32Type());
     Value tempMem = builder.create<memref::AllocOp>(loc, memTy);
 
