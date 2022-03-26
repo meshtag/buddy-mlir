@@ -673,8 +673,7 @@ Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx, Value lowerBou
             builder.create<AffineYieldOp>(loc);
         });
 
-    Value tempVec1 = builder.create<vector::LoadOp>(loc, vecType, tempMem, ValueRange{c0});
-    return tempVec1;
+    return builder.create<vector::LoadOp>(loc, vecType, tempMem, ValueRange{c0});
 }
 
 // Scale pixel co-ordinates appropriately before calculating their rotated position(s)
@@ -834,9 +833,7 @@ public:
     Value angleVal = op->getOperand(1);
     Value output = op->getOperand(2);
 
-    int64_t stride = 6;
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
-
     FloatType f32 = FloatType::getF32(ctx);
     VectorType vectorTy32 = VectorType::get({stride}, f32);
 
@@ -852,8 +849,7 @@ public:
     Value inputRow = rewriter.create<memref::DimOp>(loc, input, c0);
     Value inputCol = rewriter.create<memref::DimOp>(loc, input, c1);
 
-    // Add comments throughout explaining each section of code.
-
+    // Create f32 type vectors from input dimensions
     Value inputRowF32Vec = castAndExpand(rewriter, loc, inputRow, vectorTy32);
     Value inputColF32Vec = castAndExpand(rewriter, loc, inputCol, vectorTy32);
 
@@ -861,18 +857,23 @@ public:
     Value outputRow = rewriter.create<memref::DimOp>(loc, output, c0);
     Value outputCol = rewriter.create<memref::DimOp>(loc, output, c1);
 
+    // Obtain extreme allocatable value(s) in output for bounding purpose
     Value outputRowLastElem = rewriter.create<arith::SubIOp>(loc, outputRow, c1);
     Value outputRowLastElemF32 = indexToF32(rewriter, loc, outputRowLastElem);
 
     Value outputColLastElem = rewriter.create<arith::SubIOp>(loc, outputCol, c1);
     Value outputColLastElemF32 = indexToF32(rewriter, loc, outputColLastElem);
 
+    // Determine lower bound for second call of rotation function (this is done for efficient
+    // tail processing)
     Value inputColStrideRatio = rewriter.create<arith::DivUIOp>(loc, inputCol, strideVal);
     Value inputColMultiple = rewriter.create<arith::MulIOp>(loc, strideVal, inputColStrideRatio);
 
+    // Bounds for first call to rotation function (doesn't involve tail processing)
     SmallVector<Value, 8> lowerBounds1(2, c0);
     SmallVector<Value, 8> upperBounds1{inputRow, inputColMultiple};
 
+    // Bounds for second call to rotation function (involves tail processing)
     SmallVector<Value, 8> lowerBounds2{c0, inputColMultiple};
     SmallVector<Value, 8> upperBounds2{inputRow, inputCol};
     
@@ -897,7 +898,7 @@ public:
     Value sinVal = rewriter.create<math::SinOp>(loc, angleVal);
     Value sinVec = rewriter.create<vector::BroadcastOp>(loc, vectorTy32, sinVal);
 
-    // Get tan(angle / 2) which might be used in further calculations
+    // Get tan(angle / 2) which will be used in further calculations
     Value tanVal = customTanVal(rewriter, loc, angleVal);
     Value tanVec = rewriter.create<vector::BroadcastOp>(loc, vectorTy32, tanVal);
 
@@ -907,6 +908,7 @@ public:
     Value transformCond = 
         rewriter.create<arith::CmpFOp>(loc, CmpFPredicate::OGT, tanBound, tanValAbs);
 
+    // For both rotation strategies, tail processing is handled in second call.
     rewriter.create<scf::IfOp>(loc, transformCond, 
         [&](OpBuilder &builder, Location loc){
             shearTransformController(builder, loc, ctx, lowerBounds1, upperBounds1, steps, 
