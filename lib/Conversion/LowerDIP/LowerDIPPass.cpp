@@ -658,60 +658,23 @@ Value getCenter(OpBuilder &builder, Location loc, MLIRContext *ctx, Value dim)
 
 // Equivalent of std::iota
 Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx, Value lowerBound, 
-              Value strideVal, VectorType vecType, FloatType f32)
+              Value strideVal, VectorType vecType, Value c0, int64_t stride)
 {
-    Value c0 = builder.create<ConstantIndexOp>(loc, 0);
-    Value c0f32 = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)(float)0, f32);
-    Value tempVec = builder.create<vector::SplatOp>(loc, vecType, c0f32);
+    MemRefType memTy = MemRefType::get({stride}, builder.getF32Type());
+    Value tempMem = builder.create<memref::AllocOp>(loc, memTy);
 
-    Value c1 = builder.create<ConstantIndexOp>(loc, 1);
-    Value c2 = builder.create<ConstantIndexOp>(loc, 2);
-    Value c3 = builder.create<ConstantIndexOp>(loc, 3);
-    Value c4 = builder.create<ConstantIndexOp>(loc, 4);
-    Value c5 = builder.create<ConstantIndexOp>(loc, 5);
+    builder.create<AffineForOp>(loc, ValueRange{c0}, builder.getDimIdentityMap(), 
+        ValueRange{strideVal}, builder.getDimIdentityMap(), 1, llvm::None, 
+        [&](OpBuilder &builder, Location loc, Value iv, ValueRange iterArg){
+            Value iotaValIndex = builder.create<arith::AddIOp>(loc, iv, lowerBound);
+            Value iotaVal = indexToF32(builder, loc, iotaValIndex);
 
-    Value p11 = builder.create<arith::AddIOp>(loc, lowerBound, c1);
-    Value p22 = builder.create<arith::AddIOp>(loc, lowerBound, c2);
-    Value p33 = builder.create<arith::AddIOp>(loc, lowerBound, c3);
-    Value p44 = builder.create<arith::AddIOp>(loc, lowerBound, c4);
-    Value p55 = builder.create<arith::AddIOp>(loc, lowerBound, c5);
+            builder.create<memref::StoreOp>(loc, iotaVal, tempMem, ValueRange{iv});
+            builder.create<AffineYieldOp>(loc);
+        });
 
-    Value p0 = indexToF32(builder, loc, lowerBound);
-    Value p1 = indexToF32(builder, loc, p11);
-    Value p2 = indexToF32(builder, loc, p22);
-    Value p3 = indexToF32(builder, loc, p33);
-    Value p4 = indexToF32(builder, loc, p44);
-    Value p5 = indexToF32(builder, loc, p55);
-    
-    tempVec = builder.create<vector::InsertElementOp>(loc, p0, tempVec, c0);
-    tempVec = builder.create<vector::InsertElementOp>(loc, p1, tempVec, c1);
-    tempVec = builder.create<vector::InsertElementOp>(loc, p2, tempVec, c2);
-    tempVec = builder.create<vector::InsertElementOp>(loc, p3, tempVec, c3);
-    tempVec = builder.create<vector::InsertElementOp>(loc, p4, tempVec, c4);
-    tempVec = builder.create<vector::InsertElementOp>(loc, p5, tempVec, c5);
-
-    // builder.create<vector::PrintOp>(loc, tempVec);
-    // builder.create<vector::PrintOp>(loc, lowerBound);
-
-    // Value checkVec = builder.create<vector::SplatOp>(loc, vecType, c0f32);
-
-    // builder.create<AffineForOp>(loc, ValueRange{c0}, builder.getDimIdentityMap(), 
-    //     ValueRange{strideVal}, builder.getDimIdentityMap(), 1, ValueRange{checkVec}, 
-    //     [&](OpBuilder &builder, Location loc, Value iv, ValueRange iterArg){
-    //         Value ivF32 = indexToF32(builder, loc, iv);
-    //         Value t1 = builder.create<vector::InsertElementOp>(loc, ivF32, iterArg[0], iv);
-
-    //         builder.create<vector::PrintOp>(loc, checkVec);
-    //         builder.create<vector::PrintOp>(loc, t1);
-    //         builder.create<vector::PrintOp>(loc, iterArg[0]);
-    //         // checkVec = t1;
-
-    //         builder.create<AffineYieldOp>(loc, t1);
-    //     });
-
-    // builder.create<vector::PrintOp>(loc, checkVec);
-
-    return tempVec;
+    Value tempVec1 = builder.create<vector::LoadOp>(loc, vecType, tempMem, ValueRange{c0});
+    return tempVec1;
 }
 
 // Scale pixel co-ordinates appropriately before calculating their rotated position(s)
@@ -783,7 +746,7 @@ void shearTransformController(
     Value inputColF32Vec, Value inputCenterYF32Vec, Value inputCenterXF32Vec, 
     Value outputCenterYF32Vec, Value outputCenterXF32Vec, Value outputRowLastElemF32, 
     Value outputColLastElemF32, Value c0, Value c0F32, Value c1F32Vec, VectorType vectorTy32, 
-    FloatType f32)
+    int64_t stride, FloatType f32)
 {
     buildAffineLoopNest(
         builder, loc, lowerBounds, upperBounds, steps, 
@@ -793,7 +756,7 @@ void shearTransformController(
 
             Value ivs0F32 = indexToF32(builder, loc, ivs[0]);
             Value yVec = builder.create<vector::SplatOp>(loc, vectorTy32, ivs0F32);
-            Value xVec = iotaVec(builder, loc, ctx, xLowerBound, strideVal, vectorTy32, f32);
+            Value xVec = iotaVec(builder, loc, ctx, xLowerBound, strideVal, vectorTy32, c0, stride);
 
             Value yVecModified = pixelScaling(builder, loc, inputRowF32Vec, yVec, 
                                               inputCenterYF32Vec, c1F32Vec);
@@ -819,8 +782,8 @@ void standardRotateController(
     Value input, Value output, Value sinVec, Value angleVal, Value inputRowF32Vec, 
     Value inputColF32Vec, Value inputCenterYF32Vec, Value inputCenterXF32Vec, 
     Value outputCenterYF32Vec, Value outputCenterXF32Vec, Value outputRowLastElemF32, 
-    Value outputColLastElemF32, Value c0, Value c0F32, Value c1F32Vec, VectorType vectorTy32, 
-    FloatType f32)
+    Value outputColLastElemF32, Value c0, Value c0F32, Value c1F32Vec, VectorType vectorTy32,
+    int64_t stride, FloatType f32)
 {
     Value cosVal = builder.create<math::CosOp>(loc, angleVal);
     Value cosVec = builder.create<vector::BroadcastOp>(loc, vectorTy32, cosVal);
@@ -833,7 +796,7 @@ void standardRotateController(
 
             Value ivs0F32 = indexToF32(builder, loc, ivs[0]);
             Value yVec = builder.create<vector::SplatOp>(loc, vectorTy32, ivs0F32);
-            Value xVec = iotaVec(builder, loc, ctx, xLowerBound, strideVal, vectorTy32, f32);
+            Value xVec = iotaVec(builder, loc, ctx, xLowerBound, strideVal, vectorTy32, c0, stride);
 
             Value yVecModified = pixelScaling(builder, loc, inputRowF32Vec, yVec, 
                                               inputCenterYF32Vec, c1F32Vec);
@@ -888,6 +851,8 @@ public:
     // Get input image dimensions
     Value inputRow = rewriter.create<memref::DimOp>(loc, input, c0);
     Value inputCol = rewriter.create<memref::DimOp>(loc, input, c1);
+
+    // Add comments throughout explaining each section of code.
 
     Value inputRowF32Vec = castAndExpand(rewriter, loc, inputRow, vectorTy32);
     Value inputColF32Vec = castAndExpand(rewriter, loc, inputCol, vectorTy32);
@@ -947,24 +912,28 @@ public:
             shearTransformController(builder, loc, ctx, lowerBounds1, upperBounds1, steps, 
                 strideVal, input, output, sinVec, tanVec, inputRowF32Vec, inputColF32Vec, 
                 inputCenterYF32Vec, inputCenterXF32Vec, outputCenterYF32Vec, outputCenterXF32Vec, 
-                outputRowLastElemF32, outputColLastElemF32, c0, c0F32, c1F32Vec, vectorTy32, f32);
+                outputRowLastElemF32, outputColLastElemF32, c0, c0F32, c1F32Vec, vectorTy32, 
+                stride, f32);
 
             shearTransformController(builder, loc, ctx, lowerBounds2, upperBounds2, steps, 
                 strideTailVal, input, output, sinVec, tanVec, inputRowF32Vec, inputColF32Vec, 
                 inputCenterYF32Vec, inputCenterXF32Vec, outputCenterYF32Vec, outputCenterXF32Vec, 
-                outputRowLastElemF32, outputColLastElemF32, c0, c0F32, c1F32Vec, vectorTy32, f32);
+                outputRowLastElemF32, outputColLastElemF32, c0, c0F32, c1F32Vec, vectorTy32, 
+                stride, f32);
         
             builder.create<scf::YieldOp>(loc);
         }, [&](OpBuilder &builder, Location loc){
             standardRotateController(builder, loc, ctx, lowerBounds1, upperBounds1, steps, 
                 strideVal, input, output, sinVec, angleVal, inputRowF32Vec, inputColF32Vec, 
                 inputCenterYF32Vec, inputCenterXF32Vec, outputCenterYF32Vec, outputCenterXF32Vec, 
-                outputRowLastElemF32, outputColLastElemF32, c0, c0F32, c1F32Vec, vectorTy32, f32);
+                outputRowLastElemF32, outputColLastElemF32, c0, c0F32, c1F32Vec, vectorTy32, 
+                stride, f32);
 
             standardRotateController(builder, loc, ctx, lowerBounds2, upperBounds2, steps, 
                 strideTailVal, input, output, sinVec, angleVal, inputRowF32Vec, inputColF32Vec, 
                 inputCenterYF32Vec, inputCenterXF32Vec, outputCenterYF32Vec, outputCenterXF32Vec, 
-                outputRowLastElemF32, outputColLastElemF32, c0, c0F32, c1F32Vec, vectorTy32, f32);
+                outputRowLastElemF32, outputColLastElemF32, c0, c0F32, c1F32Vec, vectorTy32, 
+                stride, f32);
 
             builder.create<scf::YieldOp>(loc);
         });
