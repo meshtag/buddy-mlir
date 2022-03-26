@@ -729,8 +729,6 @@ void fillPixels(OpBuilder &builder, Location loc, Value resXVec, Value resYVec,
                 Value xVec, Value yVec, Value input, Value output, Value c0, Value strideVal, 
                 Value outputRowLastElemF32, Value outputColLastElemF32, Value c0F32)
 {
-    // check vector usage for loading and storing
-
     builder.create<AffineForOp>(loc, ValueRange{c0}, builder.getDimIdentityMap(),
         ValueRange{strideVal}, builder.getDimIdentityMap(), /*step*/ 1, llvm::None, 
         [&](OpBuilder &builder, Location loc, ValueRange ivs, ValueRange iterArg) {
@@ -777,6 +775,7 @@ Value customTanVal(OpBuilder &builder, Location loc, Value angleVal)
     return builder.create<arith::DivFOp>(loc, sinVal, cosVal);
 }
 
+// Controls shear transform application
 void shearTransformController(
     OpBuilder &builder, Location loc, MLIRContext *ctx, SmallVector<Value, 8> lowerBounds, 
     SmallVector<Value, 8> upperBounds, SmallVector<int64_t, 8> steps, Value strideVal, 
@@ -813,6 +812,7 @@ void shearTransformController(
         });
 }
 
+// Controls standard rotation matrix application
 void standardRotateController(
     OpBuilder &builder, Location loc, MLIRContext *ctx, SmallVector<Value, 8> lowerBounds, 
     SmallVector<Value, 8> upperBounds, SmallVector<int64_t, 8> steps, Value strideVal, 
