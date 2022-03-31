@@ -53,6 +53,60 @@ void Corr2D(MemRef_descriptor input, MemRef_descriptor kernel,
                                                    centerX, centerY, 0);
   }
 }
-} // namespace dip
 
+MemRef_descriptor matToMemRef(cv::Mat container, bool b1 = 0)
+{
+  std::size_t containerSize = container.rows * container.cols;
+  float *containerAlign = (float *)malloc(containerSize * sizeof(float));
+
+  for (int i = 0; i < container.rows; i++) {
+    for (int j = 0; j < container.cols; j++) {
+      if (!b1)
+        containerAlign[container.rows * i + j] = (float)container.at<float>(i, j);
+      else 
+        containerAlign[container.rows * i + j] = (float)container.at<uchar>(i, j);
+    }
+  }
+
+  float *allocated = (float *)malloc(1 * sizeof(float));
+  intptr_t sizesContainer[2] = {container.rows, container.cols};
+  intptr_t stridesContainer[2] = {container.rows, container.cols};
+
+  MemRef_descriptor containerMemRef =
+      MemRef_Descriptor(allocated, containerAlign, 0, sizesContainer, stridesContainer);
+
+  return containerMemRef;
+}
+
+void Corr2D_nchannels(cv::Mat &inputImage, cv::Mat &kernel, cv::Mat &outputImage, 
+                         unsigned int centerX, unsigned int centerY, BOUNDARY_OPTION option, 
+                         float constantValue = 0)
+{
+  std::vector<cv::Mat> inputChannels, outputChannels;
+  std::vector<MemRef_descriptor> inputChannelMemRefs, outputChannelMemRefs;
+
+  cv::split(inputImage, inputChannels);
+  cv::split(outputImage, outputChannels);
+  MemRef_descriptor kernelMemRef = matToMemRef(kernel);
+  
+  for (auto cI : inputChannels)
+    inputChannelMemRefs.push_back(matToMemRef(cI, 1));
+
+  for (auto cO : outputChannels)
+    outputChannelMemRefs.push_back(matToMemRef(cO, 1));
+
+  for (int i1 = 0; i1 < inputImage.channels(); ++i1)
+  {
+    dip::Corr2D(inputChannelMemRefs[i1], kernelMemRef, outputChannelMemRefs[i1], 
+                centerX, centerY, option, constantValue);
+  }
+
+  outputChannels.clear();
+  for (int i = 0; i < inputImage.channels(); ++i)
+    outputChannels.push_back(cv::Mat(inputImage.rows, inputImage.cols, CV_32FC1, 
+                      outputChannelMemRefs[i]->aligned));
+  
+  cv::merge(outputChannels, outputImage);
+}
+} // namespace dip
 #endif

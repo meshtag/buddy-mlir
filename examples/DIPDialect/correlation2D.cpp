@@ -93,6 +93,11 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
       MemRef_Descriptor(allocated, outputAlign, 0, sizesOutput, stridesOutput);
 
   Mat kernel1 = Mat(3, 3, CV_32FC1, laplacianKernelAlign);
+  Mat imageCheck = imread("../../examples/ConvOpt/images/YuTu.png", IMREAD_COLOR);
+  Mat outputImage = Mat::zeros(imageCheck.rows, imageCheck.cols, CV_8UC3);
+
+  dip::Corr2D_nchannels(imageCheck, kernel1, outputImage, x, y, 
+                                    dip::BOUNDARY_OPTION::REPLICATE_PADDING);
 
   // Call the MLIR Corr2D function.
   dip::Corr2D(input, kernel, output, x, y,
@@ -125,6 +130,7 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   Mat outputImageConstantPadding(outputRows, outputCols, CV_32FC1,
                                  output->aligned);
   imwrite(argv[3], outputImageConstantPadding);
+  imwrite("CheckCheck3.png", outputImage);
 
   Mat o2 = imread(argv[3], IMREAD_GRAYSCALE);
   filter2D(image, opencvConstantPadding, CV_8UC1, kernel1, cv::Point(x, y), 0.0,
