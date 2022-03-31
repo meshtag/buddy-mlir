@@ -54,17 +54,17 @@ void Corr2D(MemRef_descriptor input, MemRef_descriptor kernel,
   }
 }
 
-MemRef_descriptor matToMemRef(cv::Mat container, bool b1 = 0)
+MemRef_descriptor matToMemRef(cv::Mat container, bool is32FC1 = 1)
 {
   std::size_t containerSize = container.rows * container.cols;
   float *containerAlign = (float *)malloc(containerSize * sizeof(float));
 
   for (int i = 0; i < container.rows; i++) {
     for (int j = 0; j < container.cols; j++) {
-      if (!b1)
-        containerAlign[container.rows * i + j] = (float)container.at<float>(i, j);
-      else 
-        containerAlign[container.rows * i + j] = (float)container.at<uchar>(i, j);
+        if (is32FC1)
+          containerAlign[container.rows * i + j] = (float)container.at<float>(i, j);
+        else 
+          containerAlign[container.rows * i + j] = (float)container.at<uchar>(i, j);
     }
   }
 
@@ -78,9 +78,9 @@ MemRef_descriptor matToMemRef(cv::Mat container, bool b1 = 0)
   return containerMemRef;
 }
 
-void Corr2D_nchannels(cv::Mat &inputImage, cv::Mat &kernel, cv::Mat &outputImage, 
-                         unsigned int centerX, unsigned int centerY, BOUNDARY_OPTION option, 
-                         float constantValue = 0)
+void Corr2DNChannels(cv::Mat &inputImage, cv::Mat &kernel, cv::Mat &outputImage, 
+                     unsigned int centerX, unsigned int centerY, BOUNDARY_OPTION option, 
+                     float constantValue = 0)
 {
   std::vector<cv::Mat> inputChannels, outputChannels;
   std::vector<MemRef_descriptor> inputChannelMemRefs, outputChannelMemRefs;
@@ -90,10 +90,10 @@ void Corr2D_nchannels(cv::Mat &inputImage, cv::Mat &kernel, cv::Mat &outputImage
   MemRef_descriptor kernelMemRef = matToMemRef(kernel);
   
   for (auto cI : inputChannels)
-    inputChannelMemRefs.push_back(matToMemRef(cI, 1));
+    inputChannelMemRefs.push_back(matToMemRef(cI, 0));
 
   for (auto cO : outputChannels)
-    outputChannelMemRefs.push_back(matToMemRef(cO, 1));
+    outputChannelMemRefs.push_back(matToMemRef(cO));
 
   for (int i1 = 0; i1 < inputImage.channels(); ++i1)
   {
@@ -105,7 +105,7 @@ void Corr2D_nchannels(cv::Mat &inputImage, cv::Mat &kernel, cv::Mat &outputImage
   for (int i = 0; i < inputImage.channels(); ++i)
     outputChannels.push_back(cv::Mat(inputImage.rows, inputImage.cols, CV_32FC1, 
                       outputChannelMemRefs[i]->aligned));
-  
+
   cv::merge(outputChannels, outputImage);
 }
 } // namespace dip
