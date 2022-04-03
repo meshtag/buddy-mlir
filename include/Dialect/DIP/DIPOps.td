@@ -75,4 +75,18 @@ def DIP_Corr2DOp : DIP_Op<"corr_2d">
   }];
 }
 
+def DIP_Rotate2DOp : DIP_Op<"rotate_2d"> {
+  let summary = [{abc defg hijk lmno}];
+
+  let arguments = (ins Arg<AnyRankedOrUnrankedMemRef, "inputMemref",
+                           [MemRead]>:$memrefI,
+                       F32 : $angle,
+                       Arg<AnyRankedOrUnrankedMemRef, "outputMemref",
+                           [MemRead]>:$memrefO);
+
+  let assemblyFormat = [{
+    $memrefI `,` $angle `,` $memrefO attr-dict `:` type($memrefI) `,` type($angle) `,` type($memrefO)
+  }];
+}
+
 #endif // DIP_DIPOPS_TD
