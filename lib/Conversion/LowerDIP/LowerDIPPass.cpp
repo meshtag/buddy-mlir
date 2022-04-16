@@ -176,6 +176,10 @@ public:
     Value pseudoCol = rewriter.create<AffineApplyOp>(
         loc, calcHelper, ValueRange{inputCol, kernelSize, c1});
 
+    // Check if stride is greater than inputCol
+    Value strideBoundCond =
+        rewriter.create<CmpIOp>(loc, CmpIPredicate::sle, strideVal, inputCol);
+
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, uperBounds, steps,
         [&](OpBuilder &builder, Location loc, ValueRange ivs) {
@@ -214,6 +218,8 @@ public:
                 } else {
                   Value colLeftCond = builder.create<CmpIOp>(
                       loc, CmpIPredicate::slt, currCol, centerX);
+                  colLeftCond = builder.create<arith::AndIOp>(
+                      loc, strideBoundCond, colLeftCond);
 
                   builder.create<scf::IfOp>(
                       loc, colLeftCond,
@@ -250,6 +256,8 @@ public:
                         // (colMid or colRight) & rowUp
                         Value colMidCond = builder.create<CmpIOp>(
                             loc, CmpIPredicate::sle, colLastElem, colMidHelper);
+                        colMidCond = builder.create<arith::AndIOp>(
+                            loc, strideBoundCond, colMidCond);
 
                         builder.create<scf::IfOp>(
                             loc, colMidCond,
@@ -269,36 +277,54 @@ public:
                               builder.create<scf::YieldOp>(loc);
                             },
                             [&](OpBuilder &builder, Location loc) {
-                              // colRight & rowUp
-                              Value inputVec;
-                              Value rightMaskHelper = builder.create<SubIOp>(
-                                  loc, colLastElem, colMidHelper);
-                              Value rightMaskElem = builder.create<SubIOp>(
-                                  loc, strideVal, rightMaskHelper);
-                              Value rightMask = builder.create<CreateMaskOp>(
-                                  loc, vectorMaskTy, rightMaskElem);
+                              builder.create<scf::IfOp>(
+                                  loc, strideBoundCond,
+                                  [&](OpBuilder &builder, Location loc) {
+                                    // colRight & rowUp
+                                    Value inputVec;
+                                    Value rightMaskHelper =
+                                        builder.create<SubIOp>(loc, colLastElem,
+                                                               colMidHelper);
+                                    Value rightMaskElem =
+                                        builder.create<SubIOp>(loc, strideVal,
+                                                               rightMaskHelper);
+                                    Value rightMask =
+                                        builder.create<CreateMaskOp>(
+                                            loc, vectorMaskTy, rightMaskElem);
 
-                              if (boundaryOptionAttr ==
-                                  dip::BoundaryOption::ReplicatePadding) {
-                                Value rightRange =
-                                    builder.create<SubIOp>(loc, inputCol, c1);
-                                Value paddingVal =
-                                    builder.create<memref::LoadOp>(
-                                        loc, input, ValueRange{c0, rightRange});
-                                Value padding = builder.create<BroadcastOp>(
-                                    loc, vectorTy32, paddingVal);
+                                    if (boundaryOptionAttr ==
+                                        dip::BoundaryOption::ReplicatePadding) {
+                                      Value rightRange = builder.create<SubIOp>(
+                                          loc, inputCol, c1);
+                                      Value paddingVal =
+                                          builder.create<memref::LoadOp>(
+                                              loc, input,
+                                              ValueRange{c0, rightRange});
+                                      Value padding =
+                                          builder.create<BroadcastOp>(
+                                              loc, vectorTy32, paddingVal);
 
-                                inputVec = builder.create<MaskedLoadOp>(
-                                    loc, vectorTy32, input,
-                                    ValueRange{c0, imCol}, rightMask, padding);
-                              }
-                              Value tailCond = tailChecker(
-                                  builder, loc, calcHelper, strideVal,
-                                  kernelSize, c1, pseudoCol, ivs[2]);
-                              calcAndStoreFMAwTailProcessing(
-                                  builder, loc, vectorTy32, inputVec, kernelVec,
-                                  output, ivs[0], ivs[2], tailCond, zeroPadding,
-                                  inputCol, vectorMaskTy);
+                                      inputVec = builder.create<MaskedLoadOp>(
+                                          loc, vectorTy32, input,
+                                          ValueRange{c0, imCol}, rightMask,
+                                          padding);
+                                    }
+                                    Value tailCond = tailChecker(
+                                        builder, loc, calcHelper, strideVal,
+                                        kernelSize, c1, pseudoCol, ivs[2]);
+                                    calcAndStoreFMAwTailProcessing(
+                                        builder, loc, vectorTy32, inputVec,
+                                        kernelVec, output, ivs[0], ivs[2],
+                                        tailCond, zeroPadding, inputCol,
+                                        vectorMaskTy);
+
+                                    builder.create<scf::YieldOp>(loc);
+                                  },
+                                  [&](OpBuilder &builder, Location loc) {
+                                    // stride > inputCol
+
+                                    builder.create<scf::YieldOp>(loc);
+                                  });
 
                               builder.create<scf::YieldOp>(loc);
                             });
@@ -318,6 +344,8 @@ public:
                       // rowMid
                       Value colLeftCond = builder.create<CmpIOp>(
                           loc, CmpIPredicate::slt, currCol, centerX);
+                      colLeftCond = builder.create<arith::AndIOp>(
+                          loc, strideBoundCond, colLeftCond);
 
                       builder.create<scf::IfOp>(
                           loc, colLeftCond,
@@ -366,6 +394,8 @@ public:
                             Value colMidCond = builder.create<CmpIOp>(
                                 loc, CmpIPredicate::sle, colLastElem,
                                 colMidHelper);
+                            colMidCond = builder.create<arith::AndIOp>(
+                                loc, strideBoundCond, colMidCond);
 
                             builder.create<scf::IfOp>(
                                 loc, colMidCond,
@@ -382,50 +412,72 @@ public:
                                 },
                                 [&](OpBuilder &builder, Location loc) {
                                   // colRight & rowMid
-                                  Value inputVec;
-                                  Value rightMaskHelper =
-                                      builder.create<SubIOp>(loc, colLastElem,
-                                                             colMidHelper);
-                                  Value rightMaskElem = builder.create<SubIOp>(
-                                      loc, strideVal, rightMaskHelper);
-                                  Value rightMask =
-                                      builder.create<CreateMaskOp>(
-                                          loc, vectorMaskTy, rightMaskElem);
+                                  builder.create<scf::IfOp>(
+                                      loc, strideBoundCond,
+                                      [&](OpBuilder &builder, Location loc) {
+                                        Value inputVec;
+                                        Value rightMaskHelper =
+                                            builder.create<SubIOp>(
+                                                loc, colLastElem, colMidHelper);
+                                        Value rightMaskElem =
+                                            builder.create<SubIOp>(
+                                                loc, strideVal,
+                                                rightMaskHelper);
+                                        Value rightMask =
+                                            builder.create<CreateMaskOp>(
+                                                loc, vectorMaskTy,
+                                                rightMaskElem);
 
-                                  if (boundaryOptionAttr ==
-                                      dip::BoundaryOption::ConstantPadding) {
-                                    Value padding = builder.create<BroadcastOp>(
-                                        loc, vectorTy32, constantValue);
+                                        if (boundaryOptionAttr ==
+                                            dip::BoundaryOption::
+                                                ConstantPadding) {
+                                          Value padding =
+                                              builder.create<BroadcastOp>(
+                                                  loc, vectorTy32,
+                                                  constantValue);
 
-                                    inputVec = builder.create<MaskedLoadOp>(
-                                        loc, vectorTy32, input,
-                                        ValueRange{imRow, imCol}, rightMask,
-                                        padding);
-                                  } else if (boundaryOptionAttr ==
-                                             dip::BoundaryOption::
-                                                 ReplicatePadding) {
-                                    Value rightRange = builder.create<SubIOp>(
-                                        loc, inputCol, c1);
-                                    Value paddingVal =
-                                        builder.create<memref::LoadOp>(
-                                            loc, input,
-                                            ValueRange{imRow, rightRange});
-                                    Value padding = builder.create<BroadcastOp>(
-                                        loc, vectorTy32, paddingVal);
+                                          inputVec =
+                                              builder.create<MaskedLoadOp>(
+                                                  loc, vectorTy32, input,
+                                                  ValueRange{imRow, imCol},
+                                                  rightMask, padding);
+                                        } else if (boundaryOptionAttr ==
+                                                   dip::BoundaryOption::
+                                                       ReplicatePadding) {
+                                          Value rightRange =
+                                              builder.create<SubIOp>(
+                                                  loc, inputCol, c1);
+                                          Value paddingVal =
+                                              builder.create<memref::LoadOp>(
+                                                  loc, input,
+                                                  ValueRange{imRow,
+                                                             rightRange});
+                                          Value padding =
+                                              builder.create<BroadcastOp>(
+                                                  loc, vectorTy32, paddingVal);
 
-                                    inputVec = builder.create<MaskedLoadOp>(
-                                        loc, vectorTy32, input,
-                                        ValueRange{imRow, imCol}, rightMask,
-                                        padding);
-                                  }
-                                  Value tailCond = tailChecker(
-                                      builder, loc, calcHelper, strideVal,
-                                      kernelSize, c1, pseudoCol, ivs[2]);
-                                  calcAndStoreFMAwTailProcessing(
-                                      builder, loc, vectorTy32, inputVec,
-                                      kernelVec, output, ivs[0], ivs[2],
-                                      tailCond, zeroPadding, inputCol,
-                                      vectorMaskTy);
+                                          inputVec =
+                                              builder.create<MaskedLoadOp>(
+                                                  loc, vectorTy32, input,
+                                                  ValueRange{imRow, imCol},
+                                                  rightMask, padding);
+                                        }
+                                        Value tailCond = tailChecker(
+                                            builder, loc, calcHelper, strideVal,
+                                            kernelSize, c1, pseudoCol, ivs[2]);
+                                        calcAndStoreFMAwTailProcessing(
+                                            builder, loc, vectorTy32, inputVec,
+                                            kernelVec, output, ivs[0], ivs[2],
+                                            tailCond, zeroPadding, inputCol,
+                                            vectorMaskTy);
+
+                                        builder.create<scf::YieldOp>(loc);
+                                      },
+                                      [&](OpBuilder &builder, Location loc) {
+                                        // stride > inputCol
+
+                                        builder.create<scf::YieldOp>(loc);
+                                      });
 
                                   builder.create<scf::YieldOp>(loc);
                                 });
@@ -446,6 +498,8 @@ public:
                       } else {
                         Value colLeftCond = builder.create<CmpIOp>(
                             loc, CmpIPredicate::slt, currCol, centerX);
+                        colLeftCond = builder.create<arith::AndIOp>(
+                            loc, strideBoundCond, colLeftCond);
 
                         builder.create<scf::IfOp>(
                             loc, colLeftCond,
@@ -487,6 +541,8 @@ public:
                               Value colMidCond = builder.create<CmpIOp>(
                                   loc, CmpIPredicate::sle, colLastElem,
                                   colMidHelper);
+                              colMidCond = builder.create<arith::AndIOp>(
+                                  loc, strideBoundCond, colMidCond);
 
                               builder.create<scf::IfOp>(
                                   loc, colMidCond,
@@ -508,48 +564,69 @@ public:
                                     builder.create<scf::YieldOp>(loc);
                                   },
                                   [&](OpBuilder &builder, Location loc) {
-                                    // colRight & rowDown
-                                    Value inputVec;
-                                    Value rightMaskHelper =
-                                        builder.create<SubIOp>(loc, colLastElem,
-                                                               colMidHelper);
-                                    Value rightMaskElem =
-                                        builder.create<SubIOp>(loc, strideVal,
-                                                               rightMaskHelper);
-                                    Value rightMask =
-                                        builder.create<CreateMaskOp>(
-                                            loc, vectorMaskTy, rightMaskElem);
+                                    builder.create<scf::IfOp>(
+                                        loc, strideBoundCond,
+                                        [&](OpBuilder &builder, Location loc) {
+                                          // colRight & rowDown
+                                          Value inputVec;
+                                          Value rightMaskHelper =
+                                              builder.create<SubIOp>(
+                                                  loc, colLastElem,
+                                                  colMidHelper);
+                                          Value rightMaskElem =
+                                              builder.create<SubIOp>(
+                                                  loc, strideVal,
+                                                  rightMaskHelper);
+                                          Value rightMask =
+                                              builder.create<CreateMaskOp>(
+                                                  loc, vectorMaskTy,
+                                                  rightMaskElem);
 
-                                    Value downRange = builder.create<SubIOp>(
-                                        loc, inputRow, c1);
-                                    Value rightRange = builder.create<SubIOp>(
-                                        loc, inputCol, c1);
+                                          Value downRange =
+                                              builder.create<SubIOp>(
+                                                  loc, inputRow, c1);
+                                          Value rightRange =
+                                              builder.create<SubIOp>(
+                                                  loc, inputCol, c1);
 
-                                    if (boundaryOptionAttr ==
-                                        dip::BoundaryOption::ReplicatePadding) {
+                                          if (boundaryOptionAttr ==
+                                              dip::BoundaryOption::
+                                                  ReplicatePadding) {
 
-                                      Value paddingVal =
-                                          builder.create<memref::LoadOp>(
-                                              loc, input,
-                                              ValueRange{downRange,
-                                                         rightRange});
-                                      Value padding =
-                                          builder.create<vector::BroadcastOp>(
-                                              loc, vectorTy32, paddingVal);
+                                            Value paddingVal =
+                                                builder.create<memref::LoadOp>(
+                                                    loc, input,
+                                                    ValueRange{downRange,
+                                                               rightRange});
+                                            Value padding = builder.create<
+                                                vector::BroadcastOp>(
+                                                loc, vectorTy32, paddingVal);
 
-                                      inputVec = builder.create<MaskedLoadOp>(
-                                          loc, vectorTy32, input,
-                                          ValueRange{downRange, imCol},
-                                          rightMask, padding);
-                                    }
-                                    Value tailCond = tailChecker(
-                                        builder, loc, calcHelper, strideVal,
-                                        kernelSize, c1, pseudoCol, ivs[2]);
-                                    calcAndStoreFMAwTailProcessing(
-                                        builder, loc, vectorTy32, inputVec,
-                                        kernelVec, output, ivs[0], ivs[2],
-                                        tailCond, zeroPadding, inputCol,
-                                        vectorMaskTy);
+                                            inputVec =
+                                                builder.create<MaskedLoadOp>(
+                                                    loc, vectorTy32, input,
+                                                    ValueRange{downRange,
+                                                               imCol},
+                                                    rightMask, padding);
+                                          }
+                                          Value tailCond = tailChecker(
+                                              builder, loc, calcHelper,
+                                              strideVal, kernelSize, c1,
+                                              pseudoCol, ivs[2]);
+                                          calcAndStoreFMAwTailProcessing(
+                                              builder, loc, vectorTy32,
+                                              inputVec, kernelVec, output,
+                                              ivs[0], ivs[2], tailCond,
+                                              zeroPadding, inputCol,
+                                              vectorMaskTy);
+
+                                          builder.create<scf::YieldOp>(loc);
+                                        },
+                                        [&](OpBuilder &builder, Location loc) {
+                                          // stride > inputCol
+
+                                          builder.create<scf::YieldOp>(loc);
+                                        });
 
                                     builder.create<scf::YieldOp>(loc);
                                   });
