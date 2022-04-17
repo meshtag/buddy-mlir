@@ -176,9 +176,10 @@ public:
     Value pseudoCol = rewriter.create<AffineApplyOp>(
         loc, calcHelper, ValueRange{inputCol, kernelSize, c1});
 
-    // Check if stride is greater than inputCol
+    // Check if stride is greater than (inputCol + kernelSize).
+    Value strideBoundVal = rewriter.create<AddIOp>(loc, inputCol, kernelSize);
     Value strideBoundCond =
-        rewriter.create<CmpIOp>(loc, CmpIPredicate::sle, strideVal, inputCol);
+        rewriter.create<CmpIOp>(loc, CmpIPredicate::sle, strideVal, strideBoundVal);
 
     buildAffineLoopNest(
         rewriter, loc, lowerBounds, uperBounds, steps,
@@ -322,6 +323,52 @@ public:
                                   },
                                   [&](OpBuilder &builder, Location loc) {
                                     // stride > inputCol
+                                    Value isCurrColZero = builder.create<CmpIOp>(loc, 
+                                        CmpIPredicate::eq, currCol, c0);
+
+                                    builder.create<scf::IfOp>(loc, isCurrColZero, 
+                                      [&](OpBuilder &builder, Location loc){
+                                          Value inputVec;
+                                        
+                                          Value leftMask =
+                                            createInvertedMask(builder, loc, strideVal,
+                                            vectorMaskTy, centerX);
+                                          Value leftPaddingOffset =
+                                            builder.create<SubIOp>(loc, c0, centerX);
+
+                                          
+
+                                          if (boundaryOptionAttr == 
+                                            dip::BoundaryOption::ConstantPadding)
+                                          {
+                                              Value paddingLeft = builder.create<BroadcastOp>(
+                                                loc, vectorTy32, c0);
+
+                                              inputVec = builder.create<vector::MaskedLoadOp>(
+                                                loc, vectorTy32, input,
+                                                ValueRange{c0, leftPaddingOffset}, leftMask,
+                                                paddingLeft);
+                                          }
+                                          else if (boundaryOptionAttr == 
+                                                    dip::BoundaryOption::ReplicatePadding) 
+                                          {
+                                              Value paddingLeftVal = builder.create<memref::LoadOp>(
+                                                loc, input, ValueRange{c0, c0});
+                                              Value paddingLeft = builder.create<BroadcastOp>(
+                                                loc, vectorTy32, paddingLeftVal);
+
+                                              inputVec = builder.create<vector::MaskedLoadOp>(
+                                                loc, vectorTy32, input,
+                                                ValueRange{c0, leftPaddingOffset}, leftMask,
+                                                paddingLeft);
+                                          }
+
+                                          builder.create<scf::YieldOp>(loc);
+                                      }, [&](OpBuilder &builder, Location loc){
+
+
+                                          builder.create<scf::YieldOp>(loc);
+                                      });
 
                                     builder.create<scf::YieldOp>(loc);
                                   });
