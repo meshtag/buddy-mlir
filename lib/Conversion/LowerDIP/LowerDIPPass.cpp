@@ -663,8 +663,7 @@ Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx,
               Value indexStart, Value strideVal, VectorType vecType, Value c0,
               int64_t stride) {
   // ToDo : Try to get rid of memref load/store, find less expensive ways of
-  // implementing
-  //        this function.
+  // implementing this function.
   MemRefType memTy = MemRefType::get({stride}, builder.getF32Type());
   Value tempMem = builder.create<memref::AllocOp>(loc, memTy);
 
@@ -680,24 +679,6 @@ Value iotaVec(OpBuilder &builder, Location loc, MLIRContext *ctx,
       });
 
   return builder.create<vector::LoadOp>(loc, vecType, tempMem, ValueRange{c0});
-
-  // Value c0F32 = indexToF32(builder, loc, c0);
-  // Value check = builder.create<vector::SplatOp>(loc, vecType, c0F32);
-
-  // Value step = builder.create<ConstantIndexOp>(loc, 1);
-  // Value checkIter = builder.create<vector::SplatOp>(loc, vecType, c0F32);
-  // Value c = builder.create<scf::ForOp>(loc, c0, strideVal, step,
-  // ValueRange{checkIter},
-  //     [&](OpBuilder &builder, Location loc, Value iv, ValueRange iterArg){
-  //         Value iotaValIndex = builder.create<arith::AddIOp>(loc, iv,
-  //         indexStart); Value iotaVal = indexToF32(builder, loc,
-  //         iotaValIndex);
-
-  //         iterArg[0] = builder.create<vector::InsertElementOp>(loc, iotaVal,
-  //         checkIter, iv); builder.create<scf::YieldOp>(loc, iterArg[0]);
-  //     });
-
-  // return checkIter;
 }
 
 // Scale pixel co-ordinates appropriately before calculating their rotated

@@ -71,11 +71,9 @@ MemRef_descriptor Rotate2D(MemRef_descriptor input, float angle,
   float cosAngle = std::cos(angleRad);
 
   int outputRows = std::round(std::abs(input->sizes[0] * cosAngle) +
-                              std::abs(input->sizes[1] * sinAngle)) +
-                   1;
+                              std::abs(input->sizes[1] * sinAngle)) + 1;
   int outputCols = std::round(std::abs(input->sizes[1] * cosAngle) +
-                              std::abs(input->sizes[0] * sinAngle)) +
-                   1;
+                              std::abs(input->sizes[0] * sinAngle)) + 1;
   float *outputAlign = (float *)malloc(outputRows * outputCols * sizeof(float));
 
   for (int i = 0; i < outputRows; ++i)
