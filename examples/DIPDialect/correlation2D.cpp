@@ -27,6 +27,8 @@
 
 #include "../ConvOpt/kernels.h"
 
+#include "Interface/buddy/core/ImageContainer.h"
+
 #include <Interface/buddy/dip/dip.h>
 #include <Interface/buddy/dip/memref.h>
 #include <iostream>
@@ -91,16 +93,17 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
 
   // Define the allocated, sizes, and strides.
   float *allocated = (float *)malloc(1 * sizeof(float));
-  intptr_t sizesInput[2] = {image.rows, image.cols};
+  // intptr_t sizesInput[2] = {image.rows, image.cols};
   intptr_t sizesKernel[2] = {kernelRows, kernelCols};
   intptr_t sizesOutput[2] = {outputRows, outputCols};
-  intptr_t stridesInput[2] = {image.rows, image.cols};
+  // intptr_t stridesInput[2] = {image.rows, image.cols};
   intptr_t stridesKernel[2] = {kernelRows, kernelCols};
   intptr_t stridesOutput[2] = {outputRows, outputCols};
 
   // Define memref descriptors.
-  MemRef_descriptor input =
-      MemRef_Descriptor(allocated, inputAlign, 0, sizesInput, stridesInput);
+  // MemRef_descriptor input =
+  //     MemRef_Descriptor(allocated, inputAlign, 0, sizesInput, stridesInput);
+  Img<float, 2> input(image);
   MemRef_descriptor kernel =
       MemRef_Descriptor(allocated, kernelAlign, 0, sizesKernel, stridesKernel);
   MemRef_descriptor output =
@@ -149,7 +152,7 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
     return 0;
   }
 
-  free(input);
+  // free(input);
   free(kernel);
   free(output);
   free(inputAlign);

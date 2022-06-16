@@ -30,11 +30,11 @@ namespace detail {
 // Declare the Corr2D C interface.
 extern "C" {
 void _mlir_ciface_corr_2d_constant_padding(
-    MemRef_descriptor input, MemRef_descriptor kernel, MemRef_descriptor output,
+    Img<float, 2> input, MemRef_descriptor kernel, MemRef_descriptor output,
     unsigned int centerX, unsigned int centerY, float constantValue);
 
 void _mlir_ciface_corr_2d_replicate_padding(
-    MemRef_descriptor input, MemRef_descriptor kernel, MemRef_descriptor output,
+    Img<float, 2> input, MemRef_descriptor kernel, MemRef_descriptor output,
     unsigned int centerX, unsigned int centerY, float constantValue);
 
 void _mlir_ciface_rotate_2d(MemRef_descriptor input, float angleValue,
@@ -45,7 +45,7 @@ void _mlir_ciface_rotate_2d(MemRef_descriptor input, float angleValue,
 enum class BOUNDARY_OPTION { CONSTANT_PADDING, REPLICATE_PADDING };
 enum class ANGLE_TYPE { DEGREE, RADIAN };
 
-void Corr2D(MemRef_descriptor input, MemRef_descriptor kernel,
+void Corr2D(Img<float, 2> input, MemRef_descriptor kernel,
             MemRef_descriptor output, unsigned int centerX,
             unsigned int centerY, BOUNDARY_OPTION option,
             float constantValue = 0) {
