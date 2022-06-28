@@ -654,6 +654,40 @@ public:
   int64_t stride;
 };
 
+void NearestNeighbourInterpolationResizing(
+  OpBuilder &builder, Location loc, MLIRContext *ctx, 
+  SmallVector<Value, 8> lowerBounds, SmallVector<Value, 8> upperBounds, 
+  SmallVector<int64_t, 8> steps, Value strideVal, Value input, Value output, 
+  Value horizontalScalingFactorVec, Value verticalScalingFactorVec, 
+  Value outputRowLastElemF32, Value outputColLastElemF32, VectorType vectorTy32, 
+  int64_t stride, Value c0, Value c0F32)
+{
+  buildAffineLoopNest(
+      builder, loc, lowerBounds, upperBounds, steps,
+      [&](OpBuilder &builder, Location loc, ValueRange ivs) {
+    Value xLowerBoundMult =
+            builder.create<arith::DivUIOp>(loc, ivs[1], strideVal);
+    Value xLowerBound =
+            builder.create<arith::MulIOp>(loc, strideVal, xLowerBoundMult);
+  
+    Value ivs0F32 = indexToF32(builder, loc, ivs[0]);
+    Value yVec = builder.create<vector::SplatOp>(loc, vectorTy32, ivs0F32);
+    Value xVec = iotaVec(builder, loc, ctx, xLowerBound, strideVal,
+                         vectorTy32, c0, stride);
+
+    Value resXVecInterim = builder.create<arith::MulFOp>(loc, xVec, horizontalScalingFactorVec);
+    Value resYVecInterim = builder.create<arith::MulFop>(loc, yVec, verticalScalingFactorVec);
+
+    Value resXVec = builder.create<arith::FPToUIOp>(loc, xResInterim);
+    Value resYVec = builder.create<arith::FPToUIOp>(loc, yResInterim);
+
+    fillPixels(builder, loc, xVec, yVec, resXVec, resYVec, input, output, 
+               c0, strideVal, outputRowLastElemF32, outputColLastElemF32,
+               c0F32);
+  }
+}
+
+
 class DIPResize2DLowering : public OpRewritePattern<dip::Resize2DOp> {
 public:
   using OpRewritePattern<dip::Resize2DOp>::OpRewritePattern;
@@ -670,13 +704,38 @@ public:
 
     // Register operand values.
     Value input = op->getOperand(0);
-    Value modifiedWidth = op->getOperand(1);
-    Value modifiedHeight = op->getOperand(2);
+    // Value modifiedWidth = op->getOperand(1);
+    // Value modifiedHeight = op->getOperand(2);
     Value horizontalScalingFactor = op->getOperand(3);
     Value verticalScalingFactor = op->getOperand(4);
     Value output = op->getOperand(5);
     auto interpolationAttr = op.interpolation_type();
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
+
+    Value c0 = rewriter.create<ConstantIndexOp>(loc, 0);
+    Value c1 = rewriter.create<ConstantIndexOp>(loc, 1);
+
+    // Value inputRow = rewriter.create<memref::DimOp>(loc, input, c0);
+    // Value inputCol = rewriter.create<memref::DimOp>(loc, input, c1);
+
+    Value outputRow = rewriter.create<memref::DimOp>(loc, output, c0);
+    Value outputCol = rewriter.create<memref::DimOp>(loc, output, c1);
+
+    // Determine lower bound for second call of rotation function (this is done
+    // for efficient tail processing).
+    Value outputColStrideRatio =
+        rewriter.create<arith::DivUIOp>(loc, outputCol, strideVal);
+    Value outputColMultiple =
+        rewriter.create<arith::MulIOp>(loc, strideVal, outputColStrideRatio);
+
+    SmallVector<Value, 8> lowerBounds1{c0, c0};
+    SmallVector<Value, 8> upperBounds1{outputRow, outputColMultiple};
+
+    SmallVector<Value, 8> lowerBounds2{c0, outputColMultiple};
+    SmallVector<Value, 8> upperBounds2{outputRow, outputCol};
+
+    VectorType vectorTy32 = VectorType::get({stride}, f32);
+
 
      // Remove the original resize operation.
     rewriter.eraseOp(op);
