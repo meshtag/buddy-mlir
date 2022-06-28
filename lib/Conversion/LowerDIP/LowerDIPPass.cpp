@@ -653,12 +653,47 @@ public:
 
   int64_t stride;
 };
+
+class DIPResize2DLowering : public OpRewritePattern<dip::Resize2DOp> {
+public:
+  using OpRewritePattern<dip::Resize2DOp>::OpRewritePattern;
+
+  explicit DIPResize2DLowering(MLIRContext *context, int64_t strideParam)
+      : OpRewritePattern(context) {
+    stride = strideParam;
+  }
+
+  LogicalResult matchAndRewrite(dip::Resize2DOp op,
+                                PatternRewriter &rewriter) const override {
+    auto loc = op->getLoc();
+    auto ctx = op->getContext();
+
+    // Register operand values.
+    Value input = op->getOperand(0);
+    Value modifiedWidth = op->getOperand(1);
+    Value modifiedHeight = op->getOperand(2);
+    Value horizontalScalingFactor = op->getOperand(3);
+    Value verticalScalingFactor = op->getOperand(4);
+    Value output = op->getOperand(5);
+    auto interpolationAttr = op.interpolation_type();
+    Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
+
+     // Remove the original resize operation.
+    rewriter.eraseOp(op);
+    return success();
+  }
+
+private:
+  int64_t stride;
+};
+
 } // end anonymous namespace
 
 void populateLowerDIPConversionPatterns(RewritePatternSet &patterns,
                                         int64_t stride) {
   patterns.add<DIPCorr2DLowering>(patterns.getContext(), stride);
   patterns.add<DIPRotate2DOpLowering>(patterns.getContext(), stride);
+  patterns.add<DIPResize2DLowering>(patterns.getContext(), stride);
 }
 
 //===----------------------------------------------------------------------===//
