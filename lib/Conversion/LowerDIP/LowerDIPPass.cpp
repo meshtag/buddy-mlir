@@ -676,15 +676,15 @@ void NearestNeighbourInterpolationResizing(
                          vectorTy32, c0, stride);
 
     Value resXVecInterim = builder.create<arith::MulFOp>(loc, xVec, horizontalScalingFactorVec);
-    Value resYVecInterim = builder.create<arith::MulFop>(loc, yVec, verticalScalingFactorVec);
+    Value resYVecInterim = builder.create<arith::MulFOp>(loc, yVec, verticalScalingFactorVec);
 
-    Value resXVec = builder.create<arith::FPToUIOp>(loc, xResInterim);
-    Value resYVec = builder.create<arith::FPToUIOp>(loc, yResInterim);
+    Value resXVec = builder.create<arith::FPToUIOp>(loc, builder.getI32Type(), resXVecInterim);
+    Value resYVec = builder.create<arith::FPToUIOp>(loc, builder.getI32Type(), resYVecInterim);
 
     fillPixels(builder, loc, xVec, yVec, resXVec, resYVec, input, output, 
                c0, strideVal, outputRowLastElemF32, outputColLastElemF32,
                c0F32);
-  }
+  });
 }
 
 
@@ -734,6 +734,7 @@ public:
     SmallVector<Value, 8> lowerBounds2{c0, outputColMultiple};
     SmallVector<Value, 8> upperBounds2{outputRow, outputCol};
 
+    FloatType f32 = FloatType::getF32(ctx);
     VectorType vectorTy32 = VectorType::get({stride}, f32);
 
 
