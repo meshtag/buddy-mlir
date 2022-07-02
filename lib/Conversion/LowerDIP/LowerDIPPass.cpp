@@ -688,11 +688,11 @@ void NearestNeighbourInterpolationResizing(
 }
 
 
-class DIPResize2DLowering : public OpRewritePattern<dip::Resize2DOp> {
+class DIPResize2DOpLowering : public OpRewritePattern<dip::Resize2DOp> {
 public:
   using OpRewritePattern<dip::Resize2DOp>::OpRewritePattern;
 
-  explicit DIPResize2DLowering(MLIRContext *context, int64_t strideParam)
+  explicit DIPResize2DOpLowering(MLIRContext *context, int64_t strideParam)
       : OpRewritePattern(context) {
     stride = strideParam;
   }
@@ -753,7 +753,7 @@ void populateLowerDIPConversionPatterns(RewritePatternSet &patterns,
                                         int64_t stride) {
   patterns.add<DIPCorr2DLowering>(patterns.getContext(), stride);
   patterns.add<DIPRotate2DOpLowering>(patterns.getContext(), stride);
-  patterns.add<DIPResize2DLowering>(patterns.getContext(), stride);
+  patterns.add<DIPResize2DOpLowering>(patterns.getContext(), stride);
 }
 
 //===----------------------------------------------------------------------===//
