@@ -665,25 +665,25 @@ void NearestNeighbourInterpolationResizing(
   buildAffineLoopNest(
       builder, loc, lowerBounds, upperBounds, steps,
       [&](OpBuilder &builder, Location loc, ValueRange ivs) {
-    Value xLowerBoundMult =
-            builder.create<arith::DivUIOp>(loc, ivs[1], strideVal);
-    Value xLowerBound =
-            builder.create<arith::MulIOp>(loc, strideVal, xLowerBoundMult);
-  
     Value ivs0F32 = indexToF32(builder, loc, ivs[0]);
     Value yVec = builder.create<vector::SplatOp>(loc, vectorTy32, ivs0F32);
-    Value xVec = iotaVec(builder, loc, ctx, xLowerBound, strideVal,
+    Value xVec = iotaVec(builder, loc, ctx, ivs[1], strideVal,
                          vectorTy32, c0, stride);
 
     Value resXVecInterim = builder.create<arith::MulFOp>(loc, xVec, horizontalScalingFactorVec);
     Value resYVecInterim = builder.create<arith::MulFOp>(loc, yVec, verticalScalingFactorVec);
 
-    Value resXVec = builder.create<arith::FPToUIOp>(loc, builder.getI32Type(), resXVecInterim);
-    Value resYVec = builder.create<arith::FPToUIOp>(loc, builder.getI32Type(), resYVecInterim);
+    VectorType vectorTy32I = VectorType::get({stride}, builder.getI32Type());
+    // Value resXVec = builder.create<arith::FPToUIOp>(loc, vectorTy32I, resXVecInterim);
+    // Value resYVec = builder.create<arith::FPToUIOp>(loc, vectorTy32I, resYVecInterim);
 
-    fillPixels(builder, loc, xVec, yVec, resXVec, resYVec, input, output, 
+    fillPixels(builder, loc, xVec, yVec, resXVecInterim, resYVecInterim, input, output, 
                c0, strideVal, outputRowLastElemF32, outputColLastElemF32,
                c0F32);
+
+    // fillPixels(builder, loc, xVec, yVec, xVec, yVec, input, output, 
+    //            c0, strideVal, outputRowLastElemF32, outputColLastElemF32,
+    //            c0F32);
   });
 }
 
@@ -704,19 +704,15 @@ public:
 
     // Register operand values.
     Value input = op->getOperand(0);
-    // Value modifiedWidth = op->getOperand(1);
-    // Value modifiedHeight = op->getOperand(2);
-    Value horizontalScalingFactor = op->getOperand(3);
-    Value verticalScalingFactor = op->getOperand(4);
-    Value output = op->getOperand(5);
+    Value horizontalScalingFactor = op->getOperand(1);
+    Value verticalScalingFactor = op->getOperand(2);
+    Value output = op->getOperand(3);
     auto interpolationAttr = op.interpolation_type();
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
     Value c0 = rewriter.create<ConstantIndexOp>(loc, 0);
     Value c1 = rewriter.create<ConstantIndexOp>(loc, 1);
-
-    // Value inputRow = rewriter.create<memref::DimOp>(loc, input, c0);
-    // Value inputCol = rewriter.create<memref::DimOp>(loc, input, c1);
+    Value c0F32 = indexToF32(rewriter, loc, c0);
 
     Value outputRow = rewriter.create<memref::DimOp>(loc, output, c0);
     Value outputCol = rewriter.create<memref::DimOp>(loc, output, c1);
@@ -731,12 +727,41 @@ public:
     SmallVector<Value, 8> lowerBounds1{c0, c0};
     SmallVector<Value, 8> upperBounds1{outputRow, outputColMultiple};
 
+    SmallVector<int64_t, 8> steps{1, stride};
+    Value strideTailVal =
+        rewriter.create<arith::SubIOp>(loc, outputCol, outputColMultiple);
+
     SmallVector<Value, 8> lowerBounds2{c0, outputColMultiple};
     SmallVector<Value, 8> upperBounds2{outputRow, outputCol};
 
     FloatType f32 = FloatType::getF32(ctx);
     VectorType vectorTy32 = VectorType::get({stride}, f32);
 
+    Value horizontalScalingFactorVec = rewriter.create<vector::SplatOp>(loc, vectorTy32, 
+                                            horizontalScalingFactor);
+    Value verticalScalingFactorVec = rewriter.create<vector::SplatOp>(loc, vectorTy32, 
+                                            verticalScalingFactor);
+
+    // Obtain extreme allocatable value(s) in output for bounding purpose.
+    Value outputRowLastElem =
+        rewriter.create<arith::SubIOp>(loc, outputRow, c1);
+    Value outputRowLastElemF32 = indexToF32(rewriter, loc, outputRowLastElem);
+
+    Value outputColLastElem =
+        rewriter.create<arith::SubIOp>(loc, outputCol, c1);
+    Value outputColLastElemF32 = indexToF32(rewriter, loc, outputColLastElem);
+
+    NearestNeighbourInterpolationResizing(rewriter, loc, ctx, lowerBounds1, upperBounds1, 
+                                          steps, strideVal, input, output, 
+                                          horizontalScalingFactorVec, verticalScalingFactorVec, 
+                                          outputRowLastElemF32, outputColLastElemF32, 
+                                          vectorTy32, stride, c0, c0F32);
+
+    // NearestNeighbourInterpolationResizing(rewriter, loc, ctx, lowerBounds1, upperBounds1, 
+    //                                       steps, strideTailVal, input, output, 
+    //                                       horizontalScalingFactorVec, verticalScalingFactorVec, 
+    //                                       outputRowLastElemF32, outputColLastElemF32, 
+    //                                       vectorTy32, stride, c0, c0F32);
 
      // Remove the original resize operation.
     rewriter.eraseOp(op);

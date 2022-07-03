@@ -130,8 +130,6 @@ def DIP_Resize2DOp : DIP_Op<"resize_2d">
 
   let arguments = (ins Arg<AnyRankedOrUnrankedMemRef, "inputMemref",
                            [MemRead]>:$memrefI, 
-                       F32 : $modified_width, 
-                       F32 : $modified_height, 
                        F32 : $horizontal_scaling_factor, 
                        F32 : $vertical_scaling_factor, 
                        Arg<AnyRankedOrUnrankedMemRef, "outputMemref",
@@ -139,7 +137,7 @@ def DIP_Resize2DOp : DIP_Op<"resize_2d">
                        DIP_InterpolationAttr:$interpolation_type);
 
   let assemblyFormat = [{
-    $memrefI `,` $modified_width `,` $modified_height `,` $horizontal_scaling_factor `,` $vertical_scaling_factor `,` $memrefO attr-dict `:` type($memrefI) `,` type($modified_width) `,` type($modified_height) `,` type($horizontal_scaling_factor) `,` type($vertical_scaling_factor) `,` type($memrefO)
+    $interpolation_type $memrefI `,` $horizontal_scaling_factor `,` $vertical_scaling_factor `,` $memrefO attr-dict `:` type($memrefI) `,` type($horizontal_scaling_factor) `,` type($vertical_scaling_factor) `,` type($memrefO)
   }];
 }
 
