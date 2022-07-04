@@ -32,6 +32,12 @@
 using namespace cv;
 using namespace std;
 
+extern "C" {
+void _mlir_ciface_resize_2d(MemRef_descriptor input, float horizontalScalingFactor, 
+                            float verticalScalingFactor, 
+                            MemRef_descriptor output);
+}
+
 bool testImages(cv::Mat img1, cv::Mat img2) {
   if (img1.rows != img2.rows || img1.cols != img2.cols) {
     std::cout << "Dimensions not equal\n";
@@ -75,11 +81,23 @@ bool testImplementation(int argc, char *argv[]) {
   float *allocated = (float *)malloc(1 * sizeof(float));
   intptr_t sizesInput[2] = {image.rows, image.cols};
   intptr_t stridesInput[2] = {image.rows, image.cols};
+  intptr_t sizesOutput[2] = {2 * image.rows, 2 * image.cols};
+  intptr_t stridesOutput[2] = {2 * image.rows, 2 * image.cols};
+
+  float *outputAlign = (float *)malloc(4 * image.rows * image.cols * sizeof(float));
+
+  for (int i = 0; i < 2 * image.rows; ++i)
+    for (int j = 0; j < 2 * image.cols; ++j)
+      outputAlign[i * 2 * image.rows + j] = 0;
 
   // Define memref descriptors.
   MemRef_descriptor input =
       MemRef_Descriptor(allocated, inputAlign, 0, sizesInput, stridesInput);
-  MemRef_descriptor output = dip::Rotate2D(input, 45, dip::ANGLE_TYPE::DEGREE);
+  MemRef_descriptor output = 
+      MemRef_Descriptor(allocated, outputAlign, 0, sizesOutput, stridesOutput);
+//   MemRef_descriptor output = dip::Rotate2D(input, 45, dip::ANGLE_TYPE::DEGREE);
+
+  _mlir_ciface_resize_2d(input, 2, 2, output);
 
   // Define a cv::Mat with the output of Rotate2D.
   Mat outputImageRotate2D(output->sizes[0], output->sizes[1], CV_32FC1,
@@ -88,6 +106,8 @@ bool testImplementation(int argc, char *argv[]) {
 
   free(input);
   free(inputAlign);
+  free(output);
+  free(outputAlign);
 
   return 1;
 }
