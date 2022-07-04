@@ -187,10 +187,13 @@ void fillPixels(OpBuilder &builder, Location loc, Value resXVec, Value resYVec,
         Value xPosIndex = F32ToIndex(builder, loc, xPos);
         Value yPosIndex = F32ToIndex(builder, loc, yPos);
 
-        Value pixelVal = builder.create<memref::LoadOp>(
-            loc, builder.getF32Type(), input, ValueRange{xPosIndex, yPosIndex});
-        builder.create<memref::StoreOp>(loc, pixelVal, output,
-                                        ValueRange{resXPosIndex, resYPosIndex});
+        // Value pixelVal = builder.create<memref::LoadOp>(
+        //     loc, builder.getF32Type(), input, ValueRange{xPosIndex, yPosIndex});
+
+        // builder.create<vector::PrintOp>(loc, xPosIndex);
+
+        // builder.create<memref::StoreOp>(loc, pixelVal, output,
+        //                                 ValueRange{resXPosIndex, resYPosIndex});
 
         builder.create<AffineYieldOp>(loc);
       });

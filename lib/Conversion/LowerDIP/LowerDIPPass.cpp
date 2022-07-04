@@ -697,7 +697,7 @@ public:
 
   explicit DIPResize2DOpLowering(MLIRContext *context, int64_t strideParam)
       : OpRewritePattern(context) {
-    stride = strideParam;
+    stride = 5;
   }
 
   LogicalResult matchAndRewrite(dip::Resize2DOp op,
@@ -710,7 +710,7 @@ public:
     Value horizontalScalingFactor = op->getOperand(1);
     Value verticalScalingFactor = op->getOperand(2);
     Value output = op->getOperand(3);
-    auto interpolationAttr = op.interpolation_type();
+    // auto interpolationAttr = op.interpolation_type();
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
     Value c0 = rewriter.create<ConstantIndexOp>(loc, 0);
@@ -756,6 +756,10 @@ public:
     Value inputColLastElem =
         rewriter.create<arith::SubIOp>(loc, inputCol, c1);
     Value inputColLastElemF32 = indexToF32(rewriter, loc, inputColLastElem);
+
+    // rewriter.create<vector::PrintOp>(loc, horizontalScalingFactorVec);
+    // rewriter.create<vector::PrintOp>(loc, verticalScalingFactorVec);
+    // rewriter.create<vector::PrintOp>(loc, strideVal);
 
     NearestNeighbourInterpolationResizing(rewriter, loc, ctx, lowerBounds1, upperBounds1, 
                                           steps, strideVal, input, output, 

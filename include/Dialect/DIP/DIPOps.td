@@ -133,11 +133,10 @@ def DIP_Resize2DOp : DIP_Op<"resize_2d">
                        F32 : $horizontal_scaling_factor, 
                        F32 : $vertical_scaling_factor, 
                        Arg<AnyRankedOrUnrankedMemRef, "outputMemref",
-                           [MemRead]>:$memrefO, 
-                       DIP_InterpolationAttr:$interpolation_type);
+                           [MemRead]>:$memrefO);
 
   let assemblyFormat = [{
-    $interpolation_type $memrefI `,` $horizontal_scaling_factor `,` $vertical_scaling_factor `,` $memrefO attr-dict `:` type($memrefI) `,` type($horizontal_scaling_factor) `,` type($vertical_scaling_factor) `,` type($memrefO)
+     $memrefI `,` $horizontal_scaling_factor `,` $vertical_scaling_factor `,` $memrefO attr-dict `:` type($memrefI) `,` type($horizontal_scaling_factor) `,` type($vertical_scaling_factor) `,` type($memrefO)
   }];
 }
 
