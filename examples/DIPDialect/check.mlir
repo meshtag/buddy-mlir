@@ -52,8 +52,8 @@ func.func private @printMemrefF32(memref<*xf32>)
     %outputVal = arith.constant 0.0 : f32
     %output = call @alloc_2d_filled_f32(%outputSize, %outputSize, %outputVal) : (index, index, f32) -> memref<?x?xf32>
 
-    %horizontal_scaling_factor = arith.constant 2.0 : f32
-    %vertical_scaling_factor = arith.constant 2.0 : f32
+    %horizontal_scaling_factor = arith.constant 0.5 : f32
+    %vertical_scaling_factor = arith.constant 0.5 : f32
 
     // %printOutputImage1 = memref.cast %output : memref<?x?xf32> to memref<*xf32>
     // call @printMemrefF32(%printOutputImage1) : (memref<*xf32>) -> ()
