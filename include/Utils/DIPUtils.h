@@ -24,6 +24,8 @@
 
 #include "Utils/Utils.h"
 
+enum class BOUND_TYPE { INPUT_BOUND, OUTPUT_BOUND };
+
 // Calculate result of FMA and store it in output memref. This function cannot
 // handle tail processing.
 void calcAndStoreFMAwoTailProcessing(OpBuilder &builder, Location loc,
@@ -189,6 +191,59 @@ void fillPixels(OpBuilder &builder, Location loc, Value resXVec, Value resYVec,
 
         Value pixelVal = builder.create<memref::LoadOp>(
             loc, builder.getF32Type(), input, ValueRange{xPosIndex, yPosIndex});
+        builder.create<memref::StoreOp>(loc, pixelVal, output,
+                                        ValueRange{resXPosIndex, resYPosIndex});
+
+        builder.create<AffineYieldOp>(loc);
+      });
+}
+
+// Fill appropriate pixel data in its corresponding rotated co-ordinate of
+// output image.
+void fillPixels_check(OpBuilder &builder, Location loc, Value resXVec, Value resYVec,
+                Value xVec, Value yVec, Value input, Value output, Value c0,
+                Value strideVal, Value outputRowLastElemF32,
+                Value outputColLastElemF32, Value inputRowLastElemF32,
+                Value inputColLastElemF32, Value c0F32) {
+  builder.create<AffineForOp>(
+      loc, ValueRange{c0}, builder.getDimIdentityMap(), ValueRange{strideVal},
+      builder.getDimIdentityMap(), /*step*/ 1, llvm::None,
+      [&](OpBuilder &builder, Location loc, ValueRange ivs,
+          ValueRange iterArg) {
+        Value resXPos =
+            builder.create<vector::ExtractElementOp>(loc, resXVec, ivs[0]);
+        Value resYPos =
+            builder.create<vector::ExtractElementOp>(loc, resYVec, ivs[0]);
+
+        Value resXPosBound =
+            valBound(builder, loc, resXPos, outputColLastElemF32, c0F32);
+        Value resYPosBound =
+            valBound(builder, loc, resYPos, outputRowLastElemF32, c0F32);
+
+        Value resXPosIndex = F32ToIndex(builder, loc, resXPosBound);
+        Value resYPosIndex = F32ToIndex(builder, loc, resYPosBound);
+
+        Value xPos =
+            builder.create<vector::ExtractElementOp>(loc, xVec, ivs[0]);
+        Value yPos =
+            builder.create<vector::ExtractElementOp>(loc, yVec, ivs[0]);
+
+        Value xPosBound = 
+            valBound(builder, loc, xPos, inputColLastElemF32, c0F32);
+        Value yPosBound = 
+            valBound(builder, loc, yPos, inputRowLastElemF32, c0F32);
+
+        Value xPosIndex = F32ToIndex(builder, loc, xPosBound);
+        Value yPosIndex = F32ToIndex(builder, loc, yPosBound);
+
+        Value pixelVal = builder.create<memref::LoadOp>(
+            loc, builder.getF32Type(), input, ValueRange{xPosIndex, yPosIndex});
+
+        // builder.create<vector::PrintOp>(loc, xPosIndex);
+        // builder.create<vector::PrintOp>(loc, resXVec);
+        // builder.create<vector::PrintOp>(loc, xVec);
+        // builder.create<vector::PrintOp>(loc, c0);
+
         builder.create<memref::StoreOp>(loc, pixelVal, output,
                                         ValueRange{resXPosIndex, resYPosIndex});
 

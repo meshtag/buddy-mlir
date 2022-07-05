@@ -30,6 +30,9 @@ include "mlir/IR/OpBase.td"
 def DIP_ConstantPadding : I32EnumAttrCase<"ConstantPadding", 0, "CONSTANT_PADDING">;
 def DIP_ReplicatePadding : I32EnumAttrCase<"ReplicatePadding", 1, "REPLICATE_PADDING">;
 
+def DIP_NearestNeighbourInterpolation : I32EnumAttrCase<"NearestNeighbourInterpolation", 0, 
+                                        "NEAREST_NEIGHBOUR_INTERPOLATION">;
+
 def DIP_BoundaryOption : I32EnumAttr<"BoundaryOption",
     "Specifies desired method of boundary extrapolation during image processing.",
     [
@@ -40,7 +43,17 @@ def DIP_BoundaryOption : I32EnumAttr<"BoundaryOption",
   let cppNamespace = "::buddy::dip";
 }
 
+def DIP_InterpolationType : I32EnumAttr<"InterpolationType",
+    "Specifies desired type of interpolation/extrapolation during image processing.",
+    [
+      DIP_NearestNeighbourInterpolation
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::buddy::dip";
+}
+
 def DIP_BoundaryOptionAttr : EnumAttr<DIP_Dialect, DIP_BoundaryOption, "boundary_option">;
+def DIP_InterpolationAttr : EnumAttr<DIP_Dialect, DIP_InterpolationType, "interpolation_type">;
 
 def DIP_Corr2DOp : DIP_Op<"corr_2d">
 {
@@ -106,6 +119,24 @@ def DIP_Rotate2DOp : DIP_Op<"rotate_2d"> {
 
   let assemblyFormat = [{
     $memrefI `,` $angle `,` $memrefO attr-dict `:` type($memrefI) `,` type($angle) `,` type($memrefO)
+  }];
+}
+
+def DIP_Resize2DOp : DIP_Op<"resize_2d">
+{
+  let summary = [{
+    abcd egfh ijkl mnop qrst uvwx yz
+  }];
+
+  let arguments = (ins Arg<AnyRankedOrUnrankedMemRef, "inputMemref",
+                           [MemRead]>:$memrefI, 
+                       F32 : $horizontal_scaling_factor, 
+                       F32 : $vertical_scaling_factor, 
+                       Arg<AnyRankedOrUnrankedMemRef, "outputMemref",
+                           [MemRead]>:$memrefO);
+
+  let assemblyFormat = [{
+     $memrefI `,` $horizontal_scaling_factor `,` $vertical_scaling_factor `,` $memrefO attr-dict `:` type($memrefI) `,` type($horizontal_scaling_factor) `,` type($vertical_scaling_factor) `,` type($memrefO)
   }];
 }
 

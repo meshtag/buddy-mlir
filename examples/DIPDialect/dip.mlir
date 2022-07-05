@@ -15,3 +15,9 @@ func.func @rotate_2d(%inputImage : memref<?x?xf32>, %angle : f32, %outputImage :
   dip.rotate_2d %inputImage, %angle, %outputImage : memref<?x?xf32>, f32, memref<?x?xf32>
   return
 }
+
+func.func @resize_2d(%inputImage : memref<?x?xf32>, %horizontal_scaling_factor : f32, %vertical_scaling_factor : f32, %outputImage : memref<?x?xf32>)
+{
+  dip.resize_2d %inputImage, %horizontal_scaling_factor, %vertical_scaling_factor, %outputImage : memref<?x?xf32>, f32, f32, memref<?x?xf32>
+  return
+}

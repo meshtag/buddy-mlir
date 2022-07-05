@@ -655,10 +655,158 @@ public:
 };
 } // end anonymous namespace
 
+void NearestNeighbourInterpolationResizing(
+  OpBuilder &builder, Location loc, MLIRContext *ctx, 
+  SmallVector<Value, 8> lowerBounds, SmallVector<Value, 8> upperBounds, 
+  SmallVector<int64_t, 8> steps, Value strideVal, Value input, Value output, 
+  Value horizontalScalingFactorVec, Value verticalScalingFactorVec, 
+  Value outputRowLastElemF32, Value outputColLastElemF32, Value inputRowLastElemF32, 
+  Value inputColLastElemF32, VectorType vectorTy32, 
+  int64_t stride, Value c0, Value c0F32)
+{
+  buildAffineLoopNest(
+      builder, loc, lowerBounds, upperBounds, steps,
+      [&](OpBuilder &builder, Location loc, ValueRange ivs) {
+    Value ivs0F32 = indexToF32(builder, loc, ivs[0]);
+    Value yVec = builder.create<vector::SplatOp>(loc, vectorTy32, ivs0F32);
+    Value xVec = iotaVec(builder, loc, ctx, ivs[1], strideVal,
+                         vectorTy32, c0, stride);
+
+    // builder.create<vector::PrintOp>(loc, yVec);
+    // builder.create<vector::PrintOp>(loc, xVec);
+    // builder.create<vector::PrintOp>(loc, c0);
+
+    Value resXVecInterm = builder.create<arith::MulFOp>(loc, xVec, horizontalScalingFactorVec);
+    Value resYVecInterm = builder.create<arith::MulFOp>(loc, yVec, verticalScalingFactorVec);
+
+    // VectorType vectorTy32I = VectorType::get({stride}, builder.getI32Type());
+    // Value resXVec = builder.create<arith::FPToUIOp>(loc, vectorTy32I, resXVecInterim);
+    // Value resYVec = builder.create<arith::FPToUIOp>(loc, vectorTy32I, resYVecInterim);
+
+    Value resXVec = roundOff(builder, loc, resXVecInterm);
+    Value resYVec = roundOff(builder, loc, resYVecInterm);
+
+
+    // builder.create<vector::PrintOp>(loc, resYVec);
+    // builder.create<vector::PrintOp>(loc, resXVec);
+    // builder.create<vector::PrintOp>(loc, c0);
+    // builder.create<vector::PrintOp>(loc, c0);
+
+    fillPixels_check(builder, loc, xVec, yVec, resXVec, resYVec, input, output, 
+               c0, strideVal, outputRowLastElemF32, outputColLastElemF32, inputRowLastElemF32, inputColLastElemF32,
+               c0F32);
+
+    // fillPixels(builder, loc, xVec, yVec, xVec, yVec, input, output, 
+    //            c0, strideVal, outputRowLastElemF32, outputColLastElemF32,
+    //            c0F32);
+  });
+}
+
+
+class DIPResize2DOpLowering : public OpRewritePattern<dip::Resize2DOp> {
+public:
+  using OpRewritePattern<dip::Resize2DOp>::OpRewritePattern;
+
+  explicit DIPResize2DOpLowering(MLIRContext *context, int64_t strideParam)
+      : OpRewritePattern(context) {
+    stride = 5;
+  }
+
+  LogicalResult matchAndRewrite(dip::Resize2DOp op,
+                                PatternRewriter &rewriter) const override {
+    auto loc = op->getLoc();
+    auto ctx = op->getContext();
+
+    // Register operand values.
+    Value input = op->getOperand(0);
+    Value horizontalScalingFactor = op->getOperand(1);
+    Value verticalScalingFactor = op->getOperand(2);
+    Value output = op->getOperand(3);
+    // auto interpolationAttr = op.interpolation_type();
+    Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
+
+    Value c0 = rewriter.create<ConstantIndexOp>(loc, 0);
+    Value c1 = rewriter.create<ConstantIndexOp>(loc, 1);
+    Value c0F32 = indexToF32(rewriter, loc, c0);
+
+    Value inputRow = rewriter.create<memref::DimOp>(loc, input, c0);
+    Value inputCol = rewriter.create<memref::DimOp>(loc, input, c1);
+
+    Value outputRow = rewriter.create<memref::DimOp>(loc, output, c0); // check usability
+    Value outputCol = rewriter.create<memref::DimOp>(loc, output, c1);
+
+    // Determine lower bound for second call of rotation function (this is done
+    // for efficient tail processing).
+    Value outputColStrideRatio =
+        rewriter.create<arith::DivUIOp>(loc, outputCol, strideVal);
+    Value outputColMultiple =
+        rewriter.create<arith::MulIOp>(loc, strideVal, outputColStrideRatio);
+
+    SmallVector<Value, 8> lowerBounds1{c0, c0};
+    SmallVector<Value, 8> upperBounds1{outputRow, outputColMultiple};
+
+    SmallVector<int64_t, 8> steps{1, stride};
+    Value strideTailVal =
+        rewriter.create<arith::SubIOp>(loc, outputCol, outputColMultiple);
+
+    SmallVector<Value, 8> lowerBounds2{c0, outputColMultiple};
+    SmallVector<Value, 8> upperBounds2{outputRow, outputCol};
+
+    FloatType f32 = FloatType::getF32(ctx);
+    VectorType vectorTy32 = VectorType::get({stride}, f32);
+
+    Value horizontalScalingFactorVec = rewriter.create<vector::SplatOp>(loc, vectorTy32, 
+                                            horizontalScalingFactor);
+    Value verticalScalingFactorVec = rewriter.create<vector::SplatOp>(loc, vectorTy32, 
+                                            verticalScalingFactor);
+
+    // Obtain extreme allocatable value(s) in input/output for bounding purpose.
+    Value inputRowLastElem = rewriter.create<arith::SubIOp>(loc, inputRow, c1);
+    Value inputRowLastElemF32 = indexToF32(rewriter, loc, inputRowLastElem);
+
+    Value inputColLastElem = rewriter.create<arith::SubIOp>(loc, inputCol, c1);
+    Value inputColLastElemF32 = indexToF32(rewriter, loc, inputColLastElem);
+
+    Value outputRowLastElem =
+        rewriter.create<arith::SubIOp>(loc, outputRow, c1);
+    Value outputRowLastElemF32 = indexToF32(rewriter, loc, outputRowLastElem);
+
+    Value outputColLastElem =
+        rewriter.create<arith::SubIOp>(loc, outputCol, c1);
+    Value outputColLastElemF32 = indexToF32(rewriter, loc, outputColLastElem);
+
+    // rewriter.create<vector::PrintOp>(loc, horizontalScalingFactorVec);
+    // rewriter.create<vector::PrintOp>(loc, verticalScalingFactorVec);
+    // rewriter.create<vector::PrintOp>(loc, strideVal);
+
+    NearestNeighbourInterpolationResizing(rewriter, loc, ctx, lowerBounds1, upperBounds1, 
+                                          steps, strideVal, input, output, 
+                                          horizontalScalingFactorVec, verticalScalingFactorVec, 
+                                          outputRowLastElemF32, outputColLastElemF32, 
+                                          inputRowLastElemF32, inputColLastElemF32, 
+                                          vectorTy32, stride, c0, c0F32);
+
+    NearestNeighbourInterpolationResizing(rewriter, loc, ctx, lowerBounds2, upperBounds2, 
+                                          steps, strideTailVal, input, output, 
+                                          horizontalScalingFactorVec, verticalScalingFactorVec, 
+                                          outputRowLastElemF32, outputColLastElemF32, 
+                                          inputRowLastElemF32, inputColLastElemF32, 
+                                          vectorTy32, stride, c0, c0F32);
+
+     // Remove the original resize operation.
+    rewriter.eraseOp(op);
+    return success();
+  }
+
+private:
+  int64_t stride;
+};
+
 void populateLowerDIPConversionPatterns(RewritePatternSet &patterns,
                                         int64_t stride) {
   patterns.add<DIPCorr2DOpLowering>(patterns.getContext(), stride);
   patterns.add<DIPRotate2DOpLowering>(patterns.getContext(), stride);
+  patterns.add<DIPResize2DOpLowering>(patterns.getContext(), stride);
 }
 
 //===----------------------------------------------------------------------===//
