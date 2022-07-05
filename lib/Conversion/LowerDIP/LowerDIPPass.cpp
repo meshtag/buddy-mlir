@@ -672,33 +672,15 @@ void NearestNeighbourInterpolationResizing(
     Value xVec = iotaVec(builder, loc, ctx, ivs[1], strideVal,
                          vectorTy32, c0, stride);
 
-    // builder.create<vector::PrintOp>(loc, yVec);
-    // builder.create<vector::PrintOp>(loc, xVec);
-    // builder.create<vector::PrintOp>(loc, c0);
-
     Value resXVecInterm = builder.create<arith::MulFOp>(loc, xVec, horizontalScalingFactorVec);
     Value resYVecInterm = builder.create<arith::MulFOp>(loc, yVec, verticalScalingFactorVec);
-
-    // VectorType vectorTy32I = VectorType::get({stride}, builder.getI32Type());
-    // Value resXVec = builder.create<arith::FPToUIOp>(loc, vectorTy32I, resXVecInterim);
-    // Value resYVec = builder.create<arith::FPToUIOp>(loc, vectorTy32I, resYVecInterim);
 
     Value resXVec = roundOff(builder, loc, resXVecInterm);
     Value resYVec = roundOff(builder, loc, resYVecInterm);
 
-
-    // builder.create<vector::PrintOp>(loc, resYVec);
-    // builder.create<vector::PrintOp>(loc, resXVec);
-    // builder.create<vector::PrintOp>(loc, c0);
-    // builder.create<vector::PrintOp>(loc, c0);
-
     fillPixels_check(builder, loc, xVec, yVec, resXVec, resYVec, input, output, 
                c0, strideVal, outputRowLastElemF32, outputColLastElemF32, inputRowLastElemF32, inputColLastElemF32,
                c0F32);
-
-    // fillPixels(builder, loc, xVec, yVec, xVec, yVec, input, output, 
-    //            c0, strideVal, outputRowLastElemF32, outputColLastElemF32,
-    //            c0F32);
   });
 }
 
@@ -709,7 +691,7 @@ public:
 
   explicit DIPResize2DOpLowering(MLIRContext *context, int64_t strideParam)
       : OpRewritePattern(context) {
-    stride = 5;
+    stride = strideParam;
   }
 
   LogicalResult matchAndRewrite(dip::Resize2DOp op,
@@ -774,10 +756,6 @@ public:
     Value outputColLastElem =
         rewriter.create<arith::SubIOp>(loc, outputCol, c1);
     Value outputColLastElemF32 = indexToF32(rewriter, loc, outputColLastElem);
-
-    // rewriter.create<vector::PrintOp>(loc, horizontalScalingFactorVec);
-    // rewriter.create<vector::PrintOp>(loc, verticalScalingFactorVec);
-    // rewriter.create<vector::PrintOp>(loc, strideVal);
 
     NearestNeighbourInterpolationResizing(rewriter, loc, ctx, lowerBounds1, upperBounds1, 
                                           steps, strideVal, input, output, 
