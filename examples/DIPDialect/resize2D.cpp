@@ -81,10 +81,10 @@ bool testImplementation(int argc, char *argv[]) {
   float *allocated = (float *)malloc(1 * sizeof(float));
   intptr_t sizesInput[2] = {image.rows, image.cols};
   intptr_t stridesInput[2] = {image.rows, image.cols};
-  intptr_t sizesOutput[2] = {0.5 * image.rows, 0.5 * image.cols};
-  intptr_t stridesOutput[2] = {0.5 * image.rows, 0.5 * image.cols};
+  intptr_t sizesOutput[2] = {0.25 * image.rows, 0.25 * image.cols};
+  intptr_t stridesOutput[2] = {0.25 * image.rows, 0.25 * image.cols};
 
-  float *outputAlign = (float *)malloc(0.25 * image.rows * image.cols * sizeof(float));
+  float *outputAlign = (float *)malloc(0.0625 * image.rows * image.cols * sizeof(float));
 
   for (int i = 0; i < sizesOutput[0]; ++i)
     for (int j = 0; j < sizesOutput[1]; ++j)
@@ -97,7 +97,7 @@ bool testImplementation(int argc, char *argv[]) {
       MemRef_Descriptor(allocated, outputAlign, 0, sizesOutput, stridesOutput);
 //   MemRef_descriptor output = dip::Rotate2D(input, 45, dip::ANGLE_TYPE::DEGREE);
 
-  _mlir_ciface_resize_2d(input, 2, 2, output);
+  _mlir_ciface_resize_2d(input, 4, 4, output);
 
   // Define a cv::Mat with the output of Rotate2D.
   Mat outputImageRotate2D(output->sizes[0], output->sizes[1], CV_32FC1,

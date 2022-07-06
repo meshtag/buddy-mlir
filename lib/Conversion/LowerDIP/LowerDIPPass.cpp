@@ -687,7 +687,7 @@ void NearestNeighbourInterpolationResizing(
 std::vector<Value> extractIndices(
     OpBuilder &builder, Location loc, Value xVec, Value yVec, 
     Value vecIndex, Value xUpperBound, Value yUpperBound, Value c0F32) {
-  Value xPos = builder.create<vector::ExtractElementOp>(loc, XVec, vecIndex);
+  Value xPos = builder.create<vector::ExtractElementOp>(loc, xVec, vecIndex);
   Value yPos = builder.create<vector::ExtractElementOp>(loc, yVec, vecIndex);
 
   Value xPosBound =
@@ -703,7 +703,7 @@ void fillPixelsBillinearInterpolate(
     Value xVec_L, Value yVec_L, Value xVec_H, Value yVec_H, Value input, Value output, Value c0,
     Value strideVal, Value outputRowLastElemF32, Value xVecWeight, Value yVecWeight,
     Value outputColLastElemF32, Value inputRowLastElemF32,
-    Value inputColLastElemF32, Value c0F32) {
+    Value inputColLastElemF32, Value c0F32, Value c1F32) {
   builder.create<AffineForOp>(
       loc, ValueRange{c0}, builder.getDimIdentityMap(), ValueRange{strideVal},
       builder.getDimIdentityMap(), /*step*/ 1, llvm::None,
@@ -715,10 +715,16 @@ void fillPixelsBillinearInterpolate(
     std::vector<Value> inputIndices_L = extractIndices(builder, loc, xVec_L, yVec_L, ivs[0], 
                                             inputColLastElemF32, inputRowLastElemF32, c0F32);
     std::vector<Value> inputIndices_H = extractIndices(builder, loc, xVec_H, yVec_H, ivs[0], 
-                                            inputColLastElemF32, inputRowLastElemF32, coF32);
-
-    std::vector<Value> indexWeights = extractIndices(builder, loc, xVecWeight, yVecWeight, ivs[0], 
                                             inputColLastElemF32, inputRowLastElemF32, c0F32);
+
+    std::vector<Value> indexWeights_temp = extractIndices(builder, loc, xVecWeight, yVecWeight, ivs[0], 
+                                            inputColLastElemF32, inputRowLastElemF32, c0F32);
+
+    std::vector<Value> indexWeights = {indexToF32(builder, loc, indexWeights_temp[0]), 
+                                       indexToF32(builder, loc, indexWeights_temp[1])};
+
+    Value indexWeights_0_temp = builder.create<arith::SubFOp>(loc, c1F32, indexWeights[0]);
+    Value indexWeights_1_temp = builder.create<arith::SubFOp>(loc, c1F32, indexWeights[1]);
 
     Value pixelVal_a = builder.create<memref::LoadOp>(
             loc, builder.getF32Type(), input, ValueRange{inputIndices_L[0], inputIndices_L[1]});
@@ -728,8 +734,27 @@ void fillPixelsBillinearInterpolate(
             loc, builder.getF32Type(), input, ValueRange{inputIndices_L[0], inputIndices_H[1]});
     Value pixelVal_d = builder.create<memref::LoadOp>(
             loc, builder.getF32Type(), input, ValueRange{inputIndices_H[0], inputIndices_H[1]});
-  
-    
+
+    Value weightVal1 = builder.create<arith::MulFOp>(loc, indexWeights_0_temp, indexWeights_1_temp);
+    Value weightVal2 = builder.create<arith::MulFOp>(loc, indexWeights[0], indexWeights_1_temp);
+    Value weightVal3 = builder.create<arith::MulFOp>(loc, indexWeights[1], indexWeights_0_temp);
+    Value weightVal4 = builder.create<arith::MulFOp>(loc, indexWeights[0], indexWeights[1]);
+
+    Value interm1 = builder.create<arith::MulFOp>(loc, pixelVal_a, weightVal1);
+    Value interm2 = builder.create<arith::MulFOp>(loc, pixelVal_b, weightVal2);
+    Value interm3 = builder.create<arith::MulFOp>(loc, pixelVal_c, weightVal3);
+    Value interm4 = builder.create<arith::MulFOp>(loc, pixelVal_d, weightVal4);
+
+    Value pixel_interm1 = builder.create<arith::AddFOp>(loc, interm1, interm2);
+    Value pixel_interm2 = builder.create<arith::AddFOp>(loc, interm3, interm4);
+    Value pixel_interm3 = builder.create<arith::AddFOp>(loc, pixel_interm1, pixel_interm2);
+
+    Value pixelVal = roundOff(builder, loc, pixel_interm3);
+
+    builder.create<memref::StoreOp>(loc, pixelVal, output,
+                                        ValueRange{resIndices[0], resIndices[1]});
+
+    builder.create<AffineYieldOp>(loc);
   });
 }
 
@@ -749,6 +774,9 @@ void BillinearInterpolationResizing(
     Value xVec = iotaVec(builder, loc, ctx, ivs[1], strideVal,
                          vectorTy32, c0, stride);
 
+    Value c1 = builder.create<ConstantIndexOp>(loc, 1);
+    Value c1F32 = indexToF32(builder, loc, c1);
+
     Value xVecInterm = builder.create<arith::MulFOp>(loc, xVec, horizontalScalingFactorVec);
     Value yVecInterm = builder.create<arith::MulFOp>(loc, yVec, verticalScalingFactorVec);
 
@@ -761,8 +789,11 @@ void BillinearInterpolationResizing(
     Value xVecWeight = builder.create<arith::SubFOp>(loc, xVecInterm, xVecInterm_L);
     Value yVecWeight = builder.create<arith::SubFOp>(loc, yVecInterm, yVecInterm_L);
 
-
-  }
+    fillPixelsBillinearInterpolate(builder, loc, xVec, yVec, xVecInterm_L, yVecInterm_L, 
+        xVecInterm_H, yVecInterm_H, input, output, c0, strideVal, outputRowLastElemF32, 
+        xVecWeight, yVecWeight, outputColLastElemF32, inputRowLastElemF32, inputColLastElemF32, 
+        c0F32, c1F32);
+  });
 }
 
 class DIPResize2DOpLowering : public OpRewritePattern<dip::Resize2DOp> {
@@ -837,19 +868,31 @@ public:
         rewriter.create<arith::SubIOp>(loc, outputCol, c1);
     Value outputColLastElemF32 = indexToF32(rewriter, loc, outputColLastElem);
 
-    NearestNeighbourInterpolationResizing(rewriter, loc, ctx, lowerBounds1, upperBounds1, 
-                                          steps, strideVal, input, output, 
-                                          horizontalScalingFactorVec, verticalScalingFactorVec, 
-                                          outputRowLastElemF32, outputColLastElemF32, 
-                                          inputRowLastElemF32, inputColLastElemF32, 
-                                          vectorTy32, stride, c0, c0F32);
+    // NearestNeighbourInterpolationResizing(rewriter, loc, ctx, lowerBounds1, upperBounds1, 
+    //                                       steps, strideVal, input, output, 
+    //                                       horizontalScalingFactorVec, verticalScalingFactorVec, 
+    //                                       outputRowLastElemF32, outputColLastElemF32, 
+    //                                       inputRowLastElemF32, inputColLastElemF32, 
+    //                                       vectorTy32, stride, c0, c0F32);
 
-    NearestNeighbourInterpolationResizing(rewriter, loc, ctx, lowerBounds2, upperBounds2, 
-                                          steps, strideTailVal, input, output, 
-                                          horizontalScalingFactorVec, verticalScalingFactorVec, 
-                                          outputRowLastElemF32, outputColLastElemF32, 
-                                          inputRowLastElemF32, inputColLastElemF32, 
-                                          vectorTy32, stride, c0, c0F32);
+    // NearestNeighbourInterpolationResizing(rewriter, loc, ctx, lowerBounds2, upperBounds2, 
+    //                                       steps, strideTailVal, input, output, 
+    //                                       horizontalScalingFactorVec, verticalScalingFactorVec, 
+    //                                       outputRowLastElemF32, outputColLastElemF32, 
+    //                                       inputRowLastElemF32, inputColLastElemF32, 
+    //                                       vectorTy32, stride, c0, c0F32);
+
+
+    BillinearInterpolationResizing(rewriter, loc, ctx, lowerBounds1, upperBounds1, steps, strideVal, 
+                                   input, output, horizontalScalingFactorVec, verticalScalingFactorVec, 
+                                   outputRowLastElemF32, outputColLastElemF32, inputRowLastElemF32, 
+                                   inputColLastElemF32, vectorTy32, stride, c0, c0F32);
+
+     BillinearInterpolationResizing(rewriter, loc, ctx, lowerBounds2, upperBounds2, steps, strideTailVal, 
+                                   input, output, horizontalScalingFactorVec, verticalScalingFactorVec, 
+                                   outputRowLastElemF32, outputColLastElemF32, inputRowLastElemF32, 
+                                   inputColLastElemF32, vectorTy32, stride, c0, c0F32);
+
 
      // Remove the original resize operation.
     rewriter.eraseOp(op);
