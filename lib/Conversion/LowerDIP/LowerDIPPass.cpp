@@ -684,6 +684,86 @@ void NearestNeighbourInterpolationResizing(
   });
 }
 
+std::vector<Value> extractIndices(
+    OpBuilder &builder, Location loc, Value xVec, Value yVec, 
+    Value vecIndex, Value xUpperBound, Value yUpperBound, Value c0F32) {
+  Value xPos = builder.create<vector::ExtractElementOp>(loc, XVec, vecIndex);
+  Value yPos = builder.create<vector::ExtractElementOp>(loc, yVec, vecIndex);
+
+  Value xPosBound =
+        valBound(builder, loc, xPos, xUpperBound, c0F32);
+  Value yPosBound = 
+        valBound(builder, loc, yPos, yUpperBound, c0F32);
+
+  return {F32ToIndex(builder, loc, xPosBound), F32ToIndex(builder, loc, yPosBound)};
+}
+
+void fillPixelsBillinearInterpolate(
+    OpBuilder &builder, Location loc, Value resXVec, Value resYVec,
+    Value xVec_L, Value yVec_L, Value xVec_H, Value yVec_H, Value input, Value output, Value c0,
+    Value strideVal, Value outputRowLastElemF32, Value xVecWeight, Value yVecWeight,
+    Value outputColLastElemF32, Value inputRowLastElemF32,
+    Value inputColLastElemF32, Value c0F32) {
+  builder.create<AffineForOp>(
+      loc, ValueRange{c0}, builder.getDimIdentityMap(), ValueRange{strideVal},
+      builder.getDimIdentityMap(), /*step*/ 1, llvm::None,
+      [&](OpBuilder &builder, Location loc, ValueRange ivs,
+          ValueRange iterArg) {
+    std::vector<Value> resIndices = extractIndices(builder, loc, resXVec, resYVec, ivs[0], 
+                                        outputColLastElemF32, outputRowLastElemF32, c0F32);
+
+    std::vector<Value> inputIndices_L = extractIndices(builder, loc, xVec_L, yVec_L, ivs[0], 
+                                            inputColLastElemF32, inputRowLastElemF32, c0F32);
+    std::vector<Value> inputIndices_H = extractIndices(builder, loc, xVec_H, yVec_H, ivs[0], 
+                                            inputColLastElemF32, inputRowLastElemF32, coF32);
+
+    std::vector<Value> indexWeights = extractIndices(builder, loc, xVecWeight, yVecWeight, ivs[0], 
+                                            inputColLastElemF32, inputRowLastElemF32, c0F32);
+
+    Value pixelVal_a = builder.create<memref::LoadOp>(
+            loc, builder.getF32Type(), input, ValueRange{inputIndices_L[0], inputIndices_L[1]});
+    Value pixelVal_b = builder.create<memref::LoadOp>(
+            loc, builder.getF32Type(), input, ValueRange{inputIndices_H[0], inputIndices_L[1]});
+    Value pixelVal_c = builder.create<memref::LoadOp>(
+            loc, builder.getF32Type(), input, ValueRange{inputIndices_L[0], inputIndices_H[1]});
+    Value pixelVal_d = builder.create<memref::LoadOp>(
+            loc, builder.getF32Type(), input, ValueRange{inputIndices_H[0], inputIndices_H[1]});
+  
+    
+  });
+}
+
+void BillinearInterpolationResizing(
+  OpBuilder &builder, Location loc, MLIRContext *ctx, 
+  SmallVector<Value, 8> lowerBounds, SmallVector<Value, 8> upperBounds, 
+  SmallVector<int64_t, 8> steps, Value strideVal, Value input, Value output, 
+  Value horizontalScalingFactorVec, Value verticalScalingFactorVec, 
+  Value outputRowLastElemF32, Value outputColLastElemF32, Value inputRowLastElemF32, 
+  Value inputColLastElemF32, VectorType vectorTy32, 
+  int64_t stride, Value c0, Value c0F32) {
+  buildAffineLoopNest(
+      builder, loc, lowerBounds, upperBounds, steps,
+      [&](OpBuilder &builder, Location loc, ValueRange ivs) {
+    Value ivs0F32 = indexToF32(builder, loc, ivs[0]);
+    Value yVec = builder.create<vector::SplatOp>(loc, vectorTy32, ivs0F32);
+    Value xVec = iotaVec(builder, loc, ctx, ivs[1], strideVal,
+                         vectorTy32, c0, stride);
+
+    Value xVecInterm = builder.create<arith::MulFOp>(loc, xVec, horizontalScalingFactorVec);
+    Value yVecInterm = builder.create<arith::MulFOp>(loc, yVec, verticalScalingFactorVec);
+
+    Value xVecInterm_L = builder.create<math::FloorOp>(loc, xVecInterm);
+    Value xVecInterm_H = builder.create<math::CeilOp>(loc, xVecInterm);
+
+    Value yVecInterm_L = builder.create<math::FloorOp>(loc, yVecInterm);
+    Value yVecInterm_H = builder.create<math::CeilOp>(loc, yVecInterm);
+
+    Value xVecWeight = builder.create<arith::SubFOp>(loc, xVecInterm, xVecInterm_L);
+    Value yVecWeight = builder.create<arith::SubFOp>(loc, yVecInterm, yVecInterm_L);
+
+
+  }
+}
 
 class DIPResize2DOpLowering : public OpRewritePattern<dip::Resize2DOp> {
 public:
