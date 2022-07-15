@@ -48,23 +48,29 @@ func.func private @printMemrefF32(memref<*xf32>)
   func.func @DIPCorr2D(%inputImage : memref<?x?xf32>) -> memref<?x?xf32>
   {
 
-    %outputSize = arith.constant 10 : index
+    %check_dim = arith.constant 3 : index
+    %cst_k = arith.constant 1.0 : f32
+    %kernel = call @alloc_2d_filled_f32(%check_dim, %check_dim, %cst_k)
+               : (index, index, f32) -> memref<?x?xf32>
+
+    %printKernel = memref.cast %kernel : memref<?x?xf32> to memref<*xf32>
+    call @printMemrefF32(%printKernel) : (memref<*xf32>) -> ()
+
+    %centerX = arith.constant 1 : index
+    %centerY = arith.constant 1 : index
+    %constantValue = arith.constant 0.0 : f32
+
+    %outputSize = arith.constant 5 : index
     %outputVal = arith.constant 0.0 : f32
     %output = call @alloc_2d_filled_f32(%outputSize, %outputSize, %outputVal) : (index, index, f32) -> memref<?x?xf32>
 
-    %horizontal_scaling_factor = arith.constant 0.5 : f32
-    %vertical_scaling_factor = arith.constant 0.5 : f32
-
-    // %printOutputImage1 = memref.cast %output : memref<?x?xf32> to memref<*xf32>
-    // call @printMemrefF32(%printOutputImage1) : (memref<*xf32>) -> ()
-
-    // dip.corr_2d %inputImage, %kernel, %output, %centerX, %centerY, %boundaryOption : memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, index, index, index
-    // dip.rotate_2d %inputImage, %angle, %output : memref<?x?xf32>, index, memref<?x?xf32>
-    dip.resize_2d %inputImage, %horizontal_scaling_factor, %vertical_scaling_factor, %output : memref<?x?xf32>, f32, f32, memref<?x?xf32>
-
-
     %printOutputImage = memref.cast %output : memref<?x?xf32> to memref<*xf32>
     call @printMemrefF32(%printOutputImage) : (memref<*xf32>) -> ()
+
+    dip.corr_2d CONSTANT_PADDING %inputImage, %kernel, %output, %centerX, %centerY, %constantValue : memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, index, index, f32
+
+    %printOutputImage1 = memref.cast %output : memref<?x?xf32> to memref<*xf32>
+    call @printMemrefF32(%printOutputImage1) : (memref<*xf32>) -> ()
 
     return %output : memref<?x?xf32>
   }
@@ -84,7 +90,8 @@ func.func private @printMemrefF32(memref<*xf32>)
     %printInputImage = memref.cast %i11 : memref<?x?xf32> to memref<*xf32>
     call @printMemrefF32(%printInputImage) : (memref<*xf32>) -> ()
 
-  
+    // %printOutputImage = memref.cast %outputImage : memref<?x?xf32> to memref<*xf32>
+    // call @printMemrefF32(%printOutputImage) : (memref<*xf32>) -> ()
 
     return
   }

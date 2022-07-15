@@ -32,6 +32,15 @@ void calcAndStoreFMAwoTailProcessing(OpBuilder &builder, Location loc,
                                      Value beginIdx, Value endIdx) {
   Value outputVec = builder.create<LoadOp>(loc, vecType, output,
                                            ValueRange{beginIdx, endIdx});
+
+  Value c0 = builder.create<ConstantIndexOp>(loc, 0);
+  builder.create<vector::PrintOp>(loc, c0);
+  builder.create<vector::PrintOp>(loc, outputVec);
+  builder.create<vector::PrintOp>(loc, beginIdx);
+  builder.create<vector::PrintOp>(loc, endIdx);
+  builder.create<vector::PrintOp>(loc, c0);
+
+
   Value resVec = builder.create<FMAOp>(loc, inputVec, kernelVec, outputVec);
   builder.create<StoreOp>(loc, resVec, output, ValueRange{beginIdx, endIdx});
 }
