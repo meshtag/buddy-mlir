@@ -2,7 +2,7 @@ name: test build process
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, llvm-cache ]
   pull_request:
     branches: [ main ]
 
