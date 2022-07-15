@@ -29,4 +29,5 @@ cmake -G Ninja .. \
     -DLLVM_DIR=$PWD/../$llvm_build_dir/lib/cmake/llvm \
     -DLLVM_ENABLE_ASSERTIONS=ON \
     -DCMAKE_BUILD_TYPE=RELEASE
+    -DBUDDY_CONV_OPT_ATTR=avx2
 ninja check-buddy
