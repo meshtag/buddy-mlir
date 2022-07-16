@@ -51,7 +51,7 @@ public:
   explicit DIPCorr2DOpLowering(MLIRContext *context, int64_t strideParam)
       : OpRewritePattern(context) {
     stride = strideParam;
-  }
+  } 
 
   LogicalResult matchAndRewrite(dip::Corr2DOp op,
                                 PatternRewriter &rewriter) const override {
