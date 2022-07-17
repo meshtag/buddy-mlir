@@ -52,7 +52,7 @@ bool testImplementation(int argc, char *argv[]) {
 
   MemRef<float, 2> output = dip::Resize2D(
       &input, dip::INTERPOLATION_TYPE::NEAREST_NEIGHBOUR_INTERPOLATION,
-      outputSize);
+      outputSize); 
   // MemRef<float, 2> output = dip::Resize2D(
   //     &input, dip::INTERPOLATION_TYPE::BILINEAR_INTERPOLATION, outputSize);
 
