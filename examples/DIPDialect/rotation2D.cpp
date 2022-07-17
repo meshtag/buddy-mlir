@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 //===----------------------------------------------------------------------===//
-//
+// 
 // This file implements a 2D rotation example with dip.rotate_2d operation.
 // The dip.rotate_2d operation will be compiled into an object file with the
 // buddy-opt tool.
