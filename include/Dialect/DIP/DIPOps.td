@@ -95,6 +95,24 @@ def DIP_Corr2DOp : DIP_Op<"corr_2d">
   }];
 }
 
+def DIP_CorrFFT2DOp : DIP_Op<"corrfft_2d">
+{
+  let summary = [{ abc def ghi jkl mno pqr stu vwx yz }];
+
+  let arguments = (ins Arg<AnyRankedOrUnrankedMemRef, "inputMemref",
+                           [MemRead]>:$memrefI,
+                       Arg<AnyRankedOrUnrankedMemRef, "kernelMemref",
+                           [MemRead]>:$memrefK,
+                       Arg<AnyRankedOrUnrankedMemRef, "outputMemref",
+                           [MemRead]>:$memrefCO,
+                       Index : $centerX, Index : $centerY, F32 : $constantValue,
+                       DIP_BoundaryOptionAttr:$boundary_option);
+
+  let assemblyFormat = [{
+    $boundary_option $memrefI `,` $memrefK `,` $memrefCO `,` $centerX `,` $centerY `,` $constantValue attr-dict `:` type($memrefI) `,` type($memrefK) `,` type($memrefCO) `,` type($centerX) `,` type($centerY) `,` type($constantValue)
+  }];
+}
+
 def DIP_Rotate2DOp : DIP_Op<"rotate_2d"> {
   let summary = [{This operation intends to provide utility for rotating images via the DIP dialect. 
   Image rotation has many applications such as data augmentation, alignment adjustment, etc. and 

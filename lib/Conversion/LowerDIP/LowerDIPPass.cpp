@@ -774,6 +774,29 @@ public:
 private:
   int64_t stride;
 };
+
+class DIPCorrFFT2DOpLowering : public OpRewritePattern<dip::CorrFFT2DOp> {
+public:
+  using OpRewritePattern<dip::CorrFFT2DOp>::OpRewritePattern;
+
+  explicit DIPCorrFFT2DOpLowering(MLIRContext *context, int64_t strideParam)
+      : OpRewritePattern(context) {
+    stride = strideParam;
+  }
+
+  LogicalResult matchAndRewrite(dip::CorrFFT2DOp op,
+                                PatternRewriter &rewriter) const override {
+    auto loc = op->getLoc();
+    auto ctx = op->getContext();
+
+    // Remove the origin convolution operation involving FFT.
+    rewriter.eraseOp(op);
+    return success();
+  }
+
+private:
+  int64_t stride;
+};
 } // end anonymous namespace
 
 void populateLowerDIPConversionPatterns(RewritePatternSet &patterns,
@@ -781,6 +804,7 @@ void populateLowerDIPConversionPatterns(RewritePatternSet &patterns,
   patterns.add<DIPCorr2DOpLowering>(patterns.getContext(), stride);
   patterns.add<DIPRotate2DOpLowering>(patterns.getContext(), stride);
   patterns.add<DIPResize2DOpLowering>(patterns.getContext(), stride);
+  patterns.add<DIPCorrFFT2DOpLowering>(patterns.getContext(), stride);
 }
 
 //===----------------------------------------------------------------------===//
