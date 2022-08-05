@@ -789,6 +789,28 @@ public:
     auto loc = op->getLoc();
     auto ctx = op->getContext();
 
+    // Create constant indices.
+    Value c0 = rewriter.create<ConstantIndexOp>(loc, 0);
+    Value c1 = rewriter.create<ConstantIndexOp>(loc, 1);
+
+    // Register operand values.
+    Value input = op->getOperand(0);
+    Value kernel = op->getOperand(1);
+    Value output = op->getOperand(2);
+    Value centerX = op->getOperand(3);
+    Value centerY = op->getOperand(4);
+    Value constantValue = op->getOperand(5);
+    auto boundaryOptionAttr = op.boundary_option();
+    Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
+
+    // Create DimOp.
+    Value inputRow = rewriter.create<memref::DimOp>(loc, input, c0);
+    Value inputCol = rewriter.create<memref::DimOp>(loc, input, c1);
+    Value kernelSize = rewriter.create<memref::DimOp>(loc, kernel, c0);
+
+    // ComplexType compTy = ComplexType::get(f32);
+    // MemRefType memTy = MemRefType::get({stride, stride}, compTy);
+
     // Remove the origin convolution operation involving FFT.
     rewriter.eraseOp(op);
     return success();
