@@ -37,6 +37,7 @@ template <typename T, size_t N> Img<T, N>::Img(cv::Mat image) : MemRef<T, N>() {
     this->allocated = new T[this->size];
     this->aligned = this->allocated;
     int k = 0;
+
     for (int i = 0; i < image.rows; i++) {
       for (int j = 0; j < image.cols; j++) {
         this->aligned[k] = (T)image.at<uchar>(i, j);

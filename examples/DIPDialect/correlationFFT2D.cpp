@@ -35,11 +35,11 @@ using namespace std;
 
 extern "C" {
 void _mlir_ciface_corrfft_2d_constant_padding(
-    Img<float, 2> *input, MemRef<float, 2> *kernel, MemRef<float, 2> *output,
+    Img<std::complex<float>, 2> *input, MemRef<std::complex<float>, 2> *kernel, MemRef<float, 2> *output,
     unsigned int centerX, unsigned int centerY, float constantValue);
 
 void _mlir_ciface_corrfft_2d_replicate_padding(
-    Img<float, 2> *input, MemRef<float, 2> *kernel, MemRef<float, 2> *output,
+    Img<std::complex<float>, 2> *input, MemRef<std::complex<float>, 2> *kernel, MemRef<float, 2> *output,
     unsigned int centerX, unsigned int centerY, float constantValue);
 }
 
@@ -83,10 +83,20 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   intptr_t sizesOutput[2] = {image.rows, image.cols};
 
   // Define memref containers.
-  Img<float, 2> input(image);
+  Img<std::complex<float>, 2> input(image);
   MemRef<float, 2> kernel(kernelAlign, sizesKernel);
   MemRef<float, 2> output1(sizesOutput);
   MemRef<float, 2> output2(sizesOutput);
+
+  std::cout << input.getData()[10] << "  check meshtag\n";
+  std::cout << (float)input.getData()[10].real() << "\n";
+  std::cout << (float)input.getData()[10].imag() << "\n";
+  for (int i = 0; i < 7; ++i)
+  {
+    for (int j = 0; j < 7; ++j)
+      std::cout << (int)image.at<uchar>(i, j) << " ";
+    std::cout << "\n";
+  }
 
   Mat kernel1 = Mat(3, 3, CV_32FC1, laplacianKernelAlign);
 
@@ -94,7 +104,7 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
 //   dip::Corr2D(&input, &kernel, &output1, x, y,
 //               dip::BOUNDARY_OPTION::REPLICATE_PADDING);
 
-  _mlir_ciface_corrfft_2d_constant_padding(&input, &kernel, &output1, x, y, 0);
+  // _mlir_ciface_corrfft_2d_constant_padding(&input, &kernel, &output1, x, y, 0);
 
   // Define a cv::Mat with the output of Corr2D.
   Mat outputImageReplicatePadding(sizesOutput[0], sizesOutput[1], CV_32FC1,
@@ -135,8 +145,8 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
 
 int main(int argc, char *argv[]) {
   bool flag = 1;
-  for (std::ptrdiff_t x = 0; x < 3; ++x) {
-    for (std::ptrdiff_t y = 0; y < 3; ++y) {
+  for (std::ptrdiff_t x = 0; x < 1; ++x) {
+    for (std::ptrdiff_t y = 0; y < 1; ++y) {
       if (!testImplementation(argc, argv, x, y, 0)) {
         flag = 0;
         break;
