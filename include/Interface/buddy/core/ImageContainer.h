@@ -30,6 +30,7 @@
 template <typename T, size_t N> class Img : public MemRef<T, N> {
 public:
   Img(cv::Mat image);
+  Img(const T* data, intptr_t sizes[N]) : MemRef<T, N>(data, sizes) {}
 };
 
 #include "Interface/core/ImageContainer.cpp"

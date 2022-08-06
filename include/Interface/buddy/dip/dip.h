@@ -54,6 +54,14 @@ void _mlir_ciface_resize_2d_nearest_neighbour_interpolation(
 void _mlir_ciface_resize_2d_bilinear_interpolation(
     Img<float, 2> *input, float horizontalScalingFactor,
     float verticalScalingFactor, MemRef<float, 2> *output);
+
+void _mlir_ciface_corrfft_2d_constant_padding(
+    Img<std::complex<float>, 2> *input, MemRef<std::complex<float>, 2> *kernel, MemRef<float, 2> *output,
+    unsigned int centerX, unsigned int centerY, float constantValue);
+
+void _mlir_ciface_corrfft_2d_replicate_padding(
+    Img<std::complex<float>, 2> *input, MemRef<std::complex<float>, 2> *kernel, MemRef<float, 2> *output,
+    unsigned int centerX, unsigned int centerY, float constantValue);
 }
 
 MemRef<float, 2> Resize2D_Impl(Img<float, 2> *input, INTERPOLATION_TYPE type,
@@ -88,6 +96,31 @@ void Corr2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
     detail::_mlir_ciface_corr_2d_replicate_padding(input, kernel, output,
                                                    centerX, centerY, 0);
   }
+}
+
+void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
+            MemRef<float, 2> *output, unsigned int centerX,
+            unsigned int centerY, BOUNDARY_OPTION option,
+            float constantValue = 0) {
+  
+
+  std::complex<float> check_data[input->getSizes()[0] * input->getSizes()[1]];
+  for (int i = 0; i < input->getSizes()[0]; ++i)
+    for (int j = 0; j < input->getSizes()[1]; ++j)
+    {
+      check_data[i * input->getSizes()[1] + j] = std::complex<float>(
+        input->getData()[i * input->getSizes()[1] + j], 0);
+    }
+
+  Img<std::complex<float>, 2> input_modified1(check_data, const_cast<intptr_t*>(input->getSizes()));
+
+  // if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
+  //   detail::_mlir_ciface_corrfft_2d_constant_padding(
+  //       &input_modified, kernel, output, centerX, centerY, constantValue);
+  // } else if (option == BOUNDARY_OPTION::REPLICATE_PADDING) {
+  //   detail::_mlir_ciface_corrfft_2d_replicate_padding(&input_modified, kernel, output,
+  //                                                  centerX, centerY, 0);
+  // }
 }
 
 MemRef<float, 2> Rotate2D(Img<float, 2> *input, float angle,

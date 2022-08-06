@@ -33,16 +33,6 @@
 using namespace cv;
 using namespace std;
 
-extern "C" {
-void _mlir_ciface_corrfft_2d_constant_padding(
-    Img<std::complex<float>, 2> *input, MemRef<std::complex<float>, 2> *kernel, MemRef<float, 2> *output,
-    unsigned int centerX, unsigned int centerY, float constantValue);
-
-void _mlir_ciface_corrfft_2d_replicate_padding(
-    Img<std::complex<float>, 2> *input, MemRef<std::complex<float>, 2> *kernel, MemRef<float, 2> *output,
-    unsigned int centerX, unsigned int centerY, float constantValue);
-}
-
 bool testImages(cv::Mat img1, cv::Mat img2) {
   if (img1.rows != img2.rows || img1.cols != img2.cols) {
     std::cout << "Dimensions not equal\n";
@@ -83,26 +73,26 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   intptr_t sizesOutput[2] = {image.rows, image.cols};
 
   // Define memref containers.
-  Img<std::complex<float>, 2> input(image);
+  Img<float, 2> input(image);
   MemRef<float, 2> kernel(kernelAlign, sizesKernel);
   MemRef<float, 2> output1(sizesOutput);
   MemRef<float, 2> output2(sizesOutput);
 
-  std::cout << input.getData()[10] << "  check meshtag\n";
-  std::cout << (float)input.getData()[10].real() << "\n";
-  std::cout << (float)input.getData()[10].imag() << "\n";
-  for (int i = 0; i < 7; ++i)
-  {
-    for (int j = 0; j < 7; ++j)
-      std::cout << (int)image.at<uchar>(i, j) << " ";
-    std::cout << "\n";
-  }
+  // std::cout << input.getData()[10] << "  check meshtag\n";
+  // std::cout << (float)input.getData()[10].real() << "\n";
+  // std::cout << (float)input.getData()[10].imag() << "\n";
+  // for (int i = 0; i < 7; ++i)
+  // {
+  //   for (int j = 0; j < 7; ++j)
+  //     std::cout << (int)image.at<uchar>(i, j) << " ";
+  //   std::cout << "\n";
+  // }
 
   Mat kernel1 = Mat(3, 3, CV_32FC1, laplacianKernelAlign);
 
-//   // Call the MLIR Corr2D function.
-//   dip::Corr2D(&input, &kernel, &output1, x, y,
-//               dip::BOUNDARY_OPTION::REPLICATE_PADDING);
+//   // Call the MLIR CorrFFT2D function.
+  dip::CorrFFT2D(&input, &kernel, &output1, x, y,
+              dip::BOUNDARY_OPTION::REPLICATE_PADDING);
 
   // _mlir_ciface_corrfft_2d_constant_padding(&input, &kernel, &output1, x, y, 0);
 
