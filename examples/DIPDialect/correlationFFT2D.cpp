@@ -135,8 +135,8 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
 
 int main(int argc, char *argv[]) {
   bool flag = 1;
-  for (std::ptrdiff_t x = 0; x < 1; ++x) {
-    for (std::ptrdiff_t y = 0; y < 1; ++y) {
+  for (std::ptrdiff_t x = 1; x < 2; ++x) {
+    for (std::ptrdiff_t y = 1; y < 2; ++y) {
       if (!testImplementation(argc, argv, x, y, 0)) {
         flag = 0;
         break;

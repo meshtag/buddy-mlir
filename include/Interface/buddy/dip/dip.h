@@ -83,6 +83,24 @@ MemRef<float, 2> Resize2D_Impl(Img<float, 2> *input, INTERPOLATION_TYPE type,
 
   return output;
 }
+
+// Pad kernel as per the requirements for using FFT in convolution.
+void padKernel(MemRef<float, 2> *kernel, unsigned int centerX, unsigned int centerY, 
+               intptr_t *paddedSizes, std::complex<float>* kernelPaddedData)
+{
+  // Apply padding so that the center of kernel is at top left of 2D padded container.
+  for (long i = -static_cast<long>(centerY); i < static_cast<long>(kernel->getSizes()[0]) - centerY;
+       ++i) {
+    uint32_t r = (i < 0) ? (i + paddedSizes[0]) : i;
+    for (long j = -static_cast<long>(centerX); j < static_cast<long>(kernel->getSizes()[1]) - 
+         centerX; ++j) {
+      uint32_t c = (j < 0) ? (j + paddedSizes[1]) : j;
+      kernelPaddedData[r * paddedSizes[1] + c] = 
+        std::complex<float>(
+          kernel->getData()[(i + centerY) * kernel->getSizes()[1] + j + centerX], 0);
+    }
+  }
+}
 } // namespace detail
 
 void Corr2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
@@ -102,25 +120,39 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
             MemRef<float, 2> *output, unsigned int centerX,
             unsigned int centerY, BOUNDARY_OPTION option,
             float constantValue = 0) {
-  
+  // Calculate padding sizes.
+  intptr_t paddedSizes[2] = {
+    1<<((uint8_t)ceil(log2(input->getSizes()[1] + kernel->getSizes()[1] - 1))),
+    1<<((uint8_t)ceil(log2(input->getSizes()[0] + kernel->getSizes()[0] - 1)))
+  };
+	unsigned long paddedSize = paddedSizes[0] * paddedSizes[1];
 
-  std::complex<float> check_data[input->getSizes()[0] * input->getSizes()[1]];
-  for (int i = 0; i < input->getSizes()[0]; ++i)
-    for (int j = 0; j < input->getSizes()[1]; ++j)
-    {
-      check_data[i * input->getSizes()[1] + j] = std::complex<float>(
-        input->getData()[i * input->getSizes()[1] + j], 0);
+  // Obtain padded input image.
+  std::complex<float> inputPaddedData[paddedSize];
+  for (uint32_t i = 0; i < input->getSizes()[0]; ++i) {
+    for (uint32_t j = 0; j < input->getSizes()[1]; ++j) {
+      inputPaddedData[i * paddedSizes[1] + j] = 
+        std::complex<float>(input->getData()[i * input->getSizes()[1] + j], 0);
     }
+  }
 
-  Img<std::complex<float>, 2> input_modified1(check_data, const_cast<intptr_t*>(input->getSizes()));
+  // flip kernel for correlation instead of convolution.
 
-  // if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
-  //   detail::_mlir_ciface_corrfft_2d_constant_padding(
-  //       &input_modified, kernel, output, centerX, centerY, constantValue);
-  // } else if (option == BOUNDARY_OPTION::REPLICATE_PADDING) {
-  //   detail::_mlir_ciface_corrfft_2d_replicate_padding(&input_modified, kernel, output,
-  //                                                  centerX, centerY, 0);
-  // }
+  // Obtain padded kernel.
+  std::complex<float> kernelPaddedData[paddedSize];
+  detail::padKernel(kernel, centerX, centerY, paddedSizes, kernelPaddedData);
+
+  // Declare padded containers for input image and kernel.
+  Img<std::complex<float>, 2> inputPadded(inputPaddedData, paddedSizes);
+  MemRef<std::complex<float>, 2> kernelPadded(kernelPaddedData, paddedSizes);
+
+  if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
+    detail::_mlir_ciface_corrfft_2d_constant_padding(
+        &inputPadded, &kernelPadded, output, centerX, centerY, constantValue);
+  } else if (option == BOUNDARY_OPTION::REPLICATE_PADDING) {
+    detail::_mlir_ciface_corrfft_2d_replicate_padding(&inputPadded, &kernelPadded, output,
+                                                   centerX, centerY, 0);
+  }
 }
 
 MemRef<float, 2> Rotate2D(Img<float, 2> *input, float angle,
