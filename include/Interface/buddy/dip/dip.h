@@ -55,12 +55,9 @@ void _mlir_ciface_resize_2d_bilinear_interpolation(
     Img<float, 2> *input, float horizontalScalingFactor,
     float verticalScalingFactor, MemRef<float, 2> *output);
 
-void _mlir_ciface_corrfft_2d_constant_padding(
-    Img<std::complex<float>, 2> *input, MemRef<std::complex<float>, 2> *kernel, MemRef<float, 2> *output,
-    unsigned int centerX, unsigned int centerY, float constantValue);
-
-void _mlir_ciface_corrfft_2d_replicate_padding(
-    Img<std::complex<float>, 2> *input, MemRef<std::complex<float>, 2> *kernel, MemRef<float, 2> *output,
+void _mlir_ciface_corrfft_2d(
+    Img<std::complex<float>, 2> *input, MemRef<std::complex<float>, 2> *kernel, 
+    MemRef<float, 2> *output, MemRef<std::complex<float>, 2> *intermediate,
     unsigned int centerX, unsigned int centerY, float constantValue);
 }
 
@@ -136,6 +133,7 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
     }
   }
 
+  // Do padding related modifications in above step. Constant padding with zero as constant for now.
   // flip kernel for correlation instead of convolution.
 
   // Obtain padded kernel.
@@ -143,16 +141,13 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
   detail::padKernel(kernel, centerX, centerY, paddedSizes, kernelPaddedData);
 
   // Declare padded containers for input image and kernel.
+  // Also declare an intermediate container for calculation convenience.
   Img<std::complex<float>, 2> inputPadded(inputPaddedData, paddedSizes);
   MemRef<std::complex<float>, 2> kernelPadded(kernelPaddedData, paddedSizes);
+  MemRef<std::complex<float>, 2> intermediate(paddedSizes);
 
-  if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
-    detail::_mlir_ciface_corrfft_2d_constant_padding(
-        &inputPadded, &kernelPadded, output, centerX, centerY, constantValue);
-  } else if (option == BOUNDARY_OPTION::REPLICATE_PADDING) {
-    detail::_mlir_ciface_corrfft_2d_replicate_padding(&inputPadded, &kernelPadded, output,
-                                                   centerX, centerY, 0);
-  }
+  detail::_mlir_ciface_corrfft_2d(
+        &inputPadded, &kernelPadded, output, &intermediate, centerX, centerY, constantValue);
 }
 
 MemRef<float, 2> Rotate2D(Img<float, 2> *input, float angle,

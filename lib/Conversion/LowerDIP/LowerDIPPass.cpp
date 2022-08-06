@@ -797,10 +797,10 @@ public:
     Value input = op->getOperand(0);
     Value kernel = op->getOperand(1);
     Value output = op->getOperand(2);
-    Value centerX = op->getOperand(3);
-    Value centerY = op->getOperand(4);
-    Value constantValue = op->getOperand(5);
-    auto boundaryOptionAttr = op.boundary_option();
+    Value intermediate = op->getOperand(3);
+    Value centerX = op->getOperand(4);
+    Value centerY = op->getOperand(5);
+    Value constantValue = op->getOperand(6);
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
     // Create DimOp.
