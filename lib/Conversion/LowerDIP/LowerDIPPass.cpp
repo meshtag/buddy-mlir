@@ -775,6 +775,33 @@ private:
   int64_t stride;
 };
 
+void dft_1d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value vec, Value resVec,
+            Value lowerBound, Value upperBound, int64_t step)
+{
+    builder.create<AffineForOp>(
+            loc, ValueRange{lowerBound}, builder.getDimIdentityMap(),
+            ValueRange{upperBound}, builder.getDimIdentityMap(), step, llvm::None,
+            [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv,
+                ValueRange itrArg) {
+
+    });
+}
+
+void dft_2d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value container2D,
+            Value container2DRows, Value container2DCols, Value c0, Value c1)
+{
+    builder.create<AffineForOp>(
+        loc, ValueRange{c0}, builder.getDimIdentityMap(),
+        ValueRange{container2DRows}, builder.getDimIdentityMap(), 1, llvm::None,
+        [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv, ValueRange itrArg) {
+        Value check_vec = builder.create<memref::SubViewOp>(loc, container2D, 
+                          ValueRange{iv, c0}, ValueRange{c1, container2DCols}, ValueRange{c1, c1});
+
+        dft_1d(builder, loc, ctx, check_vec, check_vec, c0, container2DCols, 1);
+
+    });
+}
+
 class DIPCorrFFT2DOpLowering : public OpRewritePattern<dip::CorrFFT2DOp> {
 public:
   using OpRewritePattern<dip::CorrFFT2DOp>::OpRewritePattern;
@@ -806,10 +833,11 @@ public:
     // Create DimOp.
     Value inputRow = rewriter.create<memref::DimOp>(loc, input, c0);
     Value inputCol = rewriter.create<memref::DimOp>(loc, input, c1);
-    Value kernelSize = rewriter.create<memref::DimOp>(loc, kernel, c0);
 
     // ComplexType compTy = ComplexType::get(f32);
     // MemRefType memTy = MemRefType::get({stride, stride}, compTy);
+
+
 
     // Remove the origin convolution operation involving FFT.
     rewriter.eraseOp(op);
