@@ -790,6 +790,7 @@ void dft_1d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value vec, Value
 void dft_2d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value container2D,
             Value container2DRows, Value container2DCols, Value c0, Value c1)
 {
+    builder.create<vector::PrintOp>(loc, c1);
     builder.create<AffineForOp>(
         loc, ValueRange{c0}, builder.getDimIdentityMap(),
         ValueRange{container2DRows}, builder.getDimIdentityMap(), 1, llvm::None,
@@ -833,6 +834,8 @@ public:
     // Create DimOp.
     Value inputRow = rewriter.create<memref::DimOp>(loc, input, c0);
     Value inputCol = rewriter.create<memref::DimOp>(loc, input, c1);
+
+    rewriter.create<vector::PrintOp>(loc, strideVal);
 
     // ComplexType compTy = ComplexType::get(f32);
     // MemRefType memTy = MemRefType::get({stride, stride}, compTy);
