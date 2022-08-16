@@ -19,6 +19,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
+#include "mlir/Dialect/Complex/IR/Complex.h"
 #include "mlir/Dialect/Bufferization/Transforms/Bufferize.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Linalg/Transforms/Transforms.h"
@@ -778,19 +779,52 @@ private:
 void dft_1d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value vec, Value resVec,
             Value lowerBound, Value upperBound, int64_t step)
 {
+    Value c0 = builder.create<ConstantIndexOp>(loc, 0);
+    Value c1 = builder.create<ConstantIndexOp>(loc, 1);
+
+    Value vecRow = builder.create<memref::DimOp>(loc, vec, c0);
+    Value vecCol = builder.create<memref::DimOp>(loc, vec, c1);
+
+    // builder.create<vector::PrintOp>(loc, vecRow);
+    // builder.create<vector::PrintOp>(loc, vecCol);
+
+    FloatType f32 = FloatType::getF32(ctx);
+    ComplexType compTy = ComplexType::get(f32);
+    // VectorType vectorTy = VectorType::get({5}, compTy);
+    // builder.create<vector::PrintOp>(loc, vec);
+
     builder.create<AffineForOp>(
             loc, ValueRange{lowerBound}, builder.getDimIdentityMap(),
             ValueRange{upperBound}, builder.getDimIdentityMap(), step, llvm::None,
             [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv,
                 ValueRange itrArg) {
 
+        // Value checkVec = builder.create<LoadOp>(loc, vectorTy, vec, ValueRange{iv});
+        Value checkVal = builder.create<memref::LoadOp>(loc, vec, ValueRange{c0, iv});
+        // Value dummyVec = builder.create<complex::AbsOp>(loc, checkVec);
+        // builder.create<vector::PrintOp>(loc, dummyVec);
+
+        // Value realVal = builder.create<complex::ReOp>(loc, f32, checkVec);
+
+        builder.create<vector::PrintOp>(loc, c0);
+        // builder.create<vector::PrintOp>(loc, realVal);
+        // builder.create<vector::PrintOp>(loc, checkVal);
+        builder.create<vector::PrintOp>(loc, c0);
+
+        // builder.create<vector::PrintOp>(loc, iv);
+
+        nestedBuilder.create<AffineYieldOp>(nestedLoc);
     });
 }
 
 void dft_2d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value container2D,
             Value container2DRows, Value container2DCols, Value c0, Value c1)
 {
-    builder.create<vector::PrintOp>(loc, c1);
+    // builder.create<vector::PrintOp>(loc, c1);
+    
+    // builder.create<vector::PrintOp>(loc, c0);
+    // builder.create<vector::PrintOp>(loc, container2DRows);
+    
     builder.create<AffineForOp>(
         loc, ValueRange{c0}, builder.getDimIdentityMap(),
         ValueRange{container2DRows}, builder.getDimIdentityMap(), 1, llvm::None,
@@ -800,6 +834,7 @@ void dft_2d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value container2
 
         dft_1d(builder, loc, ctx, check_vec, check_vec, c0, container2DCols, 1);
 
+        nestedBuilder.create<AffineYieldOp>(nestedLoc);
     });
 }
 
@@ -835,12 +870,10 @@ public:
     Value inputRow = rewriter.create<memref::DimOp>(loc, input, c0);
     Value inputCol = rewriter.create<memref::DimOp>(loc, input, c1);
 
-    rewriter.create<vector::PrintOp>(loc, strideVal);
-
     // ComplexType compTy = ComplexType::get(f32);
     // MemRefType memTy = MemRefType::get({stride, stride}, compTy);
 
-
+    dft_2d(rewriter, loc, ctx, input, inputRow, inputCol, c0, c1);
 
     // Remove the origin convolution operation involving FFT.
     rewriter.eraseOp(op);
@@ -881,7 +914,8 @@ public:
     registry
         .insert<buddy::dip::DIPDialect, func::FuncDialect,
                 memref::MemRefDialect, scf::SCFDialect, VectorDialect,
-                AffineDialect, arith::ArithmeticDialect, math::MathDialect>();
+                AffineDialect, arith::ArithmeticDialect, math::MathDialect,
+                complex::ComplexDialect>();
   }
 
   Option<int64_t> stride{*this, "DIP-strip-mining",
@@ -897,7 +931,8 @@ void LowerDIPPass::runOnOperation() {
   ConversionTarget target(*context);
   target.addLegalDialect<AffineDialect, scf::SCFDialect, func::FuncDialect,
                          memref::MemRefDialect, VectorDialect,
-                         arith::ArithmeticDialect, math::MathDialect>();
+                         arith::ArithmeticDialect, math::MathDialect,
+                         complex::ComplexDialect>();
   target.addLegalOp<ModuleOp, func::FuncOp, func::ReturnOp>();
 
   RewritePatternSet patterns(context);

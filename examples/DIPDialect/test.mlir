@@ -18,8 +18,6 @@ module {
     %cx = arith.constant 1 : index
     %const = arith.constant 0.000000e+00 : f32
 
-    // dip.corr_2d CONSTANT_PADDING %arg0, %arg1, %arg2, %cx, %cx, %const : memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, index, index, f32
-
     dip.corrfft_2d %arg0, %arg1, %arg2, %arg0, %cx, %cx, %const : memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, index, index, f32
 
     return
