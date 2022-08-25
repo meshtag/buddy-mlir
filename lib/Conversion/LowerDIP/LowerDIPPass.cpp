@@ -411,7 +411,7 @@ void dft_1d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value vec, Value
         Value checkVal = builder.create<memref::LoadOp>(loc, vec, ValueRange{c0, iv});
         // Value dummyVec = builder.create<complex::AbsOp>(loc, checkVec);
         // Value dummyVal = builder.create<complex::AbsOp>(compTy, checkVal);
-        Value dummyVal = b.create<complex::AbsOp>(f32, checkVal);
+        // Value dummyVal = b.create<complex::AbsOp>(f32, checkVal);
         // Value dummyVal = b.create<complex::AbsOp>(checkVal, f32);
         // builder.create<vector::PrintOp>(loc, dummyVec);
 
