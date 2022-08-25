@@ -38,6 +38,8 @@
 #include "Utils/Utils.h"
 #include <vector>
 
+#include <iostream>
+
 using namespace mlir;
 using namespace buddy;
 using namespace vector;
@@ -810,8 +812,10 @@ void dft_1d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value vec, Value
 
     FloatType f32 = FloatType::getF32(ctx);
     ComplexType compTy = ComplexType::get(f32);
+    // MemRefType memTy = MemRefType::get({})
     // VectorType vectorTy = VectorType::get({5}, compTy);
     // builder.create<vector::PrintOp>(loc, vec);
+    mlir::ImplicitLocOpBuilder b(loc, builder);
 
     builder.create<AffineForOp>(
             loc, ValueRange{lowerBound}, builder.getDimIdentityMap(),
@@ -822,14 +826,23 @@ void dft_1d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value vec, Value
         // Value checkVec = builder.create<LoadOp>(loc, vectorTy, vec, ValueRange{iv});
         Value checkVal = builder.create<memref::LoadOp>(loc, vec, ValueRange{c0, iv});
         // Value dummyVec = builder.create<complex::AbsOp>(loc, checkVec);
+        // Value dummyVal = builder.create<complex::AbsOp>(compTy, checkVal);
+        Value dummyVal = b.create<complex::AbsOp>(f32, checkVal);
+        // Value dummyVal = b.create<complex::AbsOp>(checkVal, f32);
         // builder.create<vector::PrintOp>(loc, dummyVec);
 
-        // Value realVal = builder.create<complex::ReOp>(loc, f32, checkVec);
+        // auto type = checkVal.getType().cast<ComplexType>().getElementType();
+        // auto type = checkVal.getType();
+        // auto type = vec.getType().cast<ComplexType>().getElementType();
+        // auto elementType = type.cast<FloatType>();
 
-        builder.create<vector::PrintOp>(loc, c0);
+        // Value realVal = builder.create<complex::ReOp>(loc, elementType, checkVal);
+        // Value realVal1 = builder.create<complex::ReOp>(loc, compTy, checkVal);
+
+        // builder.create<vector::PrintOp>(loc, c0);
         // builder.create<vector::PrintOp>(loc, realVal);
         // builder.create<vector::PrintOp>(loc, checkVal);
-        builder.create<vector::PrintOp>(loc, c0);
+        // builder.create<vector::PrintOp>(loc, c1);
 
         // builder.create<vector::PrintOp>(loc, iv);
 
