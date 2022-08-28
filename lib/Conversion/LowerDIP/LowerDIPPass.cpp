@@ -382,53 +382,48 @@ private:
   int64_t stride;
 };
 
-void dft_1d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value vec, Value resVec,
+void dft_1d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value origMemRef, Value resMemRef,
             Value lowerBound, Value upperBound, int64_t step)
 {
     Value c0 = builder.create<ConstantIndexOp>(loc, 0);
     Value c1 = builder.create<ConstantIndexOp>(loc, 1);
 
-    Value vecRow = builder.create<memref::DimOp>(loc, vec, c0);
-    Value vecCol = builder.create<memref::DimOp>(loc, vec, c1);
+    Value origMemRefRow = builder.create<memref::DimOp>(loc, origMemRef, c0);
+    Value origMemRefCol = builder.create<memref::DimOp>(loc, origMemRef, c1);
 
     // builder.create<vector::PrintOp>(loc, vecRow);
     // builder.create<vector::PrintOp>(loc, vecCol);
+    // builder.create<vector::PrintOp>(loc, c0);
+    // // builder.create<vector::PrintOp>(loc, origMemRef);
 
     FloatType f32 = FloatType::getF32(ctx);
     ComplexType compTy = ComplexType::get(f32);
+    MemRefType memTy = MemRefType::get({1, 5}, f32);
+    MemRefType compMemTy = MemRefType::get({origMemRefRow, origMemRefCol}, compTy);
+
+    Value c1F32 = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)1.57f, f32);
+    Value c2F32 = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)2.0f, f32);
+
+    Value checkComplexOp = builder.create<complex::CreateOp>(loc, compTy, c1F32, c2F32);
+    Value realCheck = builder.create<complex::ReOp>(loc, f32, checkComplexOp);
+    builder.create<vector::PrintOp>(loc, realCheck);
+
+
+
+
+    // Value realOrigMemRef = builder.create<complex::ReOp>(loc, memTy, origMemRef);
+
     // MemRefType memTy = MemRefType::get({})
     // VectorType vectorTy = VectorType::get({5}, compTy);
     // builder.create<vector::PrintOp>(loc, vec);
-    mlir::ImplicitLocOpBuilder b(loc, builder);
+    // mlir::ImplicitLocOpBuilder b(loc, builder);
 
     builder.create<AffineForOp>(
             loc, ValueRange{lowerBound}, builder.getDimIdentityMap(),
             ValueRange{upperBound}, builder.getDimIdentityMap(), step, llvm::None,
             [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv,
                 ValueRange itrArg) {
-
-        // Value checkVec = builder.create<LoadOp>(loc, vectorTy, vec, ValueRange{iv});
-        Value checkVal = builder.create<memref::LoadOp>(loc, vec, ValueRange{c0, iv});
-        // Value dummyVec = builder.create<complex::AbsOp>(loc, checkVec);
-        // Value dummyVal = builder.create<complex::AbsOp>(compTy, checkVal);
-        // Value dummyVal = b.create<complex::AbsOp>(f32, checkVal);
-        // Value dummyVal = b.create<complex::AbsOp>(checkVal, f32);
-        // builder.create<vector::PrintOp>(loc, dummyVec);
-
-        // auto type = checkVal.getType().cast<ComplexType>().getElementType();
-        // auto type = checkVal.getType();
-        // auto type = vec.getType().cast<ComplexType>().getElementType();
-        // auto elementType = type.cast<FloatType>();
-
-        // Value realVal = builder.create<complex::ReOp>(loc, elementType, checkVal);
-        // Value realVal1 = builder.create<complex::ReOp>(loc, compTy, checkVal);
-
-        // builder.create<vector::PrintOp>(loc, c0);
-        // builder.create<vector::PrintOp>(loc, realVal);
-        // builder.create<vector::PrintOp>(loc, checkVal);
-        // builder.create<vector::PrintOp>(loc, c1);
-
-        // builder.create<vector::PrintOp>(loc, iv);
+        
 
         nestedBuilder.create<AffineYieldOp>(nestedLoc);
     });
@@ -437,11 +432,6 @@ void dft_1d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value vec, Value
 void dft_2d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value container2D,
             Value container2DRows, Value container2DCols, Value c0, Value c1)
 {
-    // builder.create<vector::PrintOp>(loc, c1);
-    
-    // builder.create<vector::PrintOp>(loc, c0);
-    // builder.create<vector::PrintOp>(loc, container2DRows);
-    
     builder.create<AffineForOp>(
         loc, ValueRange{c0}, builder.getDimIdentityMap(),
         ValueRange{container2DRows}, builder.getDimIdentityMap(), 1, llvm::None,
