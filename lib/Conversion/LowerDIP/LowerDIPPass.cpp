@@ -385,64 +385,14 @@ private:
 void dft_1d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value origMemRef, Value resMemRef,
             Value lowerBound, Value upperBound, int64_t step)
 {
-    Value c0 = builder.create<ConstantIndexOp>(loc, 0);
-    Value c1 = builder.create<ConstantIndexOp>(loc, 1);
 
-    Value origMemRefRow = builder.create<memref::DimOp>(loc, origMemRef, c0);
-    Value origMemRefCol = builder.create<memref::DimOp>(loc, origMemRef, c1);
-
-    // builder.create<vector::PrintOp>(loc, vecRow);
-    // builder.create<vector::PrintOp>(loc, vecCol);
-    // builder.create<vector::PrintOp>(loc, c0);
-    // // builder.create<vector::PrintOp>(loc, origMemRef);
-
-    FloatType f32 = FloatType::getF32(ctx);
-    ComplexType compTy = ComplexType::get(f32);
-    MemRefType memTy = MemRefType::get({1, 5}, f32);
-    MemRefType compMemTy = MemRefType::get({origMemRefRow, origMemRefCol}, compTy);
-
-    Value c1F32 = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)1.57f, f32);
-    Value c2F32 = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)2.0f, f32);
-
-    Value checkComplexOp = builder.create<complex::CreateOp>(loc, compTy, c1F32, c2F32);
-    Value realCheck = builder.create<complex::ReOp>(loc, f32, checkComplexOp);
-    builder.create<vector::PrintOp>(loc, realCheck);
-
-
-
-
-    // Value realOrigMemRef = builder.create<complex::ReOp>(loc, memTy, origMemRef);
-
-    // MemRefType memTy = MemRefType::get({})
-    // VectorType vectorTy = VectorType::get({5}, compTy);
-    // builder.create<vector::PrintOp>(loc, vec);
-    // mlir::ImplicitLocOpBuilder b(loc, builder);
-
-    builder.create<AffineForOp>(
-            loc, ValueRange{lowerBound}, builder.getDimIdentityMap(),
-            ValueRange{upperBound}, builder.getDimIdentityMap(), step, llvm::None,
-            [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv,
-                ValueRange itrArg) {
-        
-
-        nestedBuilder.create<AffineYieldOp>(nestedLoc);
-    });
 }
 
-void dft_2d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value container2D,
-            Value container2DRows, Value container2DCols, Value c0, Value c1)
+void dft_2d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value container2DReal,
+            Value container2DImag, Value container2DRows, Value container2DCols,
+            Value c0, Value c1)
 {
-    builder.create<AffineForOp>(
-        loc, ValueRange{c0}, builder.getDimIdentityMap(),
-        ValueRange{container2DRows}, builder.getDimIdentityMap(), 1, llvm::None,
-        [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv, ValueRange itrArg) {
-        Value check_vec = builder.create<memref::SubViewOp>(loc, container2D, 
-                          ValueRange{iv, c0}, ValueRange{c1, container2DCols}, ValueRange{c1, c1});
 
-        dft_1d(builder, loc, ctx, check_vec, check_vec, c0, container2DCols, 1);
-
-        nestedBuilder.create<AffineYieldOp>(nestedLoc);
-    });
 }
 
 class DIPCorrFFT2DOpLowering : public OpRewritePattern<dip::CorrFFT2DOp> {
@@ -464,23 +414,24 @@ public:
     Value c1 = rewriter.create<ConstantIndexOp>(loc, 1);
 
     // Register operand values.
-    Value input = op->getOperand(0);
-    Value kernel = op->getOperand(1);
-    Value output = op->getOperand(2);
-    Value intermediate = op->getOperand(3);
-    Value centerX = op->getOperand(4);
-    Value centerY = op->getOperand(5);
-    Value constantValue = op->getOperand(6);
+    Value inputReal = op->getOperand(0);
+    Value inputImag = op->getOperand(1);
+    Value kernelReal = op->getOperand(2);
+    Value kernelImag = op->getOperand(3);
+    Value outputReal = op->getOperand(4);
+    Value outputImag = op->getOperand(5);
+    Value intermediateReal = op->getOperand(6);
+    Value intermediateImag = op->getOperand(7);
+    Value centerX = op->getOperand(8);
+    Value centerY = op->getOperand(9);
+    Value constantValue = op->getOperand(10);
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
     // Create DimOp.
-    Value inputRow = rewriter.create<memref::DimOp>(loc, input, c0);
-    Value inputCol = rewriter.create<memref::DimOp>(loc, input, c1);
+    Value inputRow = rewriter.create<memref::DimOp>(loc, inputReal, c0);
+    Value inputCol = rewriter.create<memref::DimOp>(loc, inputReal, c1);
 
-    // ComplexType compTy = ComplexType::get(f32);
-    // MemRefType memTy = MemRefType::get({stride, stride}, compTy);
-
-    dft_2d(rewriter, loc, ctx, input, inputRow, inputCol, c0, c1);
+    dft_2d(rewriter, loc, ctx, inputReal, inputImag, inputRow, inputCol, c0, c1);
 
     // Remove the origin convolution operation involving FFT.
     rewriter.eraseOp(op);

@@ -102,18 +102,31 @@ def DIP_CorrFFT2DOp : DIP_Op<"corrfft_2d">
 {
   let summary = [{ abc def ghi jkl mno pqr stu vwx yz }];
 
-  let arguments = (ins Arg<AnyRankedOrUnrankedMemRef, "inputMemref",
-                           [MemRead]>:$memrefI,
-                       Arg<AnyRankedOrUnrankedMemRef, "kernelMemref",
-                           [MemRead]>:$memrefK,
-                       Arg<AnyRankedOrUnrankedMemRef, "outputMemref",
-                           [MemRead]>:$memrefCO,
-                       Arg<AnyRankedOrUnrankedMemRef, "intermediateMemref",
-                           [MemRead]>:$memrefInt,
+  let arguments = (ins Arg<AnyRankedOrUnrankedMemRef, "inputMemrefReal",
+                           [MemRead]>:$memrefIReal,
+                       Arg<AnyRankedOrUnrankedMemRef, "inputMemrefImag",
+                           [MemRead]>:$memrefIImag,
+                       Arg<AnyRankedOrUnrankedMemRef, "kernelMemrefReal",
+                           [MemRead]>:$memrefKReal,
+                       Arg<AnyRankedOrUnrankedMemRef, "kernelMemrefImag",
+                           [MemRead]>:$memrefKImag,
+                       Arg<AnyRankedOrUnrankedMemRef, "outputMemrefReal",
+                           [MemRead]>:$memrefCOReal,
+                       Arg<AnyRankedOrUnrankedMemRef, "outputMemrefImag",
+                           [MemRead]>:$memrefCOImag,
+                       Arg<AnyRankedOrUnrankedMemRef, "intermediateMemrefReal",
+                           [MemRead]>:$memrefIntReal,
+                       Arg<AnyRankedOrUnrankedMemRef, "intermediateMemrefImag",
+                           [MemRead]>:$memrefIntImag,
                        Index : $centerX, Index : $centerY, F32 : $constantValue);
 
   let assemblyFormat = [{
-    $memrefI `,` $memrefK `,` $memrefCO `,` $memrefInt `,` $centerX `,` $centerY `,` $constantValue attr-dict `:` type($memrefI) `,` type($memrefK) `,` type($memrefCO) `,` type($memrefInt) `,` type($centerX) `,` type($centerY) `,` type($constantValue)
+    $memrefIReal `,` $memrefIImag `,` $memrefKReal `,` $memrefKImag `,` $memrefCOReal `,` 
+    $memrefCOImag `,` $memrefIntReal `,` $memrefIntImag `,` $centerX `,` $centerY `,` 
+    $constantValue attr-dict `:` type($memrefIReal) `,` type($memrefIImag) `,` 
+    type($memrefKReal) `,` type($memrefKImag) `,` type($memrefCOReal) `,` type($memrefCOImag) `,` 
+    type($memrefIntReal) `,` type($memrefIntImag) `,` type($centerX) `,` type($centerY) `,` 
+    type($constantValue)
   }];
 }
 

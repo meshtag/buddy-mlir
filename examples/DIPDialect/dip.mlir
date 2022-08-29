@@ -10,9 +10,9 @@ func.func @corr_2d_replicate_padding(%inputImage : memref<?x?xf32>, %kernel : me
   return
 }
 
-func.func @corrfft_2d(%inputImage : memref<?x?xcomplex<f32>>, %kernel : memref<?x?xcomplex<f32>>, %outputImage : memref<?x?xf32>, %intermediate : memref<?x?xcomplex<f32>>, %centerX : index, %centerY : index, %constantValue : f32)
+func.func @corrfft_2d(%inputImageReal : memref<?x?xf32>, %inputImageImag : memref<?x?xf32>, %kernelReal : memref<?x?xf32>, %kernelImag : memref<?x?xf32>, %outputImageReal : memref<?x?xf32>, %outputImageImag : memref<?x?xf32>, %intermediateReal : memref<?x?xf32>, %intermediateImag : memref<?x?xf32>, %centerX : index, %centerY : index, %constantValue : f32)
 {
-  dip.corrfft_2d %inputImage, %kernel, %outputImage, %intermediate, %centerX, %centerY, %constantValue : memref<?x?xcomplex<f32>>, memref<?x?xcomplex<f32>>, memref<?x?xf32>, memref<?x?xcomplex<f32>>, index, index, f32
+  dip.corrfft_2d %inputImageReal, %inputImageImag, %kernelReal, %kernelImag, %outputImageReal, %outputImageImag, %intermediateReal, %intermediateImag, %centerX, %centerY, %constantValue : memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, index, index, f32
   return
 }
 

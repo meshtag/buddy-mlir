@@ -66,8 +66,11 @@ void _mlir_ciface_resize_2d_bilinear_interpolation(
     float verticalScalingFactor, MemRef<float, 2> *output);
 
 void _mlir_ciface_corrfft_2d(
-    Img<std::complex<float>, 2> *input, MemRef<std::complex<float>, 2> *kernel, 
-    MemRef<float, 2> *output, MemRef<std::complex<float>, 2> *intermediate,
+    Img<float, 2> *inputReal, Img<float, 2> *inputImag,
+    MemRef<float, 2> *kernelReal, MemRef<float, 2> *kernelImag,
+    MemRef<float, 2> *outputReal, MemRef<float, 2> *outputImag,
+    MemRef<std::complex<float>, 2> *intermediateReal,
+    MemRef<std::complex<float>, 2> *intermediateImag,
     unsigned int centerX, unsigned int centerY, float constantValue);
 }
 
@@ -158,8 +161,8 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
   MemRef<std::complex<float>, 2> kernelPadded(kernelPaddedData, paddedSizes);
   MemRef<std::complex<float>, 2> intermediate(paddedSizes);
 
-  detail::_mlir_ciface_corrfft_2d(
-        &inputPadded, &kernelPadded, output, &intermediate, centerX, centerY, constantValue);
+  // detail::_mlir_ciface_corrfft_2d(
+  //       &inputPadded, &kernelPadded, output, &intermediate, centerX, centerY, constantValue);
 }
 
 MemRef<float, 2> Rotate2D(Img<float, 2> *input, float angle,
