@@ -382,16 +382,48 @@ private:
   int64_t stride;
 };
 
-void dft_1d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value origMemRef, Value resMemRef,
-            Value lowerBound, Value upperBound, int64_t step)
+void fft_1d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value origMemRefReal,
+            Value origMemRefImag, Value resMemRefReal, Value resMemRefImag, Value lowerBound,
+            Value upperBound, Value strideVal, VectorType vecType, Value c1, int64_t step)
 {
+
+  Value subProbs = builder.create<arith::ShRSIOp>(loc, upperBound, c1);
+  Value subProbsSize, i, jBegin, jEnd, j, wStepReal, wStepImag, wReal, wImag, tmp1Real, tmp1Imag;
+  Value half = c1, tmp2Real, tmp2Imag;
+
+  // builder.create<vector::PrintOp>(loc, half);
+  // builder.create<vector::PrintOp>(loc, subProbs);
+
+  
 
 }
 
 void dft_2d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value container2DReal,
             Value container2DImag, Value container2DRows, Value container2DCols,
-            Value c0, Value c1)
+            Value intermediateReal, Value intermediateImag, Value c0, Value c1,
+            Value strideVal, VectorType vecType)
 {
+
+  builder.create<memref::CopyOp>(loc, container2DReal, intermediateReal);
+
+  builder.create<AffineForOp>(
+        loc, ValueRange{c0}, builder.getDimIdentityMap(),
+        ValueRange{container2DRows}, builder.getDimIdentityMap(), 1, llvm::None,
+        [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv, ValueRange itrArg) {
+        Value origSubMemRefReal = builder.create<memref::SubViewOp>(loc, container2DReal, 
+                          ValueRange{iv, c0}, ValueRange{c1, container2DCols}, ValueRange{c1, c1});
+        Value origSubMemRefImag = builder.create<memref::SubViewOp>(loc, container2DImag, 
+                          ValueRange{iv, c0}, ValueRange{c1, container2DCols}, ValueRange{c1, c1});
+        Value intermediateSubMemRefReal = builder.create<memref::SubViewOp>(loc, intermediateReal,
+                          ValueRange{iv, c0}, ValueRange{c1, container2DCols}, ValueRange{c1, c1});
+        Value intermediateSubMemRefImag = builder.create<memref::SubViewOp>(loc, intermediateImag,
+                          ValueRange{iv, c0}, ValueRange{c1, container2DCols}, ValueRange{c1, c1});
+
+        fft_1d(builder, loc, ctx, origSubMemRefReal, origSubMemRefImag, intermediateSubMemRefReal,
+               intermediateSubMemRefImag, c0, container2DCols, strideVal, vecType, c1, 1);
+
+        nestedBuilder.create<AffineYieldOp>(nestedLoc);
+    });
 
 }
 
@@ -431,7 +463,11 @@ public:
     Value inputRow = rewriter.create<memref::DimOp>(loc, inputReal, c0);
     Value inputCol = rewriter.create<memref::DimOp>(loc, inputReal, c1);
 
-    dft_2d(rewriter, loc, ctx, inputReal, inputImag, inputRow, inputCol, c0, c1);
+    FloatType f32 = FloatType::getF32(ctx);
+    VectorType vectorTy32 = VectorType::get({stride}, f32);
+
+    dft_2d(rewriter, loc, ctx, inputReal, inputImag, inputRow, inputCol, intermediateReal,
+           intermediateImag, c0, c1, strideVal, vectorTy32);
 
     // Remove the origin convolution operation involving FFT.
     rewriter.eraseOp(op);

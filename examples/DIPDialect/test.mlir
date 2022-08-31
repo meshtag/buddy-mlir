@@ -28,7 +28,7 @@ module {
     %cst = arith.constant 1.000000e+00 : f32
     %cst_0 = arith.constant 0.000000e+00 : f32
 
-    %current_filter = arith.constant 3 : index
+    %current_filter = arith.constant 5 : index
     %current_output = arith.constant 5 : index
     %current_image = arith.constant 5 : index
     %c0_index = arith.constant 0 : index
