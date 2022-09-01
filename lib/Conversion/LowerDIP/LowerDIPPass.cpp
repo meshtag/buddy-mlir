@@ -384,17 +384,59 @@ private:
 
 void fft_1d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value origMemRefReal,
             Value origMemRefImag, Value resMemRefReal, Value resMemRefImag, Value lowerBound,
-            Value upperBound, Value strideVal, VectorType vecType, Value c1, int64_t step)
+            Value MemRefLength, Value strideVal, VectorType vecType, Value c1, int64_t step)
 {
 
-  Value subProbs = builder.create<arith::ShRSIOp>(loc, upperBound, c1);
+  Value subProbs = builder.create<arith::ShRSIOp>(loc, MemRefLength, c1);
   Value subProbsSize, i, jBegin, jEnd, j, wStepReal, wStepImag, wReal, wImag, tmp1Real, tmp1Imag;
   Value half = c1, tmp2Real, tmp2Imag;
 
   // builder.create<vector::PrintOp>(loc, half);
   // builder.create<vector::PrintOp>(loc, subProbs);
 
-  
+  Value upperBound = F32ToIndex(builder, loc,
+                     builder.create<math::Log2Op>(loc, indexToF32(builder, loc, MemRefLength)));
+  // builder.create<vector::PrintOp>(loc, upperBound);
+  // builder.create<vector::PrintOp>(loc, MemRefLength);
+
+  // builder.create<AffineForOp>(
+  //   loc, ValueRange{lowerBound}, builder.getDimIdentityMap(), ValueRange{MemRefLength},
+  //   builder.getDimIdentityMap(), 1, llvm::None,
+  //   [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv, ValueRange itrArg) {
+
+  //     Value c0 = builder.create<ConstantIndexOp>(loc, 0);
+
+  //     nestedBuilder.create<AffineYieldOp>(nestedLoc);
+  //   });
+
+  // SmallVector<Value, 8> lowerBounds{lowerBound};
+  // SmallVector<Value, 8> upperBounds{upperBound};
+
+  // SmallVector<int64_t, 8> steps{1};
+
+  // buildAffineLoopNest(
+  //     builder, loc, lowerBounds, upperBounds, steps,
+  //     [&](OpBuilder &builder, Location loc, ValueRange ivs) {
+
+  // });
+
+  // builder.create<scf::ForOp>(loc, lowerBound, upperBound, c1, llvm::None,
+  //   [&](OpBuilder &builder, Location loc, ValueRange ivs) {
+
+  //     builder.create<scf::YieldOp>(loc);
+  //   });
+
+  Value c4;
+  builder.create<scf::ForOp>(loc, lowerBound, upperBound, c1, ValueRange{}, 
+    [&](OpBuilder &builder, Location loc, ValueRange ivs, ValueRange) {
+      builder.create<vector::PrintOp>(loc, c1);
+      c4 = builder.create<ConstantIndexOp>(loc, 4);
+      builder.create<vector::PrintOp>(loc, c4);
+
+      builder.create<scf::YieldOp>(loc);
+    }); 
+    // builder.create<vector::PrintOp>(loc, c4);
+    builder.create<vector::PrintOp>(loc, lowerBound);
 
 }
 
