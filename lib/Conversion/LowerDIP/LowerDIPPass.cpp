@@ -38,6 +38,7 @@
 #include "Utils/Utils.h"
 #include <vector>
 
+#include <cmath>
 #include <iostream>
 
 using namespace mlir;
@@ -382,65 +383,105 @@ private:
   int64_t stride;
 };
 
-void fft_1d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value origMemRefReal,
-            Value origMemRefImag, Value resMemRefReal, Value resMemRefImag, Value lowerBound,
+inline std::vector<Value> complexVecAddI(OpBuilder &builder, Location loc, 
+                                 Value vec1Real, Value vec1Imag, Value vec2Real, Value vec2Imag)
+{
+  return {builder.create<arith::AddIOp>(loc, vec1Real, vec2Real),
+          builder.create<arith::AddIOp>(loc, vec1Imag, vec2Imag)};
+}
+
+inline std::vector<Value> complexVecSubI(OpBuilder &builder, Location loc, 
+                                 Value vec1Real, Value vec1Imag, Value vec2Real, Value vec2Imag)
+{
+  return {builder.create<arith::SubIOp>(loc, vec1Real, vec2Real),
+          builder.create<arith::SubIOp>(loc, vec1Imag, vec2Imag)};
+}
+
+std::vector<Value> complexVecMulI(OpBuilder &builder, Location loc, 
+                                  Value vec1Real, Value vec1Imag, Value vec2Real, Value vec2Imag)
+{
+  // (ac - bd) + i(ad + bc)
+  Value int1 = builder.create<arith::MulIOp>(loc, vec1Real, vec2Real);
+  Value int2 = builder.create<arith::MulIOp>(loc, vec1Imag, vec2Imag);
+  Value int3 = builder.create<arith::MulIOp>(loc, vec1Real, vec2Imag);
+  Value int4 = builder.create<arith::MulIOp>(loc, vec1Imag, vec2Real);
+
+  return {builder.create<arith::SubIOp>(loc, int1, int2),
+          builder.create<arith::AddIOp>(loc, int3, int4)};
+}
+
+void fft_1d(OpBuilder &builder, Location loc, Value memRefReal,
+            Value memRefImag, Value resMemRefReal, Value resMemRefImag, Value lowerBound,
             Value MemRefLength, Value strideVal, VectorType vecType, Value c1, int64_t step)
 {
-
-  Value subProbs = builder.create<arith::ShRSIOp>(loc, MemRefLength, c1);
-  Value subProbsSize, i, jBegin, jEnd, j, wStepReal, wStepImag, wReal, wImag, tmp1Real, tmp1Imag;
-  Value half = c1, tmp2Real, tmp2Imag;
-
-  // builder.create<vector::PrintOp>(loc, half);
-  // builder.create<vector::PrintOp>(loc, subProbs);
+  Value subProbs = c1, subProbSize = MemRefLength, i, jBegin, jEnd, j, half, angle;
+  Value wStepReal, wStepImag, wReal, wImag, tmp1Real, tmp1Imag, tmp2Real, tmp2Imag;
 
   Value upperBound = F32ToIndex(builder, loc,
                      builder.create<math::Log2Op>(loc, indexToF32(builder, loc, MemRefLength)));
-  // builder.create<vector::PrintOp>(loc, upperBound);
-  // builder.create<vector::PrintOp>(loc, MemRefLength);
+  Value neg2MPI = builder.create<ConstantFloatOp>(loc,
+                  (llvm::APFloat)(float)(-2.0*M_PI), builder.getF32Type());
 
-  // builder.create<AffineForOp>(
-  //   loc, ValueRange{lowerBound}, builder.getDimIdentityMap(), ValueRange{MemRefLength},
-  //   builder.getDimIdentityMap(), 1, llvm::None,
-  //   [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv, ValueRange itrArg) {
-
-  //     Value c0 = builder.create<ConstantIndexOp>(loc, 0);
-
-  //     nestedBuilder.create<AffineYieldOp>(nestedLoc);
-  //   });
-
-  // SmallVector<Value, 8> lowerBounds{lowerBound};
-  // SmallVector<Value, 8> upperBounds{upperBound};
-
-  // SmallVector<int64_t, 8> steps{1};
-
-  // buildAffineLoopNest(
-  //     builder, loc, lowerBounds, upperBounds, steps,
-  //     [&](OpBuilder &builder, Location loc, ValueRange ivs) {
-
-  // });
-
-  // builder.create<scf::ForOp>(loc, lowerBound, upperBound, c1, llvm::None,
-  //   [&](OpBuilder &builder, Location loc, ValueRange ivs) {
-
-  //     builder.create<scf::YieldOp>(loc);
-  //   });
-
-  Value c4;
   builder.create<scf::ForOp>(loc, lowerBound, upperBound, c1, ValueRange{}, 
-    [&](OpBuilder &builder, Location loc, ValueRange ivs, ValueRange) {
-      builder.create<vector::PrintOp>(loc, c1);
-      c4 = builder.create<ConstantIndexOp>(loc, 4);
-      builder.create<vector::PrintOp>(loc, c4);
+    [&](OpBuilder &builder, Location loc, ValueRange iv, ValueRange) {
+      half = builder.create<arith::ShRSIOp>(loc, subProbSize, c1);
+      angle = builder.create<arith::DivFOp>(loc, neg2MPI, indexToF32(builder, loc, subProbSize));
+      wStepReal = builder.create<math::CosOp>(loc, angle);
+      wStepImag = builder.create<math::SinOp>(loc, angle);
+
+      builder.create<scf::ForOp>(loc, lowerBound, subProbs, c1, ValueRange{}, 
+        [&](OpBuilder &builder, Location loc, ValueRange iv1, ValueRange) {
+          jBegin = builder.create<arith::MulIOp>(loc, iv1[0], subProbSize);
+          jEnd = builder.create<arith::AddIOp>(loc, jBegin, half);
+          wReal = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)1.0f, builder.getF32Type());
+          wImag = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)0.0f, builder.getF32Type());
+
+          // Vectorize stuff inside this loop (take care of tail processing as well)
+          builder.create<scf::ForOp>(loc, jBegin, jEnd, strideVal, ValueRange{}, 
+            [&](OpBuilder &builder, Location loc, ValueRange iv2, ValueRange) {
+        //       tmp1 = X[j];
+				// tmp2 = X[j+half];
+				// X[j] = tmp1+tmp2;
+				// X[j+half] = (tmp1-tmp2)*w;
+				// w *= w_step;
+
+              // tmp1Real = builder.create<LoadOp>(loc, vecType, memRefReal, 
+              //                                   ValueRange{lowerBound, iv2[0]});
+              // tmp1Imag = builder.create<LoadOp>(loc, vecType, memRefImag, 
+              //                                   ValueRange{lowerBound, iv2[0]});
+
+              // Value secondIndex = builder.create<arith::AddIOp>(loc, iv2[0], half);
+              // tmp2Real = builder.create<LoadOp>(loc, vecType, memRefReal, 
+              //                                   ValueRange{lowerBound, secondIndex});
+              // tmp2Imag = builder.create<LoadOp>(loc, vecType, memRefImag, 
+              //                                   ValueRange{lowerBound, secondIndex});
+
+              // std::vector<Value> int1Vec = 
+              //     complexVecAddI(builder, loc, tmp1Real, tmp1Imag, tmp2Real, tmp2Imag);
+              // builder.create<StoreOp>(loc, int1Vec[0], memRefReal, ValueRange{lowerBound, iv2[0]});
+              // builder.create<StoreOp>(loc, int1Vec[1], memRefImag, ValueRange{lowerBound, iv2[0]});
+
+              // std::vector<Value> int2Vec = 
+              //     complexVecSubI(builder, loc, tmp1Real, tmp1Imag, tmp2Real, tmp2Imag);
+              // std::vector<Value> int3Vec = 
+              //     complexVecMulI(builder, loc, int2Vec[0], int2Vec[1], wReal, wImag);
+              // builder.create<StoreOp>(loc, int3Vec[0], memRefReal, 
+              //     ValueRange{lowerBound, secondIndex});
+              // builder.create<StoreOp>(loc, int3Vec[1], memRefImag, 
+              //     ValueRange{lowerBound, secondIndex});
+
+              builder.create<scf::YieldOp>(loc);
+            });
+
+          builder.create<scf::YieldOp>(loc);
+        });
 
       builder.create<scf::YieldOp>(loc);
     }); 
-    // builder.create<vector::PrintOp>(loc, c4);
-    builder.create<vector::PrintOp>(loc, lowerBound);
 
 }
 
-void dft_2d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value container2DReal,
+void dft_2d(OpBuilder &builder, Location loc, Value container2DReal,
             Value container2DImag, Value container2DRows, Value container2DCols,
             Value intermediateReal, Value intermediateImag, Value c0, Value c1,
             Value strideVal, VectorType vecType)
@@ -461,7 +502,7 @@ void dft_2d(OpBuilder &builder, Location loc, MLIRContext *ctx, Value container2
         Value intermediateSubMemRefImag = builder.create<memref::SubViewOp>(loc, intermediateImag,
                           ValueRange{iv, c0}, ValueRange{c1, container2DCols}, ValueRange{c1, c1});
 
-        fft_1d(builder, loc, ctx, origSubMemRefReal, origSubMemRefImag, intermediateSubMemRefReal,
+        fft_1d(builder, loc, origSubMemRefReal, origSubMemRefImag, intermediateSubMemRefReal,
                intermediateSubMemRefImag, c0, container2DCols, strideVal, vecType, c1, 1);
 
         nestedBuilder.create<AffineYieldOp>(nestedLoc);
@@ -508,7 +549,7 @@ public:
     FloatType f32 = FloatType::getF32(ctx);
     VectorType vectorTy32 = VectorType::get({stride}, f32);
 
-    dft_2d(rewriter, loc, ctx, inputReal, inputImag, inputRow, inputCol, intermediateReal,
+    dft_2d(rewriter, loc, inputReal, inputImag, inputRow, inputCol, intermediateReal,
            intermediateImag, c0, c1, strideVal, vectorTy32);
 
     // Remove the origin convolution operation involving FFT.
