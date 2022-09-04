@@ -704,6 +704,12 @@ void traverseImagewBoundaryExtrapolation(
                                 loc, vectorTy32, input,
                                 ValueRange{imRow, leftPaddingOffset}, leftMask,
                                 padding);
+
+                            // builder.create<vector::PrintOp>(loc, inputVec);
+                            // builder.create<vector::PrintOp>(loc, currCol);
+                            // builder.create<vector::PrintOp>(loc, currRow);
+                            // builder.create<vector::PrintOp>(loc, c0);
+
                           } else if (boundaryOptionAttr ==
                                      buddy::dip::BoundaryOption::
                                          ReplicatePadding) {
@@ -731,7 +737,7 @@ void traverseImagewBoundaryExtrapolation(
                         [&](OpBuilder &builder, Location loc) {
                           // (colMid or colRight) & rowMid
                           Value colMidCond =
-                              builder.create<CmpIOp>(loc, CmpIPredicate::sle,
+                              builder.create<CmpIOp>(loc, CmpIPredicate::slt,
                                                      colLastElem, colMidHelper);
 
                           builder.create<scf::IfOp>(
@@ -741,6 +747,10 @@ void traverseImagewBoundaryExtrapolation(
                                 Value inputVec = builder.create<LoadOp>(
                                     loc, vectorTy32, input,
                                     ValueRange{imRow, imCol});
+
+                                builder.create<vector::PrintOp>(loc, ivs[0]);
+                                builder.create<vector::PrintOp>(loc, ivs[2]);
+                                builder.create<vector::PrintOp>(loc, inputVec);
 
                                 if (op == DIP_OP::CORRELATION_2D) {
                                   calcAndStoreFMAwoTailProcessing(

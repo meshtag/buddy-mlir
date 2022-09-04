@@ -18,6 +18,7 @@ module {
     %cx = arith.constant 1 : index
     %const = arith.constant 0.000000e+00 : f32
 
+    // dip.corr_2d <CONSTANT_PADDING> %inputImageReal, %kernelReal, %outputImageReal, %cx, %cx, %const : memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, index, index, f32
     // dip.corrfft_2d %inputImageReal, %inputImageImag, %kernelReal, %kernelImag, %outputImageReal, %outputImageImag, %intermediateReal, %intermediateImag, %centerX, %centerY, %constantValue : memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, index, index, f32
 
     return
@@ -28,7 +29,7 @@ module {
     %cst = arith.constant 1.000000e+00 : f32
     %cst_0 = arith.constant 0.000000e+00 : f32
 
-    %current_filter = arith.constant 5 : index
+    %current_filter = arith.constant 3 : index
     %current_output = arith.constant 5 : index
     %current_image = arith.constant 5 : index
     %c0_index = arith.constant 0 : index
@@ -57,7 +58,8 @@ module {
     // Execute convolution for specific times.
     affine.for %arg0 = 0 to %reps {
       // func.call @conv_2d(%image, %filter, %output) : (memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>) -> ()
-      dip.corrfft_2d %imageReal, %imageImag, %filterReal, %filterImag, %outputReal, %outputImag, %intReal, %intImag, %cx, %cx, %const : memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, index, index, f32
+      // dip.corrfft_2d %imageReal, %imageImag, %filterReal, %filterImag, %outputReal, %outputImag, %intReal, %intImag, %cx, %cx, %const : memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, index, index, f32
+      dip.corr_2d <CONSTANT_PADDING> %imageReal, %filterReal, %outputReal, %cx, %cx, %const : memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, index, index, f32
     }
 
     // Print input.

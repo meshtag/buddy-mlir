@@ -59,6 +59,7 @@ public:
   explicit DIPCorr2DOpLowering(MLIRContext *context, int64_t strideParam)
       : OpRewritePattern(context) {
     stride = strideParam;
+    stride = 4;
   }
 
   LogicalResult matchAndRewrite(dip::Corr2DOp op,
@@ -75,6 +76,8 @@ public:
     Value constantValue = op->getOperand(5);
     dip::BoundaryOption boundaryOptionAttr = op.boundary_option();
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
+
+    // rewriter.create<vector::PrintOp>(loc, strideVal);
 
     auto inElemTy = input.getType().cast<MemRefType>().getElementType();
     auto kElemTy = kernel.getType().cast<MemRefType>().getElementType();
@@ -502,8 +505,8 @@ void dft_2d(OpBuilder &builder, Location loc, Value container2DReal,
         Value intermediateSubMemRefImag = builder.create<memref::SubViewOp>(loc, intermediateImag,
                           ValueRange{iv, c0}, ValueRange{c1, container2DCols}, ValueRange{c1, c1});
 
-        builder.create<vector::PrintOp>(loc, c1);
-        MemRefType checkTy = MemRefType::get(container2DCols, builder.getF32Type());
+        // builder.create<vector::PrintOp>(loc, c1);
+        // MemRefType checkTy = MemRefType::get(container2DCols, builder.getF32Type());
         // builder.create<vector::PrintOp>(loc, container2DReal.getType().getShape());
 
         fft_1d(builder, loc, origSubMemRefReal, origSubMemRefImag, intermediateSubMemRefReal,
