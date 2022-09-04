@@ -446,7 +446,7 @@ void fft_1d(OpBuilder &builder, Location loc, Value memRefReal,
 				// w *= w_step;
 
               // tmp1Real = builder.create<LoadOp>(loc, vecType, memRefReal, 
-              //                                   ValueRange{lowerBound, iv2[0]});
+              //                                   ValueRange{lowerBound, lowerBound});
               // tmp1Imag = builder.create<LoadOp>(loc, vecType, memRefImag, 
               //                                   ValueRange{lowerBound, iv2[0]});
 
@@ -494,13 +494,17 @@ void dft_2d(OpBuilder &builder, Location loc, Value container2DReal,
         ValueRange{container2DRows}, builder.getDimIdentityMap(), 1, llvm::None,
         [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv, ValueRange itrArg) {
         Value origSubMemRefReal = builder.create<memref::SubViewOp>(loc, container2DReal, 
-                          ValueRange{iv, c0}, ValueRange{c1, container2DCols}, ValueRange{c1, c1});
+          ValueRange{iv, c0}, ValueRange{container2DRows, c1}, ValueRange{c1, c1});
         Value origSubMemRefImag = builder.create<memref::SubViewOp>(loc, container2DImag, 
                           ValueRange{iv, c0}, ValueRange{c1, container2DCols}, ValueRange{c1, c1});
         Value intermediateSubMemRefReal = builder.create<memref::SubViewOp>(loc, intermediateReal,
                           ValueRange{iv, c0}, ValueRange{c1, container2DCols}, ValueRange{c1, c1});
         Value intermediateSubMemRefImag = builder.create<memref::SubViewOp>(loc, intermediateImag,
                           ValueRange{iv, c0}, ValueRange{c1, container2DCols}, ValueRange{c1, c1});
+
+        builder.create<vector::PrintOp>(loc, c1);
+        MemRefType checkTy = MemRefType::get(container2DCols, builder.getF32Type());
+        // builder.create<vector::PrintOp>(loc, container2DReal.getType().getShape());
 
         fft_1d(builder, loc, origSubMemRefReal, origSubMemRefImag, intermediateSubMemRefReal,
                intermediateSubMemRefImag, c0, container2DCols, strideVal, vecType, c1, 1);
