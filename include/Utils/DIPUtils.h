@@ -737,7 +737,7 @@ void traverseImagewBoundaryExtrapolation(
                         [&](OpBuilder &builder, Location loc) {
                           // (colMid or colRight) & rowMid
                           Value colMidCond =
-                              builder.create<CmpIOp>(loc, CmpIPredicate::slt,
+                              builder.create<CmpIOp>(loc, CmpIPredicate::sle,
                                                      colLastElem, colMidHelper);
 
                           builder.create<scf::IfOp>(
@@ -748,8 +748,12 @@ void traverseImagewBoundaryExtrapolation(
                                     loc, vectorTy32, input,
                                     ValueRange{imRow, imCol});
 
-                                builder.create<vector::PrintOp>(loc, ivs[0]);
-                                builder.create<vector::PrintOp>(loc, ivs[2]);
+                                builder.create<vector::PrintOp>(loc, colLastElem);
+                                builder.create<vector::PrintOp>(loc, colMidHelper);
+                                
+
+                                // builder.create<vector::PrintOp>(loc, ivs[0]);
+                                // builder.create<vector::PrintOp>(loc, ivs[2]);
                                 builder.create<vector::PrintOp>(loc, inputVec);
 
                                 if (op == DIP_OP::CORRELATION_2D) {
