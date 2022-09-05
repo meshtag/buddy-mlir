@@ -74,6 +74,11 @@ void calcAndStoreFMAwoTailProcessing(OpBuilder &builder, Location loc,
                                      Value beginIdx, Value endIdx) {
   Value outputVec = builder.create<LoadOp>(loc, vecType, output,
                                            ValueRange{beginIdx, endIdx});
+
+//   builder.create<vector::PrintOp>(loc, beginIdx);
+//   builder.create<vector::PrintOp>(loc, endIdx);
+//   builder.create<vector::PrintOp>(loc, kernelVec);
+
   Value resVec =
       insertFMAOp(builder, loc, vecType, inputVec, kernelVec, outputVec);
   builder.create<StoreOp>(loc, resVec, output, ValueRange{beginIdx, endIdx});
@@ -563,9 +568,9 @@ void traverseImagewBoundaryExtrapolation(
                     builder.create<BroadcastOp>(loc, vectorTy32, constantValue);
 
                 if (op == DIP_OP::CORRELATION_2D) {
-                  calcAndStoreFMAwoTailProcessing(builder, loc, vectorTy32,
-                                                  inputVec, kernelVec, output,
-                                                  ivs[0], ivs[2]);
+                //   calcAndStoreFMAwoTailProcessing(builder, loc, vectorTy32,
+                //                                   inputVec, kernelVec, output,
+                //                                   ivs[0], ivs[2]);
                 }
               } else {
                 Value colLeftCond = builder.create<CmpIOp>(
@@ -597,9 +602,9 @@ void traverseImagewBoundaryExtrapolation(
                       }
 
                       if (op == DIP_OP::CORRELATION_2D) {
-                        calcAndStoreFMAwoTailProcessing(
-                            builder, loc, vectorTy32, inputVec, kernelVec,
-                            output, ivs[0], ivs[2]);
+                        // calcAndStoreFMAwoTailProcessing(
+                        //     builder, loc, vectorTy32, inputVec, kernelVec,
+                        //     output, ivs[0], ivs[2]);
                       }
 
                       builder.create<scf::YieldOp>(loc);
@@ -622,9 +627,9 @@ void traverseImagewBoundaryExtrapolation(
                             }
 
                             if (op == DIP_OP::CORRELATION_2D) {
-                              calcAndStoreFMAwoTailProcessing(
-                                  builder, loc, vectorTy32, inputVec, kernelVec,
-                                  output, ivs[0], ivs[2]);
+                            //   calcAndStoreFMAwoTailProcessing(
+                            //       builder, loc, vectorTy32, inputVec, kernelVec,
+                            //       output, ivs[0], ivs[2]);
                             }
 
                             builder.create<scf::YieldOp>(loc);
@@ -657,10 +662,10 @@ void traverseImagewBoundaryExtrapolation(
                                             kernelSize, c1, pseudoCol, ivs[2]);
 
                             if (op == DIP_OP::CORRELATION_2D) {
-                              calcAndStoreFMAwTailProcessing(
-                                  builder, loc, vectorTy32, inputVec, kernelVec,
-                                  output, ivs[0], ivs[2], tailCond, zeroPadding,
-                                  inputCol, vectorMaskTy);
+                            //   calcAndStoreFMAwTailProcessing(
+                            //       builder, loc, vectorTy32, inputVec, kernelVec,
+                            //       output, ivs[0], ivs[2], tailCond, zeroPadding,
+                            //       inputCol, vectorMaskTy);
                             }
 
                             builder.create<scf::YieldOp>(loc);
@@ -727,9 +732,9 @@ void traverseImagewBoundaryExtrapolation(
                           }
 
                           if (op == DIP_OP::CORRELATION_2D) {
-                            calcAndStoreFMAwoTailProcessing(
-                                builder, loc, vectorTy32, inputVec, kernelVec,
-                                output, ivs[0], ivs[2]);
+                            // calcAndStoreFMAwoTailProcessing(
+                            //     builder, loc, vectorTy32, inputVec, kernelVec,
+                            //     output, ivs[0], ivs[2]);
                           }
 
                           builder.create<scf::YieldOp>(loc);
@@ -748,18 +753,54 @@ void traverseImagewBoundaryExtrapolation(
                                     loc, vectorTy32, input,
                                     ValueRange{imRow, imCol});
 
-                                builder.create<vector::PrintOp>(loc, colLastElem);
-                                builder.create<vector::PrintOp>(loc, colMidHelper);
+                                // VectorType vectorTy32 = VectorType::get({stride}, elemTy);
+//   VectorType vectorMaskTy = VectorType::get({stride}, i1);
+
+                                // builder.create<vector::PrintOp>(loc, colLastElem);
+                                // builder.create<vector::PrintOp>(loc, colMidHelper);
+                                Value rightMaskHelper = builder.create<SubFOp>(
+                                    loc, indexToF32(builder, loc, colLastElem), 
+                                    indexToF32(builder, loc, colMidHelper));
+                                // builder.create<vector::PrintOp>(loc, rightMaskHelper);
+                                Value cneg1F32 = builder.create<ConstantFloatOp>(loc, 
+                                                 (llvm::APFloat)-1.0f, builder.getF32Type());
+                                Value colRightMaskCond =
+                                    builder.create<CmpFOp>(loc, CmpFPredicate::OGT,
+                                                     cneg1F32, rightMaskHelper);
                                 
+                                builder.create<scf::IfOp>(loc, colRightMaskCond, 
+                                    [&](OpBuilder &builder, Location loc) {
+                                        Value maskValHelper = builder.create<arith::SubFOp>(
+                                            loc, cneg1F32, rightMaskHelper);
+                                        Value maskVal = builder.create<arith::SubFOp>(
+                                            loc, indexToF32(builder, loc, strideVal), maskValHelper);
+                                        builder.create<vector::PrintOp>(loc, maskVal);
+
+                                        Value rightMask = builder.create<CreateMaskOp>(
+                                            loc, vectorMaskTy, F32ToIndex(builder, loc, maskVal));
+                                        
+
+                                        Value outputVec = builder.create<MaskedLoadOp>(loc, vectorTy32, 
+                                            output, ValueRange{ivs[0], ivs[2]}, rightMask, 
+                                            zeroPadding);
+                                        Value resVec =
+                                            insertFMAOp(builder, loc, vectorTy32, inputVec, 
+                                            kernelVec, outputVec);
+                                        builder.create<MaskedStoreOp>(loc, output, 
+                                            ValueRange{ivs[0], ivs[2]}, rightMask, resVec);
+
+                                        builder.create<scf::YieldOp>(loc);
+                                    });
+
 
                                 // builder.create<vector::PrintOp>(loc, ivs[0]);
                                 // builder.create<vector::PrintOp>(loc, ivs[2]);
-                                builder.create<vector::PrintOp>(loc, inputVec);
+                                // builder.create<vector::PrintOp>(loc, inputVec);
 
                                 if (op == DIP_OP::CORRELATION_2D) {
-                                  calcAndStoreFMAwoTailProcessing(
-                                      builder, loc, vectorTy32, inputVec,
-                                      kernelVec, output, ivs[0], ivs[2]);
+                                //   calcAndStoreFMAwoTailProcessing(
+                                //       builder, loc, vectorTy32, inputVec,
+                                //       kernelVec, output, ivs[0], ivs[2]);
                                 }
 
                                 builder.create<scf::YieldOp>(loc);
@@ -806,11 +847,11 @@ void traverseImagewBoundaryExtrapolation(
                                     kernelSize, c1, pseudoCol, ivs[2]);
 
                                 if (op == DIP_OP::CORRELATION_2D) {
-                                  calcAndStoreFMAwTailProcessing(
-                                      builder, loc, vectorTy32, inputVec,
-                                      kernelVec, output, ivs[0], ivs[2],
-                                      tailCond, zeroPadding, inputCol,
-                                      vectorMaskTy);
+                                //   calcAndStoreFMAwTailProcessing(
+                                //       builder, loc, vectorTy32, inputVec,
+                                //       kernelVec, output, ivs[0], ivs[2],
+                                //       tailCond, zeroPadding, inputCol,
+                                //       vectorMaskTy);
                                 }
 
                                 builder.create<scf::YieldOp>(loc);
@@ -827,9 +868,9 @@ void traverseImagewBoundaryExtrapolation(
                           loc, vectorTy32, constantValue);
 
                       if (op == DIP_OP::CORRELATION_2D) {
-                        calcAndStoreFMAwoTailProcessing(
-                            builder, loc, vectorTy32, inputVec, kernelVec,
-                            output, ivs[0], ivs[2]);
+                        // calcAndStoreFMAwoTailProcessing(
+                        //     builder, loc, vectorTy32, inputVec, kernelVec,
+                        //     output, ivs[0], ivs[2]);
                       }
                     } else {
                       Value colLeftCond = builder.create<CmpIOp>(
@@ -864,9 +905,9 @@ void traverseImagewBoundaryExtrapolation(
                             }
 
                             if (op == DIP_OP::CORRELATION_2D) {
-                              calcAndStoreFMAwoTailProcessing(
-                                  builder, loc, vectorTy32, inputVec, kernelVec,
-                                  output, ivs[0], ivs[2]);
+                            //   calcAndStoreFMAwoTailProcessing(
+                            //       builder, loc, vectorTy32, inputVec, kernelVec,
+                            //       output, ivs[0], ivs[2]);
                             }
 
                             builder.create<scf::YieldOp>(loc);
@@ -893,9 +934,9 @@ void traverseImagewBoundaryExtrapolation(
                                   }
 
                                   if (op == DIP_OP::CORRELATION_2D) {
-                                    calcAndStoreFMAwoTailProcessing(
-                                        builder, loc, vectorTy32, inputVec,
-                                        kernelVec, output, ivs[0], ivs[2]);
+                                    // calcAndStoreFMAwoTailProcessing(
+                                    //     builder, loc, vectorTy32, inputVec,
+                                    //     kernelVec, output, ivs[0], ivs[2]);
                                   }
 
                                   builder.create<scf::YieldOp>(loc);
@@ -939,11 +980,11 @@ void traverseImagewBoundaryExtrapolation(
                                       kernelSize, c1, pseudoCol, ivs[2]);
 
                                   if (op == DIP_OP::CORRELATION_2D) {
-                                    calcAndStoreFMAwTailProcessing(
-                                        builder, loc, vectorTy32, inputVec,
-                                        kernelVec, output, ivs[0], ivs[2],
-                                        tailCond, zeroPadding, inputCol,
-                                        vectorMaskTy);
+                                    // calcAndStoreFMAwTailProcessing(
+                                    //     builder, loc, vectorTy32, inputVec,
+                                    //     kernelVec, output, ivs[0], ivs[2],
+                                    //     tailCond, zeroPadding, inputCol,
+                                    //     vectorMaskTy);
                                   }
 
                                   builder.create<scf::YieldOp>(loc);
