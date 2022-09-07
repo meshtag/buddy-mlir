@@ -46,9 +46,9 @@ bool testImages(cv::Mat img1, cv::Mat img2) {
         std::cout << (int)img1.at<uchar>(i, j) << "\n";
         std::cout << (int)img2.at<uchar>(i, j) << "\n\n";
 
-        // std::cout << img1 << "\n\n";
-        // std::cout << img2 << "\n\n";
-        // return 0;
+        std::cout << img1 << "\n\n";
+        std::cout << img2 << "\n\n";
+        return 0;
       }
     }
   }
@@ -58,7 +58,11 @@ bool testImages(cv::Mat img1, cv::Mat img2) {
 bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
                         std::ptrdiff_t y, std::ptrdiff_t boundaryOption) {
   // Read as grayscale image.
-  Mat image = imread(argv[1], IMREAD_GRAYSCALE);
+  Mat check = imread(argv[1], IMREAD_GRAYSCALE);
+  Mat image;
+
+  cv::resize(check, image, Size(25, 25), INTER_LINEAR);
+
   if (image.empty()) {
     cout << "Could not read the image: " << argv[1] << endl;
   }
@@ -122,8 +126,8 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
 
 int main(int argc, char *argv[]) {
   bool flag = 1;
-  for (std::ptrdiff_t x = 0; x < 3; ++x) {
-    for (std::ptrdiff_t y = 0; y < 3; ++y) {
+  for (std::ptrdiff_t x = 2; x < 3; ++x) {
+    for (std::ptrdiff_t y = 0; y < 1; ++y) {
       if (!testImplementation(argc, argv, x, y, 0)) {
         flag = 0;
         break;

@@ -743,9 +743,19 @@ void traverseImagewBoundaryExtrapolation(
                                     ValueRange{imRow, imCol});
 
                                 if (op == DIP_OP::CORRELATION_2D) {
-                                  calcAndStoreFMAwoTailProcessing(
+                                //   calcAndStoreFMAwoTailProcessing(
+                                //       builder, loc, vectorTy32, inputVec,
+                                //       kernelVec, output, ivs[0], ivs[2]);
+
+                                Value tailCond = tailChecker(
+                                    builder, loc, calcHelper, strideVal,
+                                    kernelSize, c1, pseudoCol, ivs[2]);
+
+                                calcAndStoreFMAwTailProcessing(
                                       builder, loc, vectorTy32, inputVec,
-                                      kernelVec, output, ivs[0], ivs[2]);
+                                      kernelVec, output, ivs[0], ivs[2],
+                                      tailCond, zeroPadding, inputCol,
+                                      vectorMaskTy);
                                 }
 
                                 builder.create<scf::YieldOp>(loc);
@@ -879,9 +889,19 @@ void traverseImagewBoundaryExtrapolation(
                                   }
 
                                   if (op == DIP_OP::CORRELATION_2D) {
-                                    calcAndStoreFMAwoTailProcessing(
-                                        builder, loc, vectorTy32, inputVec,
-                                        kernelVec, output, ivs[0], ivs[2]);
+                                    // calcAndStoreFMAwoTailProcessing(
+                                    //     builder, loc, vectorTy32, inputVec,
+                                    //     kernelVec, output, ivs[0], ivs[2]);
+                                  
+                                  Value tailCond = tailChecker(
+                                    builder, loc, calcHelper, strideVal,
+                                    kernelSize, c1, pseudoCol, ivs[2]);
+
+                                calcAndStoreFMAwTailProcessing(
+                                      builder, loc, vectorTy32, inputVec,
+                                      kernelVec, output, ivs[0], ivs[2],
+                                      tailCond, zeroPadding, inputCol,
+                                      vectorMaskTy);
                                   }
 
                                   builder.create<scf::YieldOp>(loc);
