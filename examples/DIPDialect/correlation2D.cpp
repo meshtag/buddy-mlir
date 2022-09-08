@@ -64,9 +64,9 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   }
 
   // Define the kernel.
-  float *kernelAlign = laplacianKernelAlign;
-  int kernelRows = laplacianKernelRows;
-  int kernelCols = laplacianKernelCols;
+  float *kernelAlign = sobel3x3KernelAlign;
+  int kernelRows = sobel3x3KernelRows;
+  int kernelCols = sobel3x3KernelCols;
 
   // Define sizes and strides.
   intptr_t sizesKernel[2] = {kernelRows, kernelCols};
@@ -78,7 +78,7 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   MemRef<float, 2> output1(sizesOutput);
   MemRef<float, 2> output2(sizesOutput);
 
-  Mat kernel1 = Mat(3, 3, CV_32FC1, laplacianKernelAlign);
+  Mat kernel1 = Mat(3, 3, CV_32FC1, sobel3x3KernelAlign);
 
   // Call the MLIR Corr2D function.
   dip::Corr2D(&input, &kernel, &output1, x, y,

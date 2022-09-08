@@ -502,8 +502,8 @@ void dft_2d(OpBuilder &builder, Location loc, Value container2DReal,
         Value intermediateSubMemRefImag = builder.create<memref::SubViewOp>(loc, intermediateImag,
                           ValueRange{iv, c0}, ValueRange{c1, container2DCols}, ValueRange{c1, c1});
 
-        builder.create<vector::PrintOp>(loc, c1);
-        MemRefType checkTy = MemRefType::get(container2DCols, builder.getF32Type());
+        // builder.create<vector::PrintOp>(loc, c1);
+        // MemRefType checkTy = MemRefType::get(container2DCols, builder.getF32Type());
         // builder.create<vector::PrintOp>(loc, container2DReal.getType().getShape());
 
         fft_1d(builder, loc, origSubMemRefReal, origSubMemRefImag, intermediateSubMemRefReal,
