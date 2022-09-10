@@ -424,94 +424,67 @@ void fft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
   Value neg2MPI = builder.create<ConstantFloatOp>(loc,
                   (llvm::APFloat)(float)(-2.0*M_PI), builder.getF32Type());
 
-  Value check = builder.create<ConstantIndexOp>(loc, 10);
-  Value check1 = builder.create<ConstantIndexOp>(loc, 1);
-  Value check3 = builder.create<ConstantIndexOp>(loc, 3);
-  Value check_iter_value, check_iter_value2;
+  builder.create<scf::ForOp>(loc, c0, upperBound, c1, ValueRange{}, 
+    [&](OpBuilder &builder, Location loc, ValueRange iv, ValueRange) {
+      half = builder.create<arith::ShRSIOp>(loc, subProbSize, c1);
+      angle = builder.create<arith::DivFOp>(loc, neg2MPI, indexToF32(builder, loc, subProbSize));
 
-  // builder.create<scf::ForOp>(loc, c0, check3, c1, ValueRange{check, check}, 
-  //   [&](OpBuilder &builder, Location loc, ValueRange checkIv, 
-  //       ValueRange check_iter) {
-      
-  //     builder.create<vector::PrintOp>(loc, check_iter[0]);
-  //     builder.create<vector::PrintOp>(loc, check_iter[1]);
-  //     builder.create<vector::PrintOp>(loc, check1);
+      wStepReal = builder.create<math::CosOp>(loc, angle);
+      wStepRealVec = builder.create<vector::BroadcastOp>(loc, vecType, wStepReal);
 
-  //     check_iter_value = builder.create<AddIOp>(loc, c1, check_iter[0]);
-  //     check_iter_value2 = builder.create<AddIOp>(loc, check3, check_iter[1]);
+      wStepImag = builder.create<math::SinOp>(loc, angle);
+      wStepImagVec = builder.create<vector::BroadcastOp>(loc, vecType, wStepImag);
 
+      builder.create<scf::ForOp>(loc, c0, subProbs, c1, ValueRange{}, 
+        [&](OpBuilder &builder, Location loc, ValueRange iv1, ValueRange) {
+          jBegin = builder.create<arith::MulIOp>(loc, iv1[0], subProbSize);
+          jEnd = builder.create<arith::AddIOp>(loc, jBegin, half);
+          wReal = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)1.0f, builder.getF32Type());
+          wImag = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)0.0f, builder.getF32Type());
 
-  //     builder.create<scf::YieldOp>(loc, ValueRange{check_iter_value, check_iter_value2});
-  // });
+          wRealVec = builder.create<vector::BroadcastOp>(loc, vecType, wReal);
+          wImagVec = builder.create<vector::BroadcastOp>(loc, vecType, wImag);
 
-  // builder.create<scf::ForOp>(loc, c0, upperBound, c1, ValueRange{}, 
-  //   [&](OpBuilder &builder, Location loc, ValueRange iv, ValueRange) {
-  //     half = builder.create<arith::ShRSIOp>(loc, subProbSize, c1);
-  //     angle = builder.create<arith::DivFOp>(loc, neg2MPI, indexToF32(builder, loc, subProbSize));
+          // Vectorize stuff inside this loop (take care of tail processing as well)
+          builder.create<scf::ForOp>(loc, jBegin, jEnd, strideVal, ValueRange{wRealVec, wImagVec}, 
+            [&](OpBuilder &builder, Location loc, ValueRange iv2, 
+                ValueRange wVR) {
+              tmp1Real = builder.create<LoadOp>(loc, vecType, memRefReal2D, 
+                                                ValueRange{rowIndex, iv2[0]});
+              tmp1Imag = builder.create<LoadOp>(loc, vecType, memRefImag2D, 
+                                                ValueRange{rowIndex, iv2[0]});
 
-  //     wStepReal = builder.create<math::CosOp>(loc, angle);
-  //     wStepRealVec = builder.create<vector::BroadcastOp>(loc, vecType, wStepReal);
+              Value secondIndex = builder.create<arith::AddIOp>(loc, iv2[0], half);
+              tmp2Real = builder.create<LoadOp>(loc, vecType, memRefReal2D, 
+                                                ValueRange{rowIndex, secondIndex});
+              tmp2Imag = builder.create<LoadOp>(loc, vecType, memRefImag2D, 
+                                                ValueRange{rowIndex, secondIndex});
 
-  //     wStepImag = builder.create<math::SinOp>(loc, angle);
-  //     wStepImagVec = builder.create<vector::BroadcastOp>(loc, vecType, wStepImag);
+              std::vector<Value> int1Vec = 
+                  complexVecAddI(builder, loc, tmp1Real, tmp1Imag, tmp2Real, tmp2Imag);
+              builder.create<StoreOp>(loc, int1Vec[0], memRefReal2D, ValueRange{rowIndex, iv2[0]});
+              builder.create<StoreOp>(loc, int1Vec[1], memRefImag2D, ValueRange{rowIndex, iv2[0]});
 
-  //     builder.create<scf::ForOp>(loc, c0, subProbs, c1, ValueRange{}, 
-  //       [&](OpBuilder &builder, Location loc, ValueRange iv1, ValueRange) {
-  //         jBegin = builder.create<arith::MulIOp>(loc, iv1[0], subProbSize);
-  //         jEnd = builder.create<arith::AddIOp>(loc, jBegin, half);
-  //         wReal = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)1.0f, builder.getF32Type());
-  //         wImag = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)0.0f, builder.getF32Type());
+              std::vector<Value> int2Vec = 
+                  complexVecSubI(builder, loc, tmp1Real, tmp1Imag, tmp2Real, tmp2Imag);
+              std::vector<Value> int3Vec = 
+                  complexVecMulI(builder, loc, int2Vec[0], int2Vec[1], wVR[0], wVR[1]);
+              builder.create<StoreOp>(loc, int3Vec[0], memRefReal2D, 
+                  ValueRange{rowIndex, secondIndex});
+              builder.create<StoreOp>(loc, int3Vec[1], memRefImag2D, 
+                  ValueRange{rowIndex, secondIndex});
 
-  //         wRealVec = builder.create<vector::BroadcastOp>(loc, vecType, wReal);
-  //         wImagVec = builder.create<vector::BroadcastOp>(loc, vecType, wImag);
+              std::vector<Value> wUpdate = 
+                  complexVecMulI(builder, loc, wVR[0], wVR[1], wStepRealVec, wStepImagVec);
 
-  //         // Vectorize stuff inside this loop (take care of tail processing as well)
-  //         builder.create<scf::ForOp>(loc, jBegin, jEnd, strideVal, ValueRange{wRealVec, wImagVec}, 
-  //           [&](OpBuilder &builder, Location loc, ValueRange iv2, 
-  //               ValueRange wRealVR, ValueRange wImagVR) {
-  //       //       tmp1 = X[j];
-	// 			// tmp2 = X[j+half];
-	// 			// X[j] = tmp1+tmp2;
-	// 			// X[j+half] = (tmp1-tmp2)*w;
-	// 			// w *= w_step;
+              builder.create<scf::YieldOp>(loc, ValueRange{wUpdate[0], wUpdate[1]});
+            });
 
-  //             tmp1Real = builder.create<LoadOp>(loc, vecType, memRefReal2D, 
-  //                                               ValueRange{rowIndex, iv2[0]});
-  //             tmp1Imag = builder.create<LoadOp>(loc, vecType, memRefImag2D, 
-  //                                               ValueRange{rowIndex, iv2[0]});
+          builder.create<scf::YieldOp>(loc);
+        });
 
-  //             Value secondIndex = builder.create<arith::AddIOp>(loc, iv2[0], half);
-  //             tmp2Real = builder.create<LoadOp>(loc, vecType, memRefReal2D, 
-  //                                               ValueRange{rowIndex, secondIndex});
-  //             tmp2Imag = builder.create<LoadOp>(loc, vecType, memRefImag2D, 
-  //                                               ValueRange{rowIndex, secondIndex});
-
-  //             std::vector<Value> int1Vec = 
-  //                 complexVecAddI(builder, loc, tmp1Real, tmp1Imag, tmp2Real, tmp2Imag);
-  //             builder.create<StoreOp>(loc, int1Vec[0], memRefReal2D, ValueRange{rowIndex, iv2[0]});
-  //             builder.create<StoreOp>(loc, int1Vec[1], memRefImag2D, ValueRange{rowIndex, iv2[0]});
-
-  //             std::vector<Value> int2Vec = 
-  //                 complexVecSubI(builder, loc, tmp1Real, tmp1Imag, tmp2Real, tmp2Imag);
-  //             std::vector<Value> int3Vec = 
-  //                 complexVecMulI(builder, loc, int2Vec[0], int2Vec[1], wRealVR[0], wImagVR[0]);
-  //             builder.create<StoreOp>(loc, int3Vec[0], memRefReal2D, 
-  //                 ValueRange{rowIndex, secondIndex});
-  //             builder.create<StoreOp>(loc, int3Vec[1], memRefImag2D, 
-  //                 ValueRange{rowIndex, secondIndex});
-
-  //             std::vector<Value> wUpdate = 
-  //                 complexVecMulI(builder, loc, wRealVR[0], wImagVR[0], wStepRealVec, wStepImagVec);
-
-  //             builder.create<scf::YieldOp>(loc, wUpdate[0], wUpdate[1]);
-  //           });
-
-  //         builder.create<scf::YieldOp>(loc);
-  //       });
-
-  //     builder.create<scf::YieldOp>(loc);
-  //   }); 
-
+      builder.create<scf::YieldOp>(loc);
+    }); 
 }
 
 void dft_2d(OpBuilder &builder, Location loc, Value container2DReal,
