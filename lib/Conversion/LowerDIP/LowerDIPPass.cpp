@@ -424,10 +424,10 @@ void fft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
   Value neg2MPI = builder.create<ConstantFloatOp>(loc,
                   (llvm::APFloat)(float)(-2.0*M_PI), builder.getF32Type());
 
-  builder.create<scf::ForOp>(loc, c0, upperBound, c1, ValueRange{}, 
-    [&](OpBuilder &builder, Location loc, ValueRange iv, ValueRange) {
-      half = builder.create<arith::ShRSIOp>(loc, subProbSize, c1);
-      angle = builder.create<arith::DivFOp>(loc, neg2MPI, indexToF32(builder, loc, subProbSize));
+  builder.create<scf::ForOp>(loc, c0, upperBound, c1, ValueRange{subProbs, subProbSize}, 
+    [&](OpBuilder &builder, Location loc, ValueRange iv, ValueRange outerIterVR) {
+      half = builder.create<arith::ShRSIOp>(loc, outerIterVR[1], c1);
+      angle = builder.create<arith::DivFOp>(loc, neg2MPI, indexToF32(builder, loc, outerIterVR[1]));
 
       wStepReal = builder.create<math::CosOp>(loc, angle);
       wStepRealVec = builder.create<vector::BroadcastOp>(loc, vecType, wStepReal);
@@ -435,9 +435,9 @@ void fft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
       wStepImag = builder.create<math::SinOp>(loc, angle);
       wStepImagVec = builder.create<vector::BroadcastOp>(loc, vecType, wStepImag);
 
-      builder.create<scf::ForOp>(loc, c0, subProbs, c1, ValueRange{}, 
+      builder.create<scf::ForOp>(loc, c0, outerIterVR[0], c1, ValueRange{}, 
         [&](OpBuilder &builder, Location loc, ValueRange iv1, ValueRange) {
-          jBegin = builder.create<arith::MulIOp>(loc, iv1[0], subProbSize);
+          jBegin = builder.create<arith::MulIOp>(loc, iv1[0], outerIterVR[1]);
           jEnd = builder.create<arith::AddIOp>(loc, jBegin, half);
           wReal = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)1.0f, builder.getF32Type());
           wImag = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)0.0f, builder.getF32Type());
@@ -465,6 +465,9 @@ void fft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
               builder.create<StoreOp>(loc, int1Vec[0], memRefReal2D, ValueRange{rowIndex, iv2[0]});
               builder.create<StoreOp>(loc, int1Vec[1], memRefImag2D, ValueRange{rowIndex, iv2[0]});
 
+              builder.create<vector::PrintOp>(loc, int1Vec[0]);
+              builder.create<vector::PrintOp>(loc, int1Vec[1]);
+
               std::vector<Value> int2Vec = 
                   complexVecSubI(builder, loc, tmp1Real, tmp1Imag, tmp2Real, tmp2Imag);
               std::vector<Value> int3Vec = 
@@ -482,8 +485,9 @@ void fft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
 
           builder.create<scf::YieldOp>(loc);
         });
+      Value updatedSubProbs = builder.create<arith::ShLIOp>(loc, outerIterVR[0], c1);
 
-      builder.create<scf::YieldOp>(loc);
+      builder.create<scf::YieldOp>(loc, ValueRange{updatedSubProbs, half});
     }); 
 }
 
