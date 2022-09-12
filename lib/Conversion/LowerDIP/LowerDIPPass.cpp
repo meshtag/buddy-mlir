@@ -415,16 +415,20 @@ void fft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
             Value MemRefLength, Value strideVal, VectorType vecType, Value rowIndex,
             Value c0, Value c1, int64_t step)
 {
+
+  // builder.create<vector::PrintOp>(loc, c0);
+
   Value subProbs = c1, subProbSize = MemRefLength, i, jBegin, jEnd, j, half, angle;
   Value wStepReal, wStepImag, wReal, wImag, tmp1Real, tmp1Imag, tmp2Real, tmp2Imag;
   Value wRealVec, wImagVec, wStepRealVec, wStepImagVec;
+  Value tmp1RealOrig, tmp1ImagOrig, tmp2RealOrig, tmp2ImagOrig;
 
   Value upperBound = F32ToIndex(builder, loc,
                      builder.create<math::Log2Op>(loc, indexToF32(builder, loc, MemRefLength)));
   Value neg2MPI = builder.create<ConstantFloatOp>(loc,
                   (llvm::APFloat)(float)(-2.0*M_PI), builder.getF32Type());
 
-  builder.create<scf::ForOp>(loc, c0, upperBound, c1, ValueRange{subProbs, subProbSize}, 
+  builder.create<scf::ForOp>(loc, c0, upperBound, c1, ValueRange{subProbs, subProbSize},
     [&](OpBuilder &builder, Location loc, ValueRange iv, ValueRange outerIterVR) {
       half = builder.create<arith::ShRSIOp>(loc, outerIterVR[1], c1);
       angle = builder.create<arith::DivFOp>(loc, neg2MPI, indexToF32(builder, loc, outerIterVR[1]));
@@ -435,12 +439,23 @@ void fft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
       wStepImag = builder.create<math::SinOp>(loc, angle);
       wStepImagVec = builder.create<vector::BroadcastOp>(loc, vecType, wStepImag);
 
+      // builder.create<vector::PrintOp>(loc, half);
+      // builder.create<vector::PrintOp>(loc, wStepRealVec);
+      // builder.create<vector::PrintOp>(loc, wStepImagVec);
+      // builder.create<vector::PrintOp>(loc, c0);
+
       builder.create<scf::ForOp>(loc, c0, outerIterVR[0], c1, ValueRange{}, 
         [&](OpBuilder &builder, Location loc, ValueRange iv1, ValueRange) {
+          // builder.create<vector::PrintOp>(loc, outerIterVR[0]);
+
           jBegin = builder.create<arith::MulIOp>(loc, iv1[0], outerIterVR[1]);
           jEnd = builder.create<arith::AddIOp>(loc, jBegin, half);
           wReal = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)1.0f, builder.getF32Type());
           wImag = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)0.0f, builder.getF32Type());
+
+          // builder.create<vector::PrintOp>(loc, jBegin);
+          // builder.create<vector::PrintOp>(loc, jEnd);
+          // builder.create<vector::PrintOp>(loc, c0);
 
           wRealVec = builder.create<vector::BroadcastOp>(loc, vecType, wReal);
           wImagVec = builder.create<vector::BroadcastOp>(loc, vecType, wImag);
@@ -454,19 +469,43 @@ void fft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
               tmp1Imag = builder.create<LoadOp>(loc, vecType, memRefImag2D, 
                                                 ValueRange{rowIndex, iv2[0]});
 
+              // tmp1Real = roundOff(builder, loc, tmp1RealOrig);
+              // tmp1Imag = roundOff(builder, loc, tmp1ImagOrig);
+
               Value secondIndex = builder.create<arith::AddIOp>(loc, iv2[0], half);
               tmp2Real = builder.create<LoadOp>(loc, vecType, memRefReal2D, 
                                                 ValueRange{rowIndex, secondIndex});
               tmp2Imag = builder.create<LoadOp>(loc, vecType, memRefImag2D, 
                                                 ValueRange{rowIndex, secondIndex});
 
+              // tmp2Real = roundOff(builder, loc, tmp2RealOrig);
+              // tmp2Imag = roundOff(builder, loc, tmp2ImagOrig);
+
+              // builder.create<vector::PrintOp>(loc, tmp1Real);
+              // builder.create<vector::PrintOp>(loc, tmp1Imag);
+              // builder.create<vector::PrintOp>(loc, c0);
+              // builder.create<vector::PrintOp>(loc, tmp2Real);
+              // builder.create<vector::PrintOp>(loc, tmp2Imag);
+              // builder.create<vector::PrintOp>(loc, secondIndex);
+              // builder.create<vector::PrintOp>(loc, c0);
+
+              // builder.create<vector::PrintOp>(loc, rowIndex);
+              // builder.create<vector::PrintOp>(loc, iv2[0]);
+              // builder.create<vector::PrintOp>(loc, secondIndex);
+              // builder.create<vector::PrintOp>(loc, c0);
+
+              // builder.create<vector::PrintOp>(loc, tmp2Real);
+              // builder.create<vector::PrintOp>(loc, tmp2Imag); // Random occurrence of very large garbage numbers
+
               std::vector<Value> int1Vec = 
                   complexVecAddI(builder, loc, tmp1Real, tmp1Imag, tmp2Real, tmp2Imag);
               builder.create<StoreOp>(loc, int1Vec[0], memRefReal2D, ValueRange{rowIndex, iv2[0]});
               builder.create<StoreOp>(loc, int1Vec[1], memRefImag2D, ValueRange{rowIndex, iv2[0]});
 
-              builder.create<vector::PrintOp>(loc, int1Vec[0]);
-              builder.create<vector::PrintOp>(loc, int1Vec[1]);
+              // builder.create<vector::PrintOp>(loc, int1Vec[0]);
+              // builder.create<vector::PrintOp>(loc, int1Vec[1]);
+              // builder.create<vector::PrintOp>(loc, rowIndex);
+              // builder.create<vector::PrintOp>(loc, iv2[0]);
 
               std::vector<Value> int2Vec = 
                   complexVecSubI(builder, loc, tmp1Real, tmp1Imag, tmp2Real, tmp2Imag);
@@ -477,8 +516,13 @@ void fft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
               builder.create<StoreOp>(loc, int3Vec[1], memRefImag2D, 
                   ValueRange{rowIndex, secondIndex});
 
+              // builder.create<vector::PrintOp>(loc, int3Vec[0]);
+              builder.create<vector::PrintOp>(loc, int3Vec[1]);
+
               std::vector<Value> wUpdate = 
                   complexVecMulI(builder, loc, wVR[0], wVR[1], wStepRealVec, wStepImagVec);
+
+              // builder.create<vector::PrintOp>(loc, wUpdate[0]);
 
               builder.create<scf::YieldOp>(loc, ValueRange{wUpdate[0], wUpdate[1]});
             });
@@ -497,7 +541,7 @@ void dft_2d(OpBuilder &builder, Location loc, Value container2DReal,
             Value strideVal, VectorType vecType)
 {
 
-  builder.create<memref::CopyOp>(loc, container2DReal, intermediateReal);
+  // builder.create<memref::CopyOp>(loc, container2DReal, intermediateReal);
 
   builder.create<AffineForOp>(
         loc, ValueRange{c0}, builder.getDimIdentityMap(),
@@ -505,6 +549,10 @@ void dft_2d(OpBuilder &builder, Location loc, Value container2DReal,
         [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv, ValueRange itrArg) {
           fft_1d(builder, loc, container2DReal, container2DImag, intermediateReal,
                intermediateImag, container2DCols, strideVal, vecType, iv, c0, c1, 1);
+
+          // builder.create<vector::PrintOp>(loc, iv);
+          // // builder.create<vector::PrintOp>(loc, itrArg[0]);
+          // builder.create<vector::PrintOp>(loc, c0);
 
           nestedBuilder.create<AffineYieldOp>(nestedLoc);
     });
