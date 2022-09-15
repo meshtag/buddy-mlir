@@ -429,6 +429,32 @@ void scalar2DMemRefTranspose(OpBuilder &builder, Location loc, Value memref1, Va
   });
 }
 
+void vector2DMemRefMultiply(OpBuilder &builder, Location loc, Value memref1, Value memref2, 
+    Value memref3, Value memrefNumRows, Value memrefNumCols, Value c0)
+{
+  SmallVector<Value, 8> lowerBounds(2, c0);
+  SmallVector<Value, 8> upperBounds{memrefNumRows, memrefNumCols};
+  SmallVector<int64_t, 8> steps(2, 1);
+
+  // Value c0Vec = builder.create<vector::BroadcastOp>(loc, vecType, )
+
+  buildAffineLoopNest(
+      builder, loc, lowerBounds, upperBounds, steps,
+      [&](OpBuilder &builder, Location loc, ValueRange ivs) {
+        Value pixelVal1 = builder.create<memref::LoadOp>(
+            loc, builder.getF32Type(), memref1,
+            ValueRange{ivs[0], ivs[1]});
+        Value pixelVal2 = builder.create<memref::LoadOp>(
+            loc, builder.getF32Type(), memref2,
+            ValueRange{ivs[0], ivs[1]});
+
+        // Value resVec = builder.create<vector::FMAOp>(loc, pixelVal1, pixelVal2, c0);
+        Value resVal = builder.create<arith::MulFOp>(loc, pixelVal1, pixelVal2);
+
+        builder.create<memref::StoreOp>(loc, resVal, memref3, ValueRange{ivs[1], ivs[0]});
+  });
+}
+
 void ifft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
              Value memRefImag2D, Value memRefLength, Value strideVal, VectorType vecType,
              Value rowIndex, Value c0, Value c1, int64_t step)
@@ -710,22 +736,22 @@ void idft_2d(OpBuilder &builder, Location loc, Value container2DReal,
           nestedBuilder.create<AffineYieldOp>(nestedLoc);
     });
 
-  // // Make the below call generic w.r.t. num_rows and num_cols.
-  // scalar2DMemRefTranspose(builder, loc, container2DReal, intermediateReal, container2DCols, container2DCols, container2DCols, container2DCols, c0);
-  // scalar2DMemRefTranspose(builder, loc, container2DImag, intermediateImag, container2DCols, container2DCols, container2DCols, container2DCols, c0);
+  // Make the below call generic w.r.t. num_rows and num_cols.
+  scalar2DMemRefTranspose(builder, loc, container2DReal, intermediateReal, container2DCols, container2DCols, container2DCols, container2DCols, c0);
+  scalar2DMemRefTranspose(builder, loc, container2DImag, intermediateImag, container2DCols, container2DCols, container2DCols, container2DCols, c0);
 
-  // builder.create<AffineForOp>(
-  //       loc, ValueRange{c0}, builder.getDimIdentityMap(),
-  //       ValueRange{container2DRows}, builder.getDimIdentityMap(), 1, llvm::None,
-  //       [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv, ValueRange itrArg) {
-  //         ifft_1d(builder, loc, intermediateReal, intermediateImag, container2DCols, strideVal,
-  //                 vecType, iv, c0, c1, 1);
+  builder.create<AffineForOp>(
+        loc, ValueRange{c0}, builder.getDimIdentityMap(),
+        ValueRange{container2DRows}, builder.getDimIdentityMap(), 1, llvm::None,
+        [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv, ValueRange itrArg) {
+          ifft_1d(builder, loc, intermediateReal, intermediateImag, container2DCols, strideVal,
+                  vecType, iv, c0, c1, 1);
 
-  //         nestedBuilder.create<AffineYieldOp>(nestedLoc);
-  //   });
+          nestedBuilder.create<AffineYieldOp>(nestedLoc);
+    });
 
-  // builder.create<memref::CopyOp>(loc, intermediateReal, container2DReal);
-  // builder.create<memref::CopyOp>(loc, intermediateImag, container2DImag);
+  builder.create<memref::CopyOp>(loc, intermediateReal, container2DReal);
+  builder.create<memref::CopyOp>(loc, intermediateImag, container2DImag);
 }
 
 void dft_2d(OpBuilder &builder, Location loc, Value container2DReal,
@@ -746,22 +772,22 @@ void dft_2d(OpBuilder &builder, Location loc, Value container2DReal,
           nestedBuilder.create<AffineYieldOp>(nestedLoc);
     });
 
-  // // Make the below call generic w.r.t. num_rows and num_cols.
-  // scalar2DMemRefTranspose(builder, loc, container2DReal, intermediateReal, container2DCols, container2DCols, container2DCols, container2DCols, c0);
-  // scalar2DMemRefTranspose(builder, loc, container2DImag, intermediateImag, container2DCols, container2DCols, container2DCols, container2DCols, c0);
+  // Make the below call generic w.r.t. num_rows and num_cols.
+  scalar2DMemRefTranspose(builder, loc, container2DReal, intermediateReal, container2DCols, container2DCols, container2DCols, container2DCols, c0);
+  scalar2DMemRefTranspose(builder, loc, container2DImag, intermediateImag, container2DCols, container2DCols, container2DCols, container2DCols, c0);
 
-  // builder.create<AffineForOp>(
-  //       loc, ValueRange{c0}, builder.getDimIdentityMap(),
-  //       ValueRange{container2DRows}, builder.getDimIdentityMap(), 1, llvm::None,
-  //       [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv, ValueRange itrArg) {
-  //         fft_1d(builder, loc, intermediateReal, intermediateImag, intermediateReal,
-  //              intermediateImag, container2DCols, strideVal, vecType, iv, c0, c1, 1);
+  builder.create<AffineForOp>(
+        loc, ValueRange{c0}, builder.getDimIdentityMap(),
+        ValueRange{container2DRows}, builder.getDimIdentityMap(), 1, llvm::None,
+        [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv, ValueRange itrArg) {
+          fft_1d(builder, loc, intermediateReal, intermediateImag, intermediateReal,
+               intermediateImag, container2DCols, strideVal, vecType, iv, c0, c1, 1);
 
-  //         nestedBuilder.create<AffineYieldOp>(nestedLoc);
-  //   });
+          nestedBuilder.create<AffineYieldOp>(nestedLoc);
+    });
 
-  //   builder.create<memref::CopyOp>(loc, intermediateReal, container2DReal);
-  //   builder.create<memref::CopyOp>(loc, intermediateImag, container2DImag);
+    builder.create<memref::CopyOp>(loc, intermediateReal, container2DReal);
+    builder.create<memref::CopyOp>(loc, intermediateImag, container2DImag);
 }
 
 class DIPCorrFFT2DOpLowering : public OpRewritePattern<dip::CorrFFT2DOp> {
@@ -805,6 +831,12 @@ public:
 
     dft_2d(rewriter, loc, inputReal, inputImag, inputRow, inputCol, intermediateReal,
            intermediateImag, c0, c1, strideVal, vectorTy32);
+
+    // dft_2d(rewriter, loc, kernelReal, kernelImag, inputRow, inputCol, intermediateReal,
+    //        intermediateImag, c0, c1, strideVal, vectorTy32);
+
+    // vector2DMemRefMultiply(rewriter, loc, inputReal, kernelReal, inputReal, inputRow, inputCol, c0);
+    // vector2DMemRefMultiply(rewriter, loc, inputImag, kernelImag, inputImag, inputRow, inputCol, c0);
 
     idft_2d(rewriter, loc, inputReal, inputImag, inputRow, inputCol, intermediateReal,
            intermediateImag, c0, c1, strideVal, vectorTy32);
