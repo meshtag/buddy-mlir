@@ -5,13 +5,14 @@ module {
   func.func @alloc_2d_filled_f32(%arg0: index, %arg1: index, %arg2: f32) -> memref<?x?xf32> {
     %c0 = arith.constant 0 : index
     %c1 = arith.constant 1 : index
-    %c4 = arith.constant 4 : index
+    %c4 = arith.constant 6 : index
     %c0f32 = arith.constant 0.0 : f32
+    %checkPixel = arith.constant 33.0 : f32
 
     %0 = memref.alloc(%arg0, %arg1) : memref<?x?xf32>
     scf.for %arg3 = %c0 to %c4 step %c1 {
       scf.for %arg4 = %c0 to %c4 step %c1 {
-        memref.store %arg2, %0[%arg3, %arg4] : memref<?x?xf32>
+        memref.store %checkPixel, %0[%arg3, %arg4] : memref<?x?xf32>
       }
     }
 
@@ -100,6 +101,12 @@ module {
 
     %print_input_imag = memref.cast %imageImag : memref<?x?xf32> to memref<*xf32>
     call @printMemrefF32(%print_input_imag) : (memref<*xf32>) -> ()
+
+    // %print_int_real = memref.cast %intReal : memref<?x?xf32> to memref<*xf32>
+    // call @printMemrefF32(%print_int_real) : (memref<*xf32>) -> ()
+
+    // %print_int_imag = memref.cast %intImag : memref<?x?xf32> to memref<*xf32>
+    // call @printMemrefF32(%print_int_imag) : (memref<*xf32>) -> ()
 
     // // Print kernel.
     // %print_kernel = memref.cast %filterReal : memref<?x?xf32> to memref<*xf32>
