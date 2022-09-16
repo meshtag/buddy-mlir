@@ -169,4 +169,146 @@ def DIP_Resize2DOp : DIP_Op<"resize_2d">
   }];
 }
 
+def DIP_Erosion2DOp : DIP_Op<"erosion_2d"> {
+  let summary = [{This operation aims to provide utility to perform Erosion on
+                      a 2d single channel image.}];
+
+  let arguments = (ins Arg<AnyRankedOrUnrankedMemRef, "inputMemref",
+                           [MemRead]>:$memrefI,
+                       Arg<AnyRankedOrUnrankedMemRef, "kernelMemref",
+                           [MemRead]>:$memrefK,
+                       Arg<AnyRankedOrUnrankedMemRef, "outputMemref",
+                           [MemRead]>:$memrefCO,
+                       Index : $centerX,
+                       Index : $centerY,
+                       Index : $iterations, 
+                       AnyTypeOf<[AnyI8, AnyI32, AnyI64, AnyFloat]> : $constantValue,
+                       DIP_BoundaryOptionAttr:$boundary_option);
+
+  let assemblyFormat = [{
+    $boundary_option $memrefI `,`  $memrefK `,` $memrefCO `,` $centerX `,` $centerY `,`$iterations `,` $constantValue attr-dict `:` type($memrefI) `,` type($memrefK) `,` type($memrefCO) `,` type($centerX) `,` type($centerY) `,`type($iterations) `,` type($constantValue)
+  }];
+}
+
+def DIP_Dilation2DOp : DIP_Op<"dilation_2d"> {
+  let summary = [{This operation aims to provide utility to perform Dilation on
+                      a 2d single channel image.}];
+
+  let arguments = (ins Arg<AnyRankedOrUnrankedMemRef, "inputMemref",
+                           [MemRead]>:$memrefI,
+                       Arg<AnyRankedOrUnrankedMemRef, "kernelMemref",
+                           [MemRead]>:$memrefK,
+                       Arg<AnyRankedOrUnrankedMemRef, "outputMemref",
+                           [MemRead]>:$memrefCO,
+                       Index : $centerX,
+                       Index : $centerY,
+                       Index : $iterations,
+                       AnyTypeOf<[AnyI8, AnyI32, AnyI64, AnyFloat]> : $constantValue,  
+                       DIP_BoundaryOptionAttr:$boundary_option);
+
+  let assemblyFormat = [{
+    $boundary_option $memrefI `,` $memrefK `,` $memrefCO `,` $centerX `,` $centerY `,` $iterations `,` $constantValue attr-dict `:` type($memrefI) `,` type($memrefK) `,` type($memrefCO) `,` type($centerX) `,` type($centerY) `,` type($iterations) `,` type($constantValue)
+  }];
+}
+
+def DIP_Opening2DOp : DIP_Op<"opening_2d"> {
+  let summary = [{This operation aims to provide utility to perform Opening on
+                      a 2d single channel image.}];
+
+  let arguments = (ins Arg<AnyRankedOrUnrankedMemRef, "inputMemref",
+                           [MemRead]>:$memrefI,
+                       Arg<AnyRankedOrUnrankedMemRef, "kernelMemref",
+                           [MemRead]>:$memrefK,
+                       Arg<AnyRankedOrUnrankedMemRef, "outputMemref",
+                           [MemRead]>:$memrefCO,
+                       Arg<AnyRankedOrUnrankedMemRef, "outputinterMemref",
+                           [MemRead]>:$memrefCOI,    
+                       Index : $centerX,
+                       Index : $centerY,
+                       Index : $iterations,
+                       AnyTypeOf<[AnyI8, AnyI32, AnyI64, AnyFloat]> : $constantValue,
+                       DIP_BoundaryOptionAttr:$boundary_option);
+
+  let assemblyFormat = [{
+    $boundary_option $memrefI `,` $memrefK `,` $memrefCO `,` $memrefCOI `,` $centerX `,` $centerY `,` $iterations `,` $constantValue attr-dict `:` type($memrefI) `,` type($memrefK) `,` type($memrefCO) `,` type($memrefCOI) `,` type($centerX) `,` type($centerY) `,` type($iterations) `,` type($constantValue)
+  }];
+}
+
+def DIP_Closing2DOp : DIP_Op<"closing_2d"> {
+  let summary = [{This operation aims to provide utility to perform Closing transformation on
+                      a 2d single channel image.}];
+
+  let arguments = (ins Arg<AnyRankedOrUnrankedMemRef, "inputMemref",
+                           [MemRead]>:$memrefI,
+                       Arg<AnyRankedOrUnrankedMemRef, "kernelMemref",
+                           [MemRead]>:$memrefK,
+                       Arg<AnyRankedOrUnrankedMemRef, "outputMemref",
+                           [MemRead]>:$memrefCO,
+                       Arg<AnyRankedOrUnrankedMemRef, "outputinterMemref",
+                           [MemRead]>:$memrefCOI,    
+                       Index : $centerX,
+                       Index : $centerY,
+                       Index : $iterations,
+                       AnyTypeOf<[AnyI8, AnyI32, AnyI64, AnyFloat]> : $constantValue,
+                       DIP_BoundaryOptionAttr:$boundary_option);
+
+  let assemblyFormat = [{
+    $boundary_option $memrefI `,`  $memrefK `,` $memrefCO `,` $memrefCOI `,` $centerX `,` $centerY `,` $iterations `,` $constantValue attr-dict `:` type($memrefI) `,` type($memrefK) `,` type($memrefCO) `,` type($memrefCOI) `,` type($centerX) `,` type($centerY) `,` type($iterations) `,` type($constantValue)
+  }];
+}
+
+def DIP_TopHat2DOp : DIP_Op<"tophat_2d"> {
+  let summary = [{This operation aims to provide utility to perform tophat operation on
+                      a 2d single channel image.}];
+
+  let arguments = (ins Arg<AnyRankedOrUnrankedMemRef, "inputMemref",
+                           [MemRead]>:$memrefI, 
+                       Arg<AnyRankedOrUnrankedMemRef, "kernelMemref",
+                           [MemRead]>:$memrefK,
+                       Arg<AnyRankedOrUnrankedMemRef, "outputMemref",
+                           [MemRead]>:$memrefCO,
+                       Arg<AnyRankedOrUnrankedMemRef, "outputinterMemref",
+                           [MemRead]>:$memrefCOI,
+                       Arg<AnyRankedOrUnrankedMemRef, "outputinterrMemref" ,
+                           [MemRead]>:$memrefCOII,
+                       Arg<AnyRankedOrUnrankedMemRef, "inputinterMemref",
+                           [MemRead]>:$memrefIR,              
+                       Index : $centerX,
+                       Index : $centerY, 
+                       Index : $iterations,
+                       AnyTypeOf<[AnyI8, AnyI32, AnyI64, AnyFloat]> : $constantValue,
+                       DIP_BoundaryOptionAttr:$boundary_option);
+
+  let assemblyFormat = [{
+    $boundary_option $memrefI  `,`  $memrefK `,` $memrefCO `,` $memrefCOI `,` $memrefCOII `,` $memrefIR `,` $centerX `,` $centerY `,` $iterations `,` $constantValue attr-dict `:` type($memrefI) `,` type($memrefK)  `,` type($memrefCO) `,` type($memrefCOI)   `,` type($memrefCOII) `,` type($memrefIR) `,` type($centerX) `,` type($centerY) `,` type($iterations) `,` type($constantValue)
+  }];
+}
+
+def DIP_BottomHat2DOp : DIP_Op<"bottomhat_2d"> {
+  let summary = [{This operation aims to provide utility to perform Bottomhat operation on
+                      a 2d single channel image.}];
+
+  let arguments = (ins Arg<AnyRankedOrUnrankedMemRef, "inputMemref",
+                           [MemRead]>:$memrefI,   
+                       Arg<AnyRankedOrUnrankedMemRef, "kernelMemref",
+                           [MemRead]>:$memrefK,
+                       Arg<AnyRankedOrUnrankedMemRef, "outputMemref",
+                           [MemRead]>:$memrefCO,
+                       Arg<AnyRankedOrUnrankedMemRef, "outputinterMemref",
+                           [MemRead]>:$memrefCOI,
+                       Arg<AnyRankedOrUnrankedMemRef, "outputinterrMemref" ,
+                           [MemRead]>:$memrefCOII,
+                       Arg<AnyRankedOrUnrankedMemRef, "inputMemrefinter",
+                           [MemRead]>:$memrefIR,            
+                       Index : $centerX,
+                       Index : $centerY, 
+                       Index : $iterations,
+                       AnyTypeOf<[AnyI8, AnyI32, AnyI64, AnyFloat]> : $constantValue,
+                       DIP_BoundaryOptionAttr:$boundary_option);
+
+  let assemblyFormat = [{
+    $boundary_option $memrefI  `,` $memrefK `,` $memrefCO `,` $memrefCOI `,` $memrefCOII `,` $memrefIR `,` $centerX `,` $centerY `,` $iterations `,` $constantValue attr-dict `:` type($memrefI) `,` type($memrefK) `,` type($memrefCO) `,` type($memrefCOI) `,` type($memrefCOII) `,`type($memrefIR) `,` type($centerX) `,` type($centerY) `,`type($iterations) `,` type($constantValue)
+  }];
+}
+
 #endif // DIP_DIPOPS_TD
