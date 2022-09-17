@@ -85,16 +85,22 @@ func.func @main() -> i32 {
   %c = arith.constant 0 : i64 
   dip.erosion_2d <CONSTANT_PADDING> %input, %identity, %outputerosion, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi64>, memref<3x3xi64>, memref<3x3xi64>, index, index, index, i64
   dip.dilation_2d <CONSTANT_PADDING> %input, %identity, %outputdilation, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi64>, memref<3x3xi64>, memref<3x3xi64>, index, index, index, i64
+
   dip.opening_2d <CONSTANT_PADDING> %input, %identity, %outputopening, %outputopening1, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi64>, memref<3x3xi64>, memref<3x3xi64>, memref<3x3xi64>, index, index, index, i64
   dip.closing_2d <CONSTANT_PADDING> %input, %identity, %outputclosing, %outputclosing1, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi64>, memref<3x3xi64>, memref<3x3xi64>, memref<3x3xi64>, index, index, index, i64
+
   dip.tophat_2d <REPLICATE_PADDING> %input, %identity, %outputtophat, %outputtophat1,%outputtophat2, %inputtophat1, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi64>, memref<3x3xi64>, memref<3x3xi64>,memref<3x3xi64>,memref<3x3xi64>,memref<3x3xi64>, index, index, index, i64
   dip.bottomhat_2d <CONSTANT_PADDING> %input, %identity, %outputbottomhat, %outputbottomhat1,%outputbottomhat2, %inputbottomhat1, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi64>, memref<3x3xi64>, memref<3x3xi64>,memref<3x3xi64>,memref<3x3xi64>,memref<3x3xi64>, index, index, index, i64
+
   %printed_outpute = memref.cast %outputerosion : memref<3x3xi64> to memref<*xi64>
   %printed_outputd = memref.cast %outputdilation : memref<3x3xi64> to memref<*xi64>
+
   %printed_outputo = memref.cast %outputopening : memref<3x3xi64> to memref<*xi64>
   %printed_outputc = memref.cast %outputclosing : memref<3x3xi64> to memref<*xi64>
+
   %printed_outputt = memref.cast %outputtophat : memref<3x3xi64> to memref<*xi64>
   %printed_outputb = memref.cast %outputbottomhat : memref<3x3xi64> to memref<*xi64>
+  
   call @printMemrefI64(%printed_outpute) : (memref<*xi64>) -> ()
   call @printMemrefI64(%printed_outputd) : (memref<*xi64>) -> ()
   call @printMemrefI64(%printed_outputc) : (memref<*xi64>) -> ()

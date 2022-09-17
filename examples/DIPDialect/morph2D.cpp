@@ -74,10 +74,8 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   Img<float, 2> input(image);
   MemRef<float, 2> kernel(kernelAlign, sizesKernel);
   MemRef<float, 2> output1(sizesOutput);
-  MemRef<float, 2> output2(sizesOutput);
-  MemRef<float, 2> output3(sizesOutput);
-  MemRef<float, 2> output4(sizesOutput);
 
+  // kernel for morphological transformations.
   Mat kernel1 = cv::getStructuringElement(MORPH_ELLIPSE, Size(7, 7));
   // Call the MLIR Dilation2D function.
   dip::Dilation2D(&input, &kernel, &output1, x, y, 3,
@@ -107,8 +105,9 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
                                          CV_32FC1, output2.getData());
   imwrite(argv[3], outputImageConstantPaddingdilation);
   Mat o2 = imread(argv[3], IMREAD_GRAYSCALE);
+  //Define a cv::Mat for storing output of Opencv's dilate method.
   Mat opencvConstantPaddingdilation;
-  dilate(image, opencvConstantPaddingdilation, kernel1, cv::Point(x, y), 5,
+  cv::dilate(image, opencvConstantPaddingdilation, kernel1, cv::Point(x, y), 5,
          cv::BORDER_CONSTANT, 0.0);
   if (!testImages(o2, opencvConstantPaddingdilation)) {
     std::cout << "x, y = " << x << ", " << y << "\n";
@@ -125,6 +124,7 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   imwrite(argv[4], outputImageReplicatePaddingerosion);
 
   Mat o3 = imread(argv[4], IMREAD_GRAYSCALE);
+  // Define a cv::mat for storing output of cv::erode
   Mat opencvReplicatePaddingerosion;
   erode(image, opencvReplicatePaddingerosion, kernel1, cv::Point(x, y), 1,
         cv::BORDER_REPLICATE, 0.0);
@@ -160,6 +160,7 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
                                         CV_32FC1, output2.getData());
   imwrite(argv[6], outputImageConstantPaddingopening);
   Mat o5 = imread(argv[6], IMREAD_GRAYSCALE);
+  //Define a cv::mat to store the output of Opencv's opening.
   Mat opencvConstantPaddingopening;
   morphologyEx(image, opencvConstantPaddingopening, 2, kernel1, cv::Point(x, y),
                3, cv::BORDER_REPLICATE, 0.0);
@@ -175,7 +176,7 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   imwrite(argv[7], outputImageReplicatePaddingopening);
 
   Mat o6 = imread(argv[7], IMREAD_GRAYSCALE);
-  // cv::Mat to store output of the permutations of opening op
+  // cv::Mat to store output of the opening op
   Mat opencvReplicatePaddingopening;
   morphologyEx(image, opencvReplicatePaddingopening, 2, kernel1,
                cv::Point(x, y), 2, 0, 0);

@@ -541,7 +541,7 @@ Value insertMinusOneConstantOp(MLIRContext *ctx, OpBuilder &builder,
 }
 
 // Util function for morphological transformations; used to initially fill the
-// output memref
+// output memref.
 Value createMaskVecOp(OpBuilder &builder, Location loc, VectorType type,
                       Value outputVec, Value paddingVec) {
   Value maskVec = {};
@@ -584,7 +584,7 @@ Value createCompVecMorph(OpBuilder &builder, Location loc, VectorType type,
   return compVec;
 }
 
-// Util function which help determine the nullity of a kernel element
+// Util function which help determine the nullity of a kernel element.
 Value zeroCond(OpBuilder &builder, Location loc, Type elemType,
                Value kernelvalue, Value zeroPaddingElem) {
   Value cond;
@@ -598,7 +598,7 @@ Value zeroCond(OpBuilder &builder, Location loc, Type elemType,
   }
   return cond;
 }
-// Util function for morphological operations ; doesn't support tail processing
+// Utility function for morphological operations ; cannot handle tail processing
 void calcAndStorewoTailProcessingMorph(OpBuilder &builder, Location loc,
                                        VectorType vecType, Value inputVec,
                                        Value kernelVec, Value output,
@@ -635,7 +635,7 @@ void calcAndStorewoTailProcessingMorph(OpBuilder &builder, Location loc,
     builder.create<scf::YieldOp>(loc);
   });
 }
-// Util function for morphological transformations ; supports tail processing
+// Utility function for morphological transformations, can handle tail processing
 void calcAndStorewTailProcessingMorph(
     OpBuilder &builder, Location loc, VectorType vecType, Value inputVec,
     Value kernelVec, Value output, Value beginIdx, Value endIdx, Value tailCond,
