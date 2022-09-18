@@ -429,11 +429,12 @@ void scalar2DMemRefTranspose(OpBuilder &builder, Location loc, Value memref1, Va
   });
 }
 
-void vector2DMemRefMultiply(OpBuilder &builder, Location loc, Value memref1, Value memref2, 
-    Value memref3, Value memrefNumRows, Value memrefNumCols, Value c0)
+void vector2DMemRefMultiply(OpBuilder &builder, Location loc, 
+    Value memRef1Real, Value memRef1Imag, Value memRef2Real, Value memRef2Imag,
+    Value memRef3Real, Value memRef3Imag, Value memRefNumRows, Value memRefNumCols, Value c0)
 {
   SmallVector<Value, 8> lowerBounds(2, c0);
-  SmallVector<Value, 8> upperBounds{memrefNumRows, memrefNumCols};
+  SmallVector<Value, 8> upperBounds{memRefNumRows, memRefNumCols};
   SmallVector<int64_t, 8> steps(2, 1);
 
   // Value c0Vec = builder.create<vector::BroadcastOp>(loc, vecType, )
@@ -441,17 +442,28 @@ void vector2DMemRefMultiply(OpBuilder &builder, Location loc, Value memref1, Val
   buildAffineLoopNest(
       builder, loc, lowerBounds, upperBounds, steps,
       [&](OpBuilder &builder, Location loc, ValueRange ivs) {
-        Value pixelVal1 = builder.create<memref::LoadOp>(
-            loc, builder.getF32Type(), memref1,
+        Value pixelVal1Real = builder.create<memref::LoadOp>(
+            loc, builder.getF32Type(), memRef1Real,
             ValueRange{ivs[0], ivs[1]});
-        Value pixelVal2 = builder.create<memref::LoadOp>(
-            loc, builder.getF32Type(), memref2,
+        Value pixelVal1Imag = builder.create<memref::LoadOp>(
+            loc, builder.getF32Type(), memRef1Imag,
+            ValueRange{ivs[0], ivs[1]});
+
+
+        Value pixelVal2Real = builder.create<memref::LoadOp>(
+            loc, builder.getF32Type(), memRef2Real,
+            ValueRange{ivs[0], ivs[1]});
+        Value pixelVal2Imag = builder.create<memref::LoadOp>(
+            loc, builder.getF32Type(), memRef2Imag,
             ValueRange{ivs[0], ivs[1]});
 
         // Value resVec = builder.create<vector::FMAOp>(loc, pixelVal1, pixelVal2, c0);
-        Value resVal = builder.create<arith::MulFOp>(loc, pixelVal1, pixelVal2);
+        // Value resVal = builder.create<arith::MulFOp>(loc, pixelVal1, pixelVal2);
+        std::vector<Value> resVecs = complexVecMulI(builder, loc, pixelVal1Real, pixelVal1Imag,
+                                                    pixelVal2Real, pixelVal2Imag);
 
-        builder.create<memref::StoreOp>(loc, resVal, memref3, ValueRange{ivs[1], ivs[0]});
+        builder.create<memref::StoreOp>(loc, resVecs[0], memRef3Real, ValueRange{ivs[0], ivs[1]});
+        builder.create<memref::StoreOp>(loc, resVecs[1], memRef3Imag, ValueRange{ivs[0], ivs[1]});
   });
 }
 
@@ -472,9 +484,6 @@ void ifft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
 
   builder.create<scf::ForOp>(loc, c0, upperBound, c1, ValueRange{subProbs, half},
     [&](OpBuilder &builder, Location loc, ValueRange iv, ValueRange outerIterVR) {
-
-      // builder.create<vector::PrintOp>(loc, c1);
-
       subProbSize = builder.create<arith::ShLIOp>(loc, outerIterVR[1], c1);
       angle = builder.create<arith::DivFOp>(loc, pos2MPI, indexToF32(builder, loc, subProbSize));
 
@@ -484,23 +493,12 @@ void ifft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
       wStepImag = builder.create<math::SinOp>(loc, angle);
       wStepImagVec = builder.create<vector::BroadcastOp>(loc, vecType, wStepImag);
 
-      // builder.create<vector::PrintOp>(loc, half);
-      // builder.create<vector::PrintOp>(loc, wStepRealVec);
-      // builder.create<vector::PrintOp>(loc, wStepImagVec);
-      // builder.create<vector::PrintOp>(loc, c0);
-
       builder.create<scf::ForOp>(loc, c0, outerIterVR[0], c1, ValueRange{}, 
         [&](OpBuilder &builder, Location loc, ValueRange iv1, ValueRange) {
-          // builder.create<vector::PrintOp>(loc, outerIterVR[0]);
-
           jBegin = builder.create<arith::MulIOp>(loc, iv1[0], subProbSize);
           jEnd = builder.create<arith::AddIOp>(loc, jBegin, outerIterVR[1]);
           wReal = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)1.0f, builder.getF32Type());
           wImag = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)0.0f, builder.getF32Type());
-
-          // builder.create<vector::PrintOp>(loc, jBegin);
-          // builder.create<vector::PrintOp>(loc, jEnd);
-          // builder.create<vector::PrintOp>(loc, c0);
 
           wRealVec = builder.create<vector::BroadcastOp>(loc, vecType, wReal);
           wImagVec = builder.create<vector::BroadcastOp>(loc, vecType, wImag);
@@ -514,9 +512,6 @@ void ifft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
               tmp1Imag = builder.create<LoadOp>(loc, vecType, memRefImag2D, 
                                                 ValueRange{rowIndex, iv2[0]});
 
-              // tmp1Real = roundOff(builder, loc, tmp1RealOrig);
-              // tmp1Imag = roundOff(builder, loc, tmp1ImagOrig);
-
               Value secondIndex = builder.create<arith::AddIOp>(loc, iv2[0], outerIterVR[1]);
               tmp2RealTemp = builder.create<LoadOp>(loc, vecType, memRefReal2D, 
                                                     ValueRange{rowIndex, secondIndex});
@@ -526,34 +521,10 @@ void ifft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
               std::vector<Value> tmp2Vec = 
                   complexVecMulI(builder, loc, tmp2RealTemp, tmp2ImagTemp, wVR[0], wVR[1]);
 
-              // tmp2Real = roundOff(builder, loc, tmp2RealOrig);
-              // tmp2Imag = roundOff(builder, loc, tmp2ImagOrig);
-
-              // builder.create<vector::PrintOp>(loc, tmp1Real);
-              // builder.create<vector::PrintOp>(loc, tmp1Imag);
-              // builder.create<vector::PrintOp>(loc, c0);
-              // builder.create<vector::PrintOp>(loc, tmp2Real);
-              // builder.create<vector::PrintOp>(loc, tmp2Imag);
-              // builder.create<vector::PrintOp>(loc, secondIndex);
-              // builder.create<vector::PrintOp>(loc, c0);
-
-              // builder.create<vector::PrintOp>(loc, rowIndex);
-              // builder.create<vector::PrintOp>(loc, iv2[0]);
-              // builder.create<vector::PrintOp>(loc, secondIndex);
-              // builder.create<vector::PrintOp>(loc, c0);
-
-              // builder.create<vector::PrintOp>(loc, tmp2Real);
-              // builder.create<vector::PrintOp>(loc, tmp2Imag); // Random occurrence of very large garbage numbers
-
               std::vector<Value> int1Vec = 
                   complexVecAddI(builder, loc, tmp1Real, tmp1Imag, tmp2Vec[0], tmp2Vec[1]);
               builder.create<StoreOp>(loc, int1Vec[0], memRefReal2D, ValueRange{rowIndex, iv2[0]});
               builder.create<StoreOp>(loc, int1Vec[1], memRefImag2D, ValueRange{rowIndex, iv2[0]});
-
-              // builder.create<vector::PrintOp>(loc, int1Vec[0]);
-              // builder.create<vector::PrintOp>(loc, int1Vec[1]);
-              // builder.create<vector::PrintOp>(loc, rowIndex);
-              // builder.create<vector::PrintOp>(loc, iv2[0]);
 
               std::vector<Value> int2Vec = 
                   complexVecSubI(builder, loc, tmp1Real, tmp1Imag, tmp2Vec[0], tmp2Vec[1]);
@@ -562,13 +533,8 @@ void ifft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
               builder.create<StoreOp>(loc, int2Vec[1], memRefImag2D, 
                   ValueRange{rowIndex, secondIndex});
 
-              // builder.create<vector::PrintOp>(loc, int3Vec[0]);
-              // builder.create<vector::PrintOp>(loc, int3Vec[1]);
-
               std::vector<Value> wUpdate = 
                   complexVecMulI(builder, loc, wVR[0], wVR[1], wStepRealVec, wStepImagVec);
-
-              // builder.create<vector::PrintOp>(loc, wUpdate[0]);
 
               builder.create<scf::YieldOp>(loc, ValueRange{wUpdate[0], wUpdate[1]});
             });
@@ -625,11 +591,6 @@ void fft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
       wStepImag = builder.create<math::SinOp>(loc, angle);
       wStepImagVec = builder.create<vector::BroadcastOp>(loc, vecType, wStepImag);
 
-      // builder.create<vector::PrintOp>(loc, half);
-      // builder.create<vector::PrintOp>(loc, wStepRealVec);
-      // builder.create<vector::PrintOp>(loc, wStepImagVec);
-      // builder.create<vector::PrintOp>(loc, c0);
-
       builder.create<scf::ForOp>(loc, c0, outerIterVR[0], c1, ValueRange{}, 
         [&](OpBuilder &builder, Location loc, ValueRange iv1, ValueRange) {
           // builder.create<vector::PrintOp>(loc, outerIterVR[0]);
@@ -638,10 +599,6 @@ void fft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
           jEnd = builder.create<arith::AddIOp>(loc, jBegin, half);
           wReal = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)1.0f, builder.getF32Type());
           wImag = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)0.0f, builder.getF32Type());
-
-          // builder.create<vector::PrintOp>(loc, jBegin);
-          // builder.create<vector::PrintOp>(loc, jEnd);
-          // builder.create<vector::PrintOp>(loc, c0);
 
           wRealVec = builder.create<vector::BroadcastOp>(loc, vecType, wReal);
           wImagVec = builder.create<vector::BroadcastOp>(loc, vecType, wImag);
@@ -655,60 +612,29 @@ void fft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
               tmp1Imag = builder.create<LoadOp>(loc, vecType, memRefImag2D, 
                                                 ValueRange{rowIndex, iv2[0]});
 
-              // tmp1Real = roundOff(builder, loc, tmp1RealOrig);
-              // tmp1Imag = roundOff(builder, loc, tmp1ImagOrig);
-
               Value secondIndex = builder.create<arith::AddIOp>(loc, iv2[0], half);
               tmp2Real = builder.create<LoadOp>(loc, vecType, memRefReal2D, 
                                                 ValueRange{rowIndex, secondIndex});
               tmp2Imag = builder.create<LoadOp>(loc, vecType, memRefImag2D, 
                                                 ValueRange{rowIndex, secondIndex});
 
-              // tmp2Real = roundOff(builder, loc, tmp2RealOrig);
-              // tmp2Imag = roundOff(builder, loc, tmp2ImagOrig);
-
-              // builder.create<vector::PrintOp>(loc, tmp1Real);
-              // builder.create<vector::PrintOp>(loc, tmp1Imag);
-              // builder.create<vector::PrintOp>(loc, c0);
-              // builder.create<vector::PrintOp>(loc, tmp2Real);
-              // builder.create<vector::PrintOp>(loc, tmp2Imag);
-              // builder.create<vector::PrintOp>(loc, secondIndex);
-              // builder.create<vector::PrintOp>(loc, c0);
-
-              // builder.create<vector::PrintOp>(loc, rowIndex);
-              // builder.create<vector::PrintOp>(loc, iv2[0]);
-              // builder.create<vector::PrintOp>(loc, secondIndex);
-              // builder.create<vector::PrintOp>(loc, c0);
-
-              // builder.create<vector::PrintOp>(loc, tmp2Real);
-              // builder.create<vector::PrintOp>(loc, tmp2Imag); // Random occurrence of very large garbage numbers
-
               std::vector<Value> int1Vec = 
                   complexVecAddI(builder, loc, tmp1Real, tmp1Imag, tmp2Real, tmp2Imag);
               builder.create<StoreOp>(loc, int1Vec[0], memRefReal2D, ValueRange{rowIndex, iv2[0]});
               builder.create<StoreOp>(loc, int1Vec[1], memRefImag2D, ValueRange{rowIndex, iv2[0]});
 
-              // builder.create<vector::PrintOp>(loc, int1Vec[0]);
-              // builder.create<vector::PrintOp>(loc, int1Vec[1]);
-              // builder.create<vector::PrintOp>(loc, rowIndex);
-              // builder.create<vector::PrintOp>(loc, iv2[0]);
-
               std::vector<Value> int2Vec = 
                   complexVecSubI(builder, loc, tmp1Real, tmp1Imag, tmp2Real, tmp2Imag);
               std::vector<Value> int3Vec = 
                   complexVecMulI(builder, loc, int2Vec[0], int2Vec[1], wVR[0], wVR[1]);
+
               builder.create<StoreOp>(loc, int3Vec[0], memRefReal2D, 
                   ValueRange{rowIndex, secondIndex});
               builder.create<StoreOp>(loc, int3Vec[1], memRefImag2D, 
                   ValueRange{rowIndex, secondIndex});
 
-              // builder.create<vector::PrintOp>(loc, int3Vec[0]);
-              // builder.create<vector::PrintOp>(loc, int3Vec[1]);
-
               std::vector<Value> wUpdate = 
                   complexVecMulI(builder, loc, wVR[0], wVR[1], wStepRealVec, wStepImagVec);
-
-              // builder.create<vector::PrintOp>(loc, wUpdate[0]);
 
               builder.create<scf::YieldOp>(loc, ValueRange{wUpdate[0], wUpdate[1]});
             });
@@ -737,8 +663,8 @@ void idft_2d(OpBuilder &builder, Location loc, Value container2DReal,
     });
 
   // Make the below call generic w.r.t. num_rows and num_cols.
-  scalar2DMemRefTranspose(builder, loc, container2DReal, intermediateReal, container2DCols, container2DCols, container2DCols, container2DCols, c0);
-  scalar2DMemRefTranspose(builder, loc, container2DImag, intermediateImag, container2DCols, container2DCols, container2DCols, container2DCols, c0);
+  scalar2DMemRefTranspose(builder, loc, container2DReal, intermediateReal, container2DRows, container2DCols, container2DCols, container2DRows, c0);
+  scalar2DMemRefTranspose(builder, loc, container2DImag, intermediateImag, container2DRows, container2DCols, container2DCols, container2DRows, c0);
 
   builder.create<AffineForOp>(
         loc, ValueRange{c0}, builder.getDimIdentityMap(),
@@ -759,9 +685,6 @@ void dft_2d(OpBuilder &builder, Location loc, Value container2DReal,
             Value intermediateReal, Value intermediateImag, Value c0, Value c1,
             Value strideVal, VectorType vecType)
 {
-
-  // builder.create<memref::CopyOp>(loc, container2DReal, intermediateReal);
-
   builder.create<AffineForOp>(
         loc, ValueRange{c0}, builder.getDimIdentityMap(),
         ValueRange{container2DRows}, builder.getDimIdentityMap(), 1, llvm::None,
@@ -773,8 +696,8 @@ void dft_2d(OpBuilder &builder, Location loc, Value container2DReal,
     });
 
   // Make the below call generic w.r.t. num_rows and num_cols.
-  scalar2DMemRefTranspose(builder, loc, container2DReal, intermediateReal, container2DCols, container2DCols, container2DCols, container2DCols, c0);
-  scalar2DMemRefTranspose(builder, loc, container2DImag, intermediateImag, container2DCols, container2DCols, container2DCols, container2DCols, c0);
+  scalar2DMemRefTranspose(builder, loc, container2DReal, intermediateReal, container2DRows, container2DCols, container2DCols, container2DRows, c0);
+  scalar2DMemRefTranspose(builder, loc, container2DImag, intermediateImag, container2DRows, container2DCols, container2DCols, container2DRows, c0);
 
   builder.create<AffineForOp>(
         loc, ValueRange{c0}, builder.getDimIdentityMap(),
@@ -796,7 +719,8 @@ public:
 
   explicit DIPCorrFFT2DOpLowering(MLIRContext *context, int64_t strideParam)
       : OpRewritePattern(context) {
-    stride = strideParam;
+    // stride = strideParam;
+    stride = 1;
   }
 
   LogicalResult matchAndRewrite(dip::CorrFFT2DOp op,
@@ -813,13 +737,13 @@ public:
     Value inputImag = op->getOperand(1);
     Value kernelReal = op->getOperand(2);
     Value kernelImag = op->getOperand(3);
-    Value outputReal = op->getOperand(4);
-    Value outputImag = op->getOperand(5);
+    // Value outputReal = op->getOperand(4);
+    // Value outputImag = op->getOperand(5);
     Value intermediateReal = op->getOperand(6);
     Value intermediateImag = op->getOperand(7);
-    Value centerX = op->getOperand(8);
-    Value centerY = op->getOperand(9);
-    Value constantValue = op->getOperand(10);
+    // Value centerX = op->getOperand(8);
+    // Value centerY = op->getOperand(9);
+    // Value constantValue = op->getOperand(10);
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
     // Create DimOp.
@@ -832,11 +756,13 @@ public:
     dft_2d(rewriter, loc, inputReal, inputImag, inputRow, inputCol, intermediateReal,
            intermediateImag, c0, c1, strideVal, vectorTy32);
 
-    // dft_2d(rewriter, loc, kernelReal, kernelImag, inputRow, inputCol, intermediateReal,
-    //        intermediateImag, c0, c1, strideVal, vectorTy32);
+    dft_2d(rewriter, loc, kernelReal, kernelImag, inputRow, inputCol, intermediateReal,
+           intermediateImag, c0, c1, strideVal, vectorTy32);
 
     // vector2DMemRefMultiply(rewriter, loc, inputReal, kernelReal, inputReal, inputRow, inputCol, c0);
     // vector2DMemRefMultiply(rewriter, loc, inputImag, kernelImag, inputImag, inputRow, inputCol, c0);
+    vector2DMemRefMultiply(rewriter, loc, inputReal, inputImag, kernelReal, kernelImag, inputReal, inputImag,
+                           inputRow, inputCol, c0);
 
     idft_2d(rewriter, loc, inputReal, inputImag, inputRow, inputCol, intermediateReal,
            intermediateImag, c0, c1, strideVal, vectorTy32);

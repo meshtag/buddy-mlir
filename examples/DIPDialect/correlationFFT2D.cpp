@@ -58,10 +58,14 @@ bool testImages(cv::Mat img1, cv::Mat img2) {
 bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
                         std::ptrdiff_t y, std::ptrdiff_t boundaryOption) {
   // Read as grayscale image.
-  Mat image = imread(argv[1], IMREAD_GRAYSCALE);
+  Mat imageOrig = imread(argv[1], IMREAD_GRAYSCALE);
+  Mat image;
   if (image.empty()) {
     cout << "Could not read the image: " << argv[1] << endl;
   }
+
+  cv::resize(imageOrig, image, Size(6, 6), cv::INTER_LINEAR);
+
 
   // Define the kernel.
   float *kernelAlign = laplacianKernelAlign;
