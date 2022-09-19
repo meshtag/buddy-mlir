@@ -139,6 +139,20 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
   intptr_t paddedTSizes[2] = {paddedSizes[1], paddedSizes[0]};
 	intptr_t paddedSize = paddedSizes[0] * paddedSizes[1];
 
+  float flippedKernelData[kernel->getSizes()[0] * kernel->getSizes()[1]];
+  for (uint32_t i = 0; i < kernel->getSizes()[0]; ++i)
+    for (uint32_t j = 0; j < kernel->getSizes()[1]; ++j)
+      flippedKernelData[i * kernel->getSizes()[1] + j] = kernel->getData()[(2-i)*kernel->getSizes()[1] + 2 - j];
+
+  // std::cout << "Flipped kernel here\n";
+  // for (uint32_t i = 0; i < kernel->getSizes()[0]; ++i)
+  // {
+  //   for (uint32_t j = 0; j < kernel->getSizes()[1]; ++j)
+  //     std::cout << flippedKernelData[i * kernel->getSizes()[1] + j] << " ";
+  //   std::cout << "\n";
+  // }
+  // std::cout << "\n\n";
+
   // Obtain padded input image.
   float inputPaddedDataReal[paddedSize] = {0};
   for (uint32_t i = 0; i < input->getSizes()[0]; ++i) {
@@ -150,10 +164,14 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
   // Do padding related modifications in above step. Constant padding with zero as constant for now.
   // flip kernel for correlation instead of convolution.
 
+  intptr_t kernelSize[2] = {kernel->getSizes()[0], kernel->getSizes()[1]};
+  MemRef<float, 2> flippedKernel(flippedKernelData, kernelSize);
+
   // Obtain padded kernel.
   // float *kernelPaddedDataReal = new float[paddedSize];
   float kernelPaddedDataReal[paddedSize] = {0};
-  detail::padKernel(kernel, centerX, centerY, paddedSizes, kernelPaddedDataReal);
+  // detail::padKernel(kernel, centerX, centerY, paddedSizes, kernelPaddedDataReal);
+  detail::padKernel(&flippedKernel, centerX, centerY, paddedSizes, kernelPaddedDataReal);
 
   // Declare padded containers for input image and kernel.
   // Also declare an intermediate container for calculation convenience.
@@ -174,25 +192,36 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
         &outputReal, &outputImag, &intermediateReal, &intermediateImag,
         centerX, centerY, constantValue);
 
-  std::cout << paddedSizes[0] << " " << paddedSizes[1] << "\n\n";
+  for (uint32_t i = 0; i < output->getSizes()[0]; ++i)
+    for (uint32_t j = 0; j < output->getSizes()[1]; ++j)
+      output->getData()[i * output->getSizes()[1] + j] = inputPaddedReal.getData()[i * paddedSizes[1] + j];
 
-  for (int i = 0; i < 8; ++i)
-  {
-    for (int j = 0; j < 8; ++j)
-      std::cout << inputPaddedReal.getData()[8*i + j] << " ";
-    std::cout << "\n";
-  }
+  // std::cout << paddedSizes[0] << " " << paddedSizes[1] << "\n\n";
 
-  std::cout << "\n";
+  // for (int i = 0; i < 8; ++i)
+  // {
+  //   for (int j = 0; j < 8; ++j)
+  //     std::cout << inputPaddedReal.getData()[8*i + j] << " ";
+  //   std::cout << "\n";
+  // }
 
-  for (int i = 0; i < 8; ++i)
-  {
-    for (int j = 0; j < 8; ++j)
-      std::cout << inputPaddedImag.getData()[8*i + j] << " ";
-    std::cout << "\n";
-  }
+  // std::cout << "\n";
 
-  std::cout << "\n";
+  // for (int i = 0; i < 8; ++i)
+  // {
+  //   for (int j = 0; j < 8; ++j)
+  //     std::cout << inputPaddedImag.getData()[8*i + j] << " ";
+  //   std::cout << "\n";
+  // }
+
+  // std::cout << "\n";
+
+  // for (uint32_t i = 0; i < output->getSizes()[0]; ++i)
+  // {
+  //   for (uint32_t j = 0; j < output->getSizes()[1]; ++j)
+  //     std::cout << output->getData()[i * output->getSizes()[1] + j] << " ";
+  //   std::cout << "\n";
+  // }
 
   // for (int i = 0; i < 8; ++i)
   // {

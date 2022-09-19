@@ -42,7 +42,7 @@ bool testImages(cv::Mat img1, cv::Mat img2) {
   for (std::ptrdiff_t i = 0; i < img1.cols; ++i) {
     for (std::ptrdiff_t j = 0; j < img1.rows; ++j) {
       if (img1.at<uchar>(i, j) != img2.at<uchar>(i, j)) {
-        std::cout << "Pixels not equal at : (" << i << "," << j << ")\n";
+        // std::cout << "Pixels not equal at : (" << i << "," << j << ")\n";
         std::cout << (int)img1.at<uchar>(i, j) << "\n";
         std::cout << (int)img2.at<uchar>(i, j) << "\n\n";
 
@@ -52,6 +52,10 @@ bool testImages(cv::Mat img1, cv::Mat img2) {
       }
     }
   }
+
+  // std::cout << img1 << "\n\n";
+  // std::cout << img2 << "\n";
+
   return 1;
 }
 
@@ -66,18 +70,19 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
 
   cv::resize(imageOrig, image, Size(4, 4), cv::INTER_LINEAR);
 
-  for (int i = 0; i < 4; ++i)
-  {
-    for (int j = 0; j < 4; ++j)
-      image.at<uchar>(i, j) = (uchar)1;
-  }
+  // for (int i = 0; i < 4; ++i)
+  // {
+  //   for (int j = 0; j < 4; ++j)
+  //     image.at<uchar>(i, j) = (uchar)13;
+  // }
+  // image.at<uchar>(2, 2) = (uchar)12;
 
-  for (int i = 0; i < 4; ++i)
-  {
-    for (int j = 0; j < 4; ++j)
-      std::cout << (int)image.at<uchar>(i, j) << " ";
-    std::cout << "\n";
-  }
+  // for (int i = 0; i < 4; ++i)
+  // {
+  //   for (int j = 0; j < 4; ++j)
+  //     std::cout << (int)image.at<uchar>(i, j) << " ";
+  //   std::cout << "\n";
+  // }
 
   // Define the kernel.
   float *kernelAlign = sobel3x3KernelAlign;
@@ -99,7 +104,7 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   // Call the MLIR Corr2D function.
   // dip::Corr2D(&input, &kernel, &output1, x, y,
   //             dip::BOUNDARY_OPTION::REPLICATE_PADDING);
-  dip::CorrFFT2D(&input, &kernel, &output1, x, y,
+  dip::CorrFFT2D(&input, &kernel, &output1, 2 - x, 2 - y,
               dip::BOUNDARY_OPTION::REPLICATE_PADDING);
 
   // Define a cv::Mat with the output of Corr2D.
@@ -130,18 +135,26 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   filter2D(image, opencvConstantPadding, CV_8UC1, kernel1, cv::Point(x, y), 0.0,
            cv::BORDER_CONSTANT);
 
-  // if (!testImages(o2, opencvConstantPadding)) {
-  //   std::cout << "x, y = " << x << ", " << y << "\n";
-  //   return 0;
+  // std::cout << "OpenCV here\n";
+  // for (int i = 0; i < 4; ++i)
+  // {
+  //   for (int j = 0; j < 4; ++j)
+  //     std::cout << (int)opencvConstantPadding.at<uchar>(i, j) << " ";
+  //   std::cout << "\n";
   // }
+
+  if (!testImages(o1, opencvConstantPadding)) {
+    std::cout << "x, y = " << x << ", " << y << "\n";
+    return 0;
+  }
 
   return 1;
 }
 
 int main(int argc, char *argv[]) {
   bool flag = 1;
-  for (std::ptrdiff_t x = 0; x < 1; ++x) {
-    for (std::ptrdiff_t y = 0; y < 1; ++y) {
+  for (std::ptrdiff_t x = 0; x < 3; ++x) {
+    for (std::ptrdiff_t y = 0; y < 3; ++y) {
       if (!testImplementation(argc, argv, x, y, 0)) {
         flag = 0;
         break;

@@ -737,13 +737,8 @@ public:
     Value inputImag = op->getOperand(1);
     Value kernelReal = op->getOperand(2);
     Value kernelImag = op->getOperand(3);
-    // Value outputReal = op->getOperand(4);
-    // Value outputImag = op->getOperand(5);
     Value intermediateReal = op->getOperand(6);
     Value intermediateImag = op->getOperand(7);
-    // Value centerX = op->getOperand(8);
-    // Value centerY = op->getOperand(9);
-    // Value constantValue = op->getOperand(10);
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
     // Create DimOp.
@@ -759,8 +754,6 @@ public:
     dft_2d(rewriter, loc, kernelReal, kernelImag, inputRow, inputCol, intermediateReal,
            intermediateImag, c0, c1, strideVal, vectorTy32);
 
-    // vector2DMemRefMultiply(rewriter, loc, inputReal, kernelReal, inputReal, inputRow, inputCol, c0);
-    // vector2DMemRefMultiply(rewriter, loc, inputImag, kernelImag, inputImag, inputRow, inputCol, c0);
     vector2DMemRefMultiply(rewriter, loc, inputReal, inputImag, kernelReal, kernelImag, inputReal, inputImag,
                            inputRow, inputCol, c0);
 
