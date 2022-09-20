@@ -133,8 +133,8 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
             float constantValue = 0) {
   // Calculate padding sizes.
   intptr_t paddedSizes[2] = {
-    1<<((uint8_t)ceil(log2(input->getSizes()[1] + kernel->getSizes()[1] - 1))),
-    1<<((uint8_t)ceil(log2(input->getSizes()[0] + kernel->getSizes()[0] - 1)))
+    1<<((uint8_t)ceil(log2(input->getSizes()[0] + kernel->getSizes()[0] - 1))),
+    1<<((uint8_t)ceil(log2(input->getSizes()[1] + kernel->getSizes()[1] - 1)))
   };
   intptr_t paddedTSizes[2] = {paddedSizes[1], paddedSizes[0]};
 	intptr_t paddedSize = paddedSizes[0] * paddedSizes[1];
@@ -190,6 +190,11 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
 
   MemRef<float, 2> outputReal(paddedSizes);
   MemRef<float, 2> outputImag(paddedSizes);
+
+  // std::cout << "Here Here\n";
+  // std::cout << intermediateReal.getSizes()[0] << "  " << intermediateReal.getSizes()[1] << "\n";
+  // std::cout << inputPaddedReal.getSizes()[0] << "  " << inputPaddedReal.getSizes()[1] << "\n";
+  // std::cout << input->getSizes()[0] << "  " << input->getSizes()[1] << "\n";
 
   detail::_mlir_ciface_corrfft_2d(
         &inputPaddedReal, &inputPaddedImag, &kernelPaddedReal, &kernelPaddedImag,

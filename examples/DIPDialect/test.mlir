@@ -81,8 +81,8 @@ module {
     %outputReal = call @alloc_2d_filled_f32(%current_output, %current_output, %cst_0) : (index, index, f32) -> memref<?x?xf32>
     %outputImag = call @alloc_2d_filled_f32_imag(%current_output, %current_output, %cst_0) : (index, index, f32) -> memref<?x?xf32>
 
-    %intReal = call @alloc_2d_filled_f32(%current_output, %current_output, %cst_0) : (index, index, f32) -> memref<?x?xf32>
-    %intImag = call @alloc_2d_filled_f32_imag(%current_output, %current_output, %cst_0) : (index, index, f32) -> memref<?x?xf32>
+    %intReal = call @alloc_2d_filled_f32(%current_image2, %current_image1, %cst_0) : (index, index, f32) -> memref<?x?xf32>
+    %intImag = call @alloc_2d_filled_f32_imag(%current_image2, %current_image1, %cst_0) : (index, index, f32) -> memref<?x?xf32>
 
     // Execution times.
     %reps = arith.constant 1 : index

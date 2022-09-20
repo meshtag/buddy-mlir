@@ -667,16 +667,19 @@ void idft_2d(OpBuilder &builder, Location loc, Value container2DReal,
 
   builder.create<AffineForOp>(
         loc, ValueRange{c0}, builder.getDimIdentityMap(),
-        ValueRange{container2DRows}, builder.getDimIdentityMap(), 1, llvm::None,
+        ValueRange{container2DCols}, builder.getDimIdentityMap(), 1, llvm::None,
         [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv, ValueRange itrArg) {
-          ifft_1d(builder, loc, intermediateReal, intermediateImag, container2DCols, strideVal,
+          ifft_1d(builder, loc, intermediateReal, intermediateImag, container2DRows, strideVal,
                   vecType, iv, c0, c1, 1);
 
           nestedBuilder.create<AffineYieldOp>(nestedLoc);
     });
 
-  builder.create<memref::CopyOp>(loc, intermediateReal, container2DReal);
-  builder.create<memref::CopyOp>(loc, intermediateImag, container2DImag);
+  // builder.create<memref::CopyOp>(loc, intermediateReal, container2DReal);
+  // builder.create<memref::CopyOp>(loc, intermediateImag, container2DImag);
+    // make this conditional for optimization
+    scalar2DMemRefTranspose(builder, loc, intermediateReal, container2DReal, container2DCols, container2DRows, container2DRows, container2DCols, c0);
+    scalar2DMemRefTranspose(builder, loc, intermediateImag, container2DImag, container2DCols, container2DRows, container2DRows, container2DCols, c0);
 }
 
 void dft_2d(OpBuilder &builder, Location loc, Value container2DReal,
@@ -698,21 +701,21 @@ void dft_2d(OpBuilder &builder, Location loc, Value container2DReal,
   scalar2DMemRefTranspose(builder, loc, container2DReal, intermediateReal, container2DRows, container2DCols, container2DCols, container2DRows, c0);
   scalar2DMemRefTranspose(builder, loc, container2DImag, intermediateImag, container2DRows, container2DCols, container2DCols, container2DRows, c0);
 
-  builder.create<vector::PrintOp>(loc, container2DCols);
-  builder.create<vector::PrintOp>(loc, container2DRows);
+  // builder.create<vector::PrintOp>(loc, container2DRows);
+  // builder.create<vector::PrintOp>(loc, container2DCols);
 
-  Value check1 = builder.create<memref::DimOp>(loc, intermediateReal, c0);
-  Value check2 = builder.create<memref::DimOp>(loc, intermediateReal, c1);
+  // Value check1 = builder.create<memref::DimOp>(loc, intermediateReal, c0);
+  // Value check2 = builder.create<memref::DimOp>(loc, intermediateReal, c1);
 
-  builder.create<vector::PrintOp>(loc, check1);
-  builder.create<vector::PrintOp>(loc, check2);
+  // builder.create<vector::PrintOp>(loc, check1);
+  // builder.create<vector::PrintOp>(loc, check2);
 
   builder.create<AffineForOp>(
         loc, ValueRange{c0}, builder.getDimIdentityMap(),
         ValueRange{container2DCols}, builder.getDimIdentityMap(), 1, llvm::None,
         [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv, ValueRange itrArg) {
-          // fft_1d(builder, loc, intermediateReal, intermediateImag, container2DCols, strideVal,
-          //        vecType, iv, c0, c1, 1);
+          fft_1d(builder, loc, intermediateReal, intermediateImag, container2DRows, strideVal,
+                 vecType, iv, c0, c1, 1);
           // builder.create<vector::PrintOp>(loc, iv);
 
           nestedBuilder.create<AffineYieldOp>(nestedLoc);
@@ -720,6 +723,9 @@ void dft_2d(OpBuilder &builder, Location loc, Value container2DReal,
 
     // builder.create<memref::CopyOp>(loc, intermediateReal, container2DReal);
     // builder.create<memref::CopyOp>(loc, intermediateImag, container2DImag);
+    // make this conditional for optimization
+    scalar2DMemRefTranspose(builder, loc, intermediateReal, container2DReal, container2DCols, container2DRows, container2DRows, container2DCols, c0);
+    scalar2DMemRefTranspose(builder, loc, intermediateImag, container2DImag, container2DCols, container2DRows, container2DRows, container2DCols, c0);
 }
 
 class DIPCorrFFT2DOpLowering : public OpRewritePattern<dip::CorrFFT2DOp> {
@@ -753,6 +759,8 @@ public:
     // Create DimOp.
     Value inputRow = rewriter.create<memref::DimOp>(loc, inputReal, c0);
     Value inputCol = rewriter.create<memref::DimOp>(loc, inputReal, c1);
+    Value kernelRow = rewriter.create<memref::DimOp>(loc, kernelReal, c0);
+    Value kernelCol = rewriter.create<memref::DimOp>(loc, kernelReal, c1);
 
     FloatType f32 = FloatType::getF32(ctx);
     VectorType vectorTy32 = VectorType::get({stride}, f32);
@@ -760,14 +768,14 @@ public:
     dft_2d(rewriter, loc, inputReal, inputImag, inputRow, inputCol, intermediateReal,
            intermediateImag, c0, c1, strideVal, vectorTy32);
 
-    // dft_2d(rewriter, loc, kernelReal, kernelImag, inputRow, inputCol, intermediateReal,
-    //        intermediateImag, c0, c1, strideVal, vectorTy32);
+    dft_2d(rewriter, loc, kernelReal, kernelImag, kernelRow, kernelCol, intermediateReal,
+           intermediateImag, c0, c1, strideVal, vectorTy32);
 
-    // vector2DMemRefMultiply(rewriter, loc, inputReal, inputImag, kernelReal, kernelImag, inputReal, inputImag,
-    //                        inputRow, inputCol, c0);
+    vector2DMemRefMultiply(rewriter, loc, inputReal, inputImag, kernelReal, kernelImag, inputReal, inputImag,
+                           inputRow, inputCol, c0);
 
-    // idft_2d(rewriter, loc, inputReal, inputImag, inputRow, inputCol, intermediateReal,
-    //        intermediateImag, c0, c1, strideVal, vectorTy32);
+    idft_2d(rewriter, loc, inputReal, inputImag, inputRow, inputCol, intermediateReal,
+           intermediateImag, c0, c1, strideVal, vectorTy32);
 
     // Remove the origin convolution operation involving FFT.
     rewriter.eraseOp(op);
