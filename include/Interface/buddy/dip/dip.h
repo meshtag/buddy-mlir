@@ -142,7 +142,11 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
   float flippedKernelData[kernel->getSizes()[0] * kernel->getSizes()[1]];
   for (uint32_t i = 0; i < kernel->getSizes()[0]; ++i)
     for (uint32_t j = 0; j < kernel->getSizes()[1]; ++j)
-      flippedKernelData[i * kernel->getSizes()[1] + j] = kernel->getData()[(2-i)*kernel->getSizes()[1] + 2 - j];
+    {
+      flippedKernelData[i * kernel->getSizes()[1] + j] = 
+        kernel->getData()[(kernel->getSizes()[0] - 1 -i)*kernel->getSizes()[1] + 
+        kernel->getSizes()[1] - 1 - j];
+    }
 
   // std::cout << "Flipped kernel here\n";
   // for (uint32_t i = 0; i < kernel->getSizes()[0]; ++i)

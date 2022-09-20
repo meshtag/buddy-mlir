@@ -5,7 +5,7 @@ module {
   func.func @alloc_2d_filled_f32(%arg0: index, %arg1: index, %arg2: f32) -> memref<?x?xf32> {
     %c0 = arith.constant 0 : index
     %c1 = arith.constant 1 : index
-    %c4 = arith.constant 4 : index
+    %c4 = arith.constant 7 : index
     %c0f32 = arith.constant 0.0 : f32
     %checkPixel = arith.constant 1.0 : f32
 
@@ -35,7 +35,7 @@ module {
   func.func @alloc_2d_filled_f32_imag(%arg0: index, %arg1: index, %arg2: f32) -> memref<?x?xf32> {
     %c0 = arith.constant 0 : index
     %c1 = arith.constant 1 : index
-    %c4 = arith.constant 4 : index
+    %c4 = arith.constant 7 : index
     %c0f32 = arith.constant 0.0 : f32
 
     %0 = memref.alloc(%arg0, %arg1) : memref<?x?xf32>
@@ -65,7 +65,8 @@ module {
 
     %current_filter = arith.constant 8 : index
     %current_output = arith.constant 8 : index
-    %current_image = arith.constant 8 : index
+    %current_image1 = arith.constant 16 : index
+    %current_image2 = arith.constant 8 : index
     %c0_index = arith.constant 0 : index
 
     // Filter.
@@ -73,8 +74,8 @@ module {
     %filterImag = call @alloc_2d_filled_f32_imag(%current_filter, %current_filter, %cst) : (index, index, f32) -> memref<?x?xf32>
 
     // Image.
-    %imageReal = call @alloc_2d_filled_f32(%current_image, %current_image, %cst) : (index, index, f32) -> memref<?x?xf32>
-    %imageImag = call @alloc_2d_filled_f32_imag(%current_image, %current_image, %cst) : (index, index, f32) -> memref<?x?xf32>
+    %imageReal = call @alloc_2d_filled_f32(%current_image1, %current_image2, %cst) : (index, index, f32) -> memref<?x?xf32>
+    %imageImag = call @alloc_2d_filled_f32_imag(%current_image1, %current_image2, %cst) : (index, index, f32) -> memref<?x?xf32>
 
     // Output.
     %outputReal = call @alloc_2d_filled_f32(%current_output, %current_output, %cst_0) : (index, index, f32) -> memref<?x?xf32>
