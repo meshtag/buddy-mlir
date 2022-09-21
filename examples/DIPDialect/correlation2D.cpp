@@ -68,13 +68,13 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
     cout << "Could not read the image: " << argv[1] << endl;
   }
 
-  cv::resize(imageOrig, image, Size(7, 4), cv::INTER_LINEAR);
+  cv::resize(imageOrig, image, Size(100, 200), cv::INTER_LINEAR);
 
-  for (int i = 0; i < 7; ++i)
-  {
-    for (int j = 0; j < 4; ++j)
-      image.at<uchar>(j, i) = (uchar)13;
-  }
+  // for (int i = 0; i < 7; ++i)
+  // {
+  //   for (int j = 0; j < 4; ++j)
+  //     image.at<uchar>(j, i) = (uchar)13;
+  // }
   // image.at<uchar>(2, 2) = (uchar)12;
 
   // for (int i = 0; i < 4; ++i)

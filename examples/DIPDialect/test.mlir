@@ -65,7 +65,7 @@ module {
 
     %current_filter = arith.constant 8 : index
     %current_output = arith.constant 8 : index
-    %current_image1 = arith.constant 16 : index
+    %current_image1 = arith.constant 8 : index
     %current_image2 = arith.constant 8 : index
     %c0_index = arith.constant 0 : index
 
@@ -103,11 +103,11 @@ module {
     %print_input_imag = memref.cast %imageImag : memref<?x?xf32> to memref<*xf32>
     call @printMemrefF32(%print_input_imag) : (memref<*xf32>) -> ()
 
-    // %print_int_real = memref.cast %intReal : memref<?x?xf32> to memref<*xf32>
-    // call @printMemrefF32(%print_int_real) : (memref<*xf32>) -> ()
+    %print_int_real = memref.cast %intReal : memref<?x?xf32> to memref<*xf32>
+    call @printMemrefF32(%print_int_real) : (memref<*xf32>) -> ()
 
-    // %print_int_imag = memref.cast %intImag : memref<?x?xf32> to memref<*xf32>
-    // call @printMemrefF32(%print_int_imag) : (memref<*xf32>) -> ()
+    %print_int_imag = memref.cast %intImag : memref<?x?xf32> to memref<*xf32>
+    call @printMemrefF32(%print_int_imag) : (memref<*xf32>) -> ()
 
     // // Print kernel.
     // %print_kernel = memref.cast %filterReal : memref<?x?xf32> to memref<*xf32>
