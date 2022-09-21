@@ -110,23 +110,16 @@ def DIP_CorrFFT2DOp : DIP_Op<"corrfft_2d">
                            [MemRead]>:$memrefKReal,
                        Arg<AnyRankedOrUnrankedMemRef, "kernelMemrefImag",
                            [MemRead]>:$memrefKImag,
-                       Arg<AnyRankedOrUnrankedMemRef, "outputMemrefReal",
-                           [MemRead]>:$memrefCOReal,
-                       Arg<AnyRankedOrUnrankedMemRef, "outputMemrefImag",
-                           [MemRead]>:$memrefCOImag,
                        Arg<AnyRankedOrUnrankedMemRef, "intermediateMemrefReal",
                            [MemRead]>:$memrefIntReal,
                        Arg<AnyRankedOrUnrankedMemRef, "intermediateMemrefImag",
-                           [MemRead]>:$memrefIntImag,
-                       Index : $centerX, Index : $centerY, F32 : $constantValue);
+                           [MemRead]>:$memrefIntImag);
 
   let assemblyFormat = [{
-    $memrefIReal `,` $memrefIImag `,` $memrefKReal `,` $memrefKImag `,` $memrefCOReal `,` 
-    $memrefCOImag `,` $memrefIntReal `,` $memrefIntImag `,` $centerX `,` $centerY `,` 
-    $constantValue attr-dict `:` type($memrefIReal) `,` type($memrefIImag) `,` 
-    type($memrefKReal) `,` type($memrefKImag) `,` type($memrefCOReal) `,` type($memrefCOImag) `,` 
-    type($memrefIntReal) `,` type($memrefIntImag) `,` type($centerX) `,` type($centerY) `,` 
-    type($constantValue)
+    $memrefIReal `,` $memrefIImag `,` $memrefKReal `,` $memrefKImag `,` $memrefIntReal `,` 
+    $memrefIntImag attr-dict `:` 
+    type($memrefIReal) `,` type($memrefIImag) `,` type($memrefKReal) `,` 
+    type($memrefKImag) `,` type($memrefIntReal) `,` type($memrefIntImag)
   }];
 }
 

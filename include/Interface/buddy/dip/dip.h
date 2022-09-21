@@ -68,10 +68,7 @@ void _mlir_ciface_resize_2d_bilinear_interpolation(
 void _mlir_ciface_corrfft_2d(
     Img<float, 2> *inputReal, MemRef<float, 2> *inputImag,
     MemRef<float, 2> *kernelReal, MemRef<float, 2> *kernelImag,
-    MemRef<float, 2> *outputReal, MemRef<float, 2> *outputImag,
-    MemRef<float, 2> *intermediateReal,
-    MemRef<float, 2> *intermediateImag,
-    unsigned int centerX, unsigned int centerY, float constantValue);
+    MemRef<float, 2> *intermediateReal, MemRef<float, 2> *intermediateImag);
 }
 
 // Helper function for applying 2D resize operation on images.
@@ -148,15 +145,6 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
         kernel->getSizes()[1] - 1 - j];
     }
 
-  // std::cout << "Flipped kernel here\n";
-  // for (uint32_t i = 0; i < kernel->getSizes()[0]; ++i)
-  // {
-  //   for (uint32_t j = 0; j < kernel->getSizes()[1]; ++j)
-  //     std::cout << flippedKernelData[i * kernel->getSizes()[1] + j] << " ";
-  //   std::cout << "\n";
-  // }
-  // std::cout << "\n\n";
-
   // Obtain padded input image.
   float inputPaddedDataReal[paddedSize] = {0};
   for (uint32_t i = 0; i < input->getSizes()[0]; ++i) {
@@ -174,7 +162,6 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
   // Obtain padded kernel.
   // float *kernelPaddedDataReal = new float[paddedSize];
   float kernelPaddedDataReal[paddedSize] = {0};
-  // detail::padKernel(kernel, centerX, centerY, paddedSizes, kernelPaddedDataReal);
   detail::padKernel(&flippedKernel, centerX, centerY, paddedSizes, kernelPaddedDataReal);
 
   // Declare padded containers for input image and kernel.
@@ -188,65 +175,13 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
   MemRef<float, 2> intermediateReal(paddedTSizes);
   MemRef<float, 2> intermediateImag(paddedTSizes);
 
-  MemRef<float, 2> outputReal(paddedSizes);
-  MemRef<float, 2> outputImag(paddedSizes);
-
-  // std::cout << "Here Here\n";
-  // std::cout << intermediateReal.getSizes()[0] << "  " << intermediateReal.getSizes()[1] << "\n";
-  // std::cout << inputPaddedReal.getSizes()[0] << "  " << inputPaddedReal.getSizes()[1] << "\n";
-  // std::cout << input->getSizes()[0] << "  " << input->getSizes()[1] << "\n";
-
   detail::_mlir_ciface_corrfft_2d(
         &inputPaddedReal, &inputPaddedImag, &kernelPaddedReal, &kernelPaddedImag,
-        &outputReal, &outputImag, &intermediateReal, &intermediateImag,
-        centerX, centerY, constantValue);
+        &intermediateReal, &intermediateImag);
 
   for (uint32_t i = 0; i < output->getSizes()[0]; ++i)
     for (uint32_t j = 0; j < output->getSizes()[1]; ++j)
       output->getData()[i * output->getSizes()[1] + j] = inputPaddedReal.getData()[i * paddedSizes[1] + j];
-
-  // std::cout << paddedSizes[0] << " " << paddedSizes[1] << "\n\n";
-
-  // for (int i = 0; i < 8; ++i)
-  // {
-  //   for (int j = 0; j < 8; ++j)
-  //     std::cout << inputPaddedReal.getData()[8*i + j] << " ";
-  //   std::cout << "\n";
-  // }
-
-  // std::cout << "\n";
-
-  // for (int i = 0; i < 8; ++i)
-  // {
-  //   for (int j = 0; j < 8; ++j)
-  //     std::cout << inputPaddedImag.getData()[8*i + j] << " ";
-  //   std::cout << "\n";
-  // }
-
-  // std::cout << "\n";
-
-  // for (uint32_t i = 0; i < output->getSizes()[0]; ++i)
-  // {
-  //   for (uint32_t j = 0; j < output->getSizes()[1]; ++j)
-  //     std::cout << output->getData()[i * output->getSizes()[1] + j] << " ";
-  //   std::cout << "\n";
-  // }
-
-  // for (int i = 0; i < 8; ++i)
-  // {
-  //   for (int j = 0; j < 8; ++j)
-  //     std::cout << kernelPaddedReal.getData()[8*i + j] << " ";
-  //   std::cout << "\n";
-  // }
-
-  // std::cout << "\n";
-
-  // for (int i = 0; i < 8; ++i)
-  // {
-  //   for (int j = 0; j < 8; ++j)
-  //     std::cout << kernelPaddedImag.getData()[8*i + j] << " ";
-  //   std::cout << "\n";
-  // }
 
   // delete[] inputPaddedDataReal;
   // delete[] kernelPaddedDataReal;

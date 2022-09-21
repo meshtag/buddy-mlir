@@ -436,8 +436,6 @@ void vector2DMemRefMultiply(OpBuilder &builder, Location loc,
   SmallVector<Value, 8> upperBounds{memRefNumRows, memRefNumCols};
   SmallVector<int64_t, 8> steps(2, 1);
 
-  // Value c0Vec = builder.create<vector::BroadcastOp>(loc, vecType, )
-
   buildAffineLoopNest(
       builder, loc, lowerBounds, upperBounds, steps,
       [&](OpBuilder &builder, Location loc, ValueRange ivs) {
@@ -464,10 +462,11 @@ void vector2DMemRefMultiply(OpBuilder &builder, Location loc,
   });
 }
 
-void ifft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
+void idft1DCooleyTukeyButterfly(OpBuilder &builder, Location loc, Value memRefReal2D,
              Value memRefImag2D, Value memRefLength, Value strideVal, VectorType vecType,
              Value rowIndex, Value c0, Value c1, int64_t step)
 {
+  // Cooley Tukey Butterfly algorithm implementation.
   Value subProbs = builder.create<arith::ShRSIOp>(loc, memRefLength, c1);
   Value subProbSize, half = c1, i, jBegin, jEnd, j, angle;
   Value wStepReal, wStepImag, wReal, wImag, tmp1Real, tmp1Imag, tmp2Real, tmp2Imag;
@@ -563,10 +562,11 @@ void ifft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
 
 }
 
-void fft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
+void dft1DGentlemanSandeButterfly(OpBuilder &builder, Location loc, Value memRefReal2D,
             Value memRefImag2D, Value memRefLength, Value strideVal, VectorType vecType,
             Value rowIndex, Value c0, Value c1, int64_t step)
 {
+  // Gentleman Sande Butterfly algorithm implementation.
   Value subProbs = c1, subProbSize = memRefLength, i, jBegin, jEnd, j, half, angle;
   Value wStepReal, wStepImag, wReal, wImag, tmp1Real, tmp1Imag, tmp2Real, tmp2Imag;
   Value wRealVec, wImagVec, wStepRealVec, wStepImagVec;
@@ -589,8 +589,6 @@ void fft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
 
       builder.create<scf::ForOp>(loc, c0, outerIterVR[0], c1, ValueRange{}, 
         [&](OpBuilder &builder, Location loc, ValueRange iv1, ValueRange) {
-          // builder.create<vector::PrintOp>(loc, outerIterVR[0]);
-
           jBegin = builder.create<arith::MulIOp>(loc, iv1[0], outerIterVR[1]);
           jEnd = builder.create<arith::AddIOp>(loc, jBegin, half);
           wReal = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)1.0f, builder.getF32Type());
@@ -643,7 +641,7 @@ void fft_1d(OpBuilder &builder, Location loc, Value memRefReal2D,
     }); 
 }
 
-void idft_2d(OpBuilder &builder, Location loc, Value container2DReal,
+void idft2D(OpBuilder &builder, Location loc, Value container2DReal,
              Value container2DImag, Value container2DRows, Value container2DCols,
              Value intermediateReal, Value intermediateImag, Value c0, Value c1,
              Value strideVal, VectorType vecType)
@@ -652,8 +650,8 @@ void idft_2d(OpBuilder &builder, Location loc, Value container2DReal,
         loc, ValueRange{c0}, builder.getDimIdentityMap(),
         ValueRange{container2DRows}, builder.getDimIdentityMap(), 1, llvm::None,
         [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv, ValueRange itrArg) {
-          ifft_1d(builder, loc, container2DReal, container2DImag, container2DCols, strideVal,
-                  vecType, iv, c0, c1, 1);
+          idft1DCooleyTukeyButterfly(builder, loc, container2DReal, container2DImag,
+                                     container2DCols, strideVal, vecType, iv, c0, c1, 1);
 
           nestedBuilder.create<AffineYieldOp>(nestedLoc);
     });
@@ -667,8 +665,8 @@ void idft_2d(OpBuilder &builder, Location loc, Value container2DReal,
         loc, ValueRange{c0}, builder.getDimIdentityMap(),
         ValueRange{container2DCols}, builder.getDimIdentityMap(), 1, llvm::None,
         [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv, ValueRange itrArg) {
-          ifft_1d(builder, loc, intermediateReal, intermediateImag, container2DRows, strideVal,
-                  vecType, iv, c0, c1, 1);
+          idft1DCooleyTukeyButterfly(builder, loc, intermediateReal, intermediateImag,
+                                     container2DRows, strideVal, vecType, iv, c0, c1, 1);
 
           nestedBuilder.create<AffineYieldOp>(nestedLoc);
     });
@@ -690,7 +688,7 @@ void idft_2d(OpBuilder &builder, Location loc, Value container2DReal,
       });
 }
 
-void dft_2d(OpBuilder &builder, Location loc, Value container2DReal,
+void dft2D(OpBuilder &builder, Location loc, Value container2DReal,
             Value container2DImag, Value container2DRows, Value container2DCols,
             Value intermediateReal, Value intermediateImag, Value c0, Value c1,
             Value strideVal, VectorType vecType)
@@ -699,8 +697,8 @@ void dft_2d(OpBuilder &builder, Location loc, Value container2DReal,
         loc, ValueRange{c0}, builder.getDimIdentityMap(),
         ValueRange{container2DRows}, builder.getDimIdentityMap(), 1, llvm::None,
         [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv, ValueRange itrArg) {
-          fft_1d(builder, loc, container2DReal, container2DImag, container2DCols, strideVal,
-                 vecType, iv, c0, c1, 1);
+          dft1DGentlemanSandeButterfly(builder, loc, container2DReal, container2DImag,
+                                       container2DCols, strideVal, vecType, iv, c0, c1, 1);
 
           nestedBuilder.create<AffineYieldOp>(nestedLoc);
     });
@@ -714,8 +712,8 @@ void dft_2d(OpBuilder &builder, Location loc, Value container2DReal,
         loc, ValueRange{c0}, builder.getDimIdentityMap(),
         ValueRange{container2DCols}, builder.getDimIdentityMap(), 1, llvm::None,
         [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv, ValueRange itrArg) {
-          fft_1d(builder, loc, intermediateReal, intermediateImag, container2DRows, strideVal,
-                 vecType, iv, c0, c1, 1);
+          dft1DGentlemanSandeButterfly(builder, loc, intermediateReal, intermediateImag,
+                                       container2DRows, strideVal, vecType, iv, c0, c1, 1);
 
           nestedBuilder.create<AffineYieldOp>(nestedLoc);
     });
@@ -761,29 +759,31 @@ public:
     Value inputImag = op->getOperand(1);
     Value kernelReal = op->getOperand(2);
     Value kernelImag = op->getOperand(3);
-    Value intermediateReal = op->getOperand(6);
-    Value intermediateImag = op->getOperand(7);
+    Value intermediateReal = op->getOperand(4);
+    Value intermediateImag = op->getOperand(5);
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
-    // Create DimOp.
+    // Create DimOp for padded input image.
     Value inputRow = rewriter.create<memref::DimOp>(loc, inputReal, c0);
     Value inputCol = rewriter.create<memref::DimOp>(loc, inputReal, c1);
+
+    // Create DimOp for padded original kernel.
     Value kernelRow = rewriter.create<memref::DimOp>(loc, kernelReal, c0);
     Value kernelCol = rewriter.create<memref::DimOp>(loc, kernelReal, c1);
 
     FloatType f32 = FloatType::getF32(ctx);
     VectorType vectorTy32 = VectorType::get({stride}, f32);
 
-    dft_2d(rewriter, loc, inputReal, inputImag, inputRow, inputCol, intermediateReal,
+    dft2D(rewriter, loc, inputReal, inputImag, inputRow, inputCol, intermediateReal,
            intermediateImag, c0, c1, strideVal, vectorTy32);
 
-    dft_2d(rewriter, loc, kernelReal, kernelImag, kernelRow, kernelCol, intermediateReal,
+    dft2D(rewriter, loc, kernelReal, kernelImag, kernelRow, kernelCol, intermediateReal,
            intermediateImag, c0, c1, strideVal, vectorTy32);
 
     vector2DMemRefMultiply(rewriter, loc, inputReal, inputImag, kernelReal, kernelImag, inputReal, inputImag,
                            inputRow, inputCol, c0, vectorTy32);
 
-    idft_2d(rewriter, loc, inputReal, inputImag, inputRow, inputCol, intermediateReal,
+    idft2D(rewriter, loc, inputReal, inputImag, inputRow, inputCol, intermediateReal,
            intermediateImag, c0, c1, strideVal, vectorTy32);
 
     // Remove the origin convolution operation involving FFT.
