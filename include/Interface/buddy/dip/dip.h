@@ -147,11 +147,14 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
 
   // Obtain padded input image.
   float inputPaddedDataReal[paddedSize] = {0};
+  // float *inputPaddedDataReal = new float[paddedSize];
   for (uint32_t i = 0; i < input->getSizes()[0]; ++i) {
     for (uint32_t j = 0; j < input->getSizes()[1]; ++j) {
       inputPaddedDataReal[i * paddedSizes[1] + j] = input->getData()[i * input->getSizes()[1] + j];
     }
   }
+
+  // std::cout << paddedSize << "\n";
 
   // Do padding related modifications in above step. Constant padding with zero as constant for now.
   // flip kernel for correlation instead of convolution.
@@ -182,6 +185,20 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
   for (uint32_t i = 0; i < output->getSizes()[0]; ++i)
     for (uint32_t j = 0; j < output->getSizes()[1]; ++j)
       output->getData()[i * output->getSizes()[1] + j] = inputPaddedReal.getData()[i * paddedSizes[1] + j];
+
+  // for (int i = 0; i < paddedSizes[0]; ++i)
+  // {
+  //   for (int j = 0; j < paddedSizes[1]; ++j)
+  //     std::cout << inputPaddedReal.getData()[i * paddedSizes[1] + j] << " ";
+  //   std::cout << "\n";
+  // }
+  // std::cout << "\n\n";
+  // for (int i = 0; i < paddedSizes[0]; ++i)
+  // {
+  //   for (int j = 0; j < paddedSizes[1]; ++j)
+  //     std::cout << inputPaddedImag.getData()[i * paddedSizes[1] + j] << " ";
+  //   std::cout << "\n";
+  // }
 
   // delete[] inputPaddedDataReal;
   // delete[] kernelPaddedDataReal;

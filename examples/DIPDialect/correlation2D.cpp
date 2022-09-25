@@ -63,18 +63,20 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
                         std::ptrdiff_t y, std::ptrdiff_t boundaryOption) {
   // Read as grayscale image.
   Mat imageOrig = imread(argv[1], IMREAD_GRAYSCALE);
-  Mat image;
+  Mat image = imageOrig;
   if (imageOrig.empty()) {
     cout << "Could not read the image: " << argv[1] << endl;
   }
 
-  cv::resize(imageOrig, image, Size(100, 200), cv::INTER_LINEAR);
+  // cv::resize(imageOrig, image, Size(10, 12), cv::INTER_LINEAR);
+  //  cv::resize(imageOrig, image, Size(500, 500), cv::INTER_LINEAR);
+  cv::resize(imageOrig, image, Size(4, 4), cv::INTER_LINEAR);
 
-  // for (int i = 0; i < 7; ++i)
-  // {
-  //   for (int j = 0; j < 4; ++j)
-  //     image.at<uchar>(j, i) = (uchar)13;
-  // }
+  for (int i = 0; i < 4; ++i)
+  {
+    for (int j = 0; j < 4; ++j)
+      image.at<uchar>(j, i) = (uchar)1;
+  }
   // image.at<uchar>(2, 2) = (uchar)12;
 
   // for (int i = 0; i < 4; ++i)
@@ -114,8 +116,8 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
 
   Mat o1 = imread(argv[2], IMREAD_GRAYSCALE);
   Mat opencvConstantPadding, opencvReplicatePadding;
-  filter2D(image, opencvReplicatePadding, CV_8UC1, kernel1, cv::Point(x, y),
-           0.0, cv::BORDER_REPLICATE);
+  // filter2D(image, opencvReplicatePadding, CV_8UC1, kernel1, cv::Point(x, y),
+  //          0.0, cv::BORDER_REPLICATE);
 
   // if (!testImages(o1, opencvReplicatePadding)) {
   //   std::cout << "x, y = " << x << ", " << y << "\n";
@@ -126,12 +128,12 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   // dip::Corr2D(&input, &kernel, &output2, x, y,
   //             dip::BOUNDARY_OPTION::CONSTANT_PADDING, 0);
 
-  // Define a cv::Mat with the output of Corr2D.
-  Mat outputImageConstantPadding(sizesOutput[0], sizesOutput[1], CV_32FC1,
-                                 output2.getData());
-  imwrite(argv[3], outputImageConstantPadding);
+  // // Define a cv::Mat with the output of Corr2D.
+  // Mat outputImageConstantPadding(sizesOutput[0], sizesOutput[1], CV_32FC1,
+  //                                output2.getData());
+  // imwrite(argv[3], outputImageConstantPadding);
 
-  Mat o2 = imread(argv[3], IMREAD_GRAYSCALE);
+  // Mat o2 = imread(argv[3], IMREAD_GRAYSCALE);
   filter2D(image, opencvConstantPadding, CV_8UC1, kernel1, cv::Point(x, y), 0.0,
            cv::BORDER_CONSTANT);
 

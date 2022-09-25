@@ -446,7 +446,6 @@ void vector2DMemRefMultiply(OpBuilder &builder, Location loc,
             loc, vecType, memRef1Imag,
             ValueRange{ivs[0], ivs[1]});
 
-
         Value pixelVal2Real = builder.create<LoadOp>(
             loc, vecType, memRef2Real,
             ValueRange{ivs[0], ivs[1]});
@@ -743,6 +742,7 @@ public:
       : OpRewritePattern(context) {
     // stride = strideParam;
     stride = 1;
+    // stride = 2;
   }
 
   LogicalResult matchAndRewrite(dip::CorrFFT2DOp op,
@@ -775,13 +775,13 @@ public:
     VectorType vectorTy32 = VectorType::get({stride}, f32);
 
     dft2D(rewriter, loc, inputReal, inputImag, inputRow, inputCol, intermediateReal,
-           intermediateImag, c0, c1, strideVal, vectorTy32);
+          intermediateImag, c0, c1, strideVal, vectorTy32);
 
     dft2D(rewriter, loc, kernelReal, kernelImag, kernelRow, kernelCol, intermediateReal,
-           intermediateImag, c0, c1, strideVal, vectorTy32);
+          intermediateImag, c0, c1, strideVal, vectorTy32);
 
-    vector2DMemRefMultiply(rewriter, loc, inputReal, inputImag, kernelReal, kernelImag, inputReal, inputImag,
-                           inputRow, inputCol, c0, vectorTy32);
+    vector2DMemRefMultiply(rewriter, loc, inputReal, inputImag, kernelReal, kernelImag,
+                           inputReal, inputImag, inputRow, inputCol, c0, vectorTy32);
 
     idft2D(rewriter, loc, inputReal, inputImag, inputRow, inputCol, intermediateReal,
            intermediateImag, c0, c1, strideVal, vectorTy32);
