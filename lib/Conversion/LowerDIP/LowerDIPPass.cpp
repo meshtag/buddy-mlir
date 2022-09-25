@@ -941,6 +941,137 @@ private:
   int64_t stride;
 };
 
+class DIPMorphGrad2DOpLowering : public OpRewritePattern<dip::MorphGrad2DOp> {
+public:
+  using OpRewritePattern<dip::MorphGrad2DOp>::OpRewritePattern;
+
+  explicit DIPMorphGrad2DOpLowering(MLIRContext *context, int64_t strideParam)
+      : OpRewritePattern(context) {
+    stride = strideParam;
+  }
+
+  LogicalResult matchAndRewrite(dip::MorphGrad2DOp op,
+                                PatternRewriter &rewriter) const override {
+    auto loc = op->getLoc();
+    auto *ctx = op->getContext();
+
+    // Register operand values.
+    Value input = op->getOperand(0);
+    Value kernel = op->getOperand(1);
+    Value output = op->getOperand(2);
+    Value output1 = op->getOperand(3);
+    Value output2 = op->getOperand(4);
+    Value input1 = op->getOperand(5);
+    Value centerX = op->getOperand(6);
+    Value centerY = op->getOperand(7);
+    Value iterations = op->getOperand(8);
+    Value constantValue = op->getOperand(9);
+    dip::BoundaryOption boundaryOptionAttr = op.getBoundaryOption();
+    Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
+
+    auto inElemTy = input.getType().cast<MemRefType>().getElementType();
+    auto bitWidth = inElemTy.getIntOrFloatBitWidth();
+    DIP_ERROR error = checkDIPCommonTypes<dip::MorphGrad2DOp>(op, input, kernel,
+                                                         output, constantValue);
+
+    if (error == DIP_ERROR::INCONSISTENT_INPUT_KERNEL_OUTPUT_TYPES) {
+      return op->emitOpError() << "input, kernel, output and constant must "
+                                  "have the same element type";
+    } else if (error == DIP_ERROR::UNSUPPORTED_TYPE) {
+      return op->emitOpError() << "supports only f32, f64 and integer types. "
+                               << inElemTy << "is passed";
+    }
+    Value c0 = rewriter.create<ConstantIndexOp>(loc, 0);
+    Value c1 = rewriter.create<ConstantIndexOp>(loc, 1);
+    rewriter.create<memref::CopyOp>(loc, input, input1);
+
+    rewriter.create<AffineForOp>(
+        loc, ValueRange{c0}, rewriter.getDimIdentityMap(),
+        ValueRange{iterations}, rewriter.getDimIdentityMap(), /*Step=*/1,
+        llvm::None,
+        [&](OpBuilder &builder, Location nestedLoc, Value iv,
+            ValueRange itrArgs) {
+          Value cond = builder.create<CmpIOp>(loc, CmpIPredicate::sge, iv, c1);
+          builder.create<scf::IfOp>(
+              loc, cond, [&](OpBuilder &builder, Location loc) {
+                builder.create<memref::CopyOp>(loc, output1, input);
+                builder.create<scf::YieldOp>(loc);
+              });
+          traverseImagewBoundaryExtrapolation(
+              rewriter, loc, ctx, input, kernel, output1, centerX, centerY,
+              constantValue, strideVal, inElemTy, boundaryOptionAttr, stride,
+              DIP_OP::DILATION_2D);
+          builder.create<AffineYieldOp>(loc);
+        });
+
+    rewriter.create<AffineForOp>(
+        loc, ValueRange{c0}, rewriter.getDimIdentityMap(),
+        ValueRange{iterations}, rewriter.getDimIdentityMap(), /*Step=*/1,
+        llvm::None,
+        [&](OpBuilder &builder, Location nestedLoc, Value iv,
+            ValueRange itrArgs) {
+          Value cond = builder.create<CmpIOp>(loc, CmpIPredicate::sge, iv, c1);
+          builder.create<scf::IfOp>(
+              loc, cond, [&](OpBuilder &builder, Location loc) {
+                builder.create<memref::CopyOp>(loc, output2, input1);
+                builder.create<scf::YieldOp>(loc);
+              });
+          traverseImagewBoundaryExtrapolation(
+              rewriter, loc, ctx, input1, kernel, output2, centerX, centerY,
+              constantValue, strideVal, inElemTy, boundaryOptionAttr, stride,
+              DIP_OP::EROSION_2D);
+          builder.create<AffineYieldOp>(loc);
+        });
+
+            VectorType VectorOne = VectorType::get({1}, inElemTy);
+    Value outputrow = rewriter.create<memref::DimOp>(loc, output, c0);
+    Value outputcol = rewriter.create<memref::DimOp>(loc, output, c1);
+    SmallVector<Value, 8> lowerbounds4(2, c0);
+    SmallVector<Value, 8> upperbounds4{outputrow, outputcol};
+    SmallVector<int64_t, 8> steps4{1, 1};
+   if(inElemTy.isF32() || inElemTy.isF64()) {
+    buildAffineLoopNest(
+        rewriter, loc, lowerbounds4, upperbounds4, steps4,
+        [&](OpBuilder &builder, Location loc, ValueRange ivs4) {
+          
+          Value ou1 = builder.create<LoadOp>(loc, VectorOne, output1,
+                                            ValueRange{ivs4[0], ivs4[1]});
+          Value ou2 = builder.create<LoadOp>(loc, VectorOne, output2,
+                                            ValueRange{ivs4[0], ivs4[1]});
+
+          Value res = builder.create<SubFOp>(loc, ou1, ou2);
+          builder.create<StoreOp>(loc, res, output,
+                                  ValueRange{ivs4[0], ivs4[1]});
+         
+        });
+   }
+   else if (inElemTy.isInteger(bitWidth)) {
+    buildAffineLoopNest(
+        rewriter, loc, lowerbounds4, upperbounds4, steps4,
+        [&](OpBuilder &builder, Location loc, ValueRange ivs4) {
+          
+          Value ou1 = builder.create<LoadOp>(loc, VectorOne, output1,
+                                            ValueRange{ivs4[0], ivs4[1]});
+          Value ou2 = builder.create<LoadOp>(loc, VectorOne, output2,
+                                            ValueRange{ivs4[0], ivs4[1]});
+
+          Value res = builder.create<SubIOp>(loc, ou1, ou2);
+          builder.create<StoreOp>(loc, res, output,
+                                  ValueRange{ivs4[0], ivs4[1]});
+         
+        });
+   }
+
+    // Remove the origin morphological gradient operation.
+    rewriter.eraseOp(op);
+    return success();
+  }
+
+private:
+  int64_t stride;
+};
+
+
 } // end anonymous namespace
 
 void populateLowerDIPConversionPatterns(RewritePatternSet &patterns,
@@ -954,6 +1085,7 @@ void populateLowerDIPConversionPatterns(RewritePatternSet &patterns,
   patterns.add<DIPClosing2DOpLowering>(patterns.getContext(), stride);
   patterns.add<DIPTopHat2DOpLowering>(patterns.getContext(), stride);
   patterns.add<DIPBottomHat2DOpLowering>(patterns.getContext(), stride);
+  patterns.add<DIPMorphGrad2DOpLowering>(patterns.getContext(), stride);
 }
 
 //===----------------------------------------------------------------------===//

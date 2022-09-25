@@ -311,4 +311,31 @@ def DIP_BottomHat2DOp : DIP_Op<"bottomhat_2d"> {
   }];
 }
 
+def DIP_MorphGrad2DOp : DIP_Op<"morphgrad_2d"> {
+  let summary = [{This operation aims to provide utility to perform Morphological Gradient transformation on
+                      a 2d single channel image.}];
+
+  let arguments = (ins Arg<AnyRankedOrUnrankedMemRef, "inputMemref",
+                           [MemRead]>:$memrefI,
+                       Arg<AnyRankedOrUnrankedMemRef, "kernelMemref",
+                           [MemRead]>:$memrefK,
+                       Arg<AnyRankedOrUnrankedMemRef, "outputMemref",
+                           [MemRead]>:$memrefCO,
+                       Arg<AnyRankedOrUnrankedMemRef, "outputinterMemref",
+                           [MemRead]>:$memrefCOI,    
+                       Arg<AnyRankedOrUnrankedMemRef, "outputinterMemref1",
+                           [MemRead]>:$memrefCOII,  
+                       Arg<AnyRankedOrUnrankedMemRef, "inputMemrefinter",
+                           [MemRead]>:$memrefIR,           
+                       Index : $centerX,
+                       Index : $centerY,
+                       Index : $iterations,
+                       AnyTypeOf<[AnyI8, AnyI32, AnyI64, AnyFloat]> : $constantValue,
+                       DIP_BoundaryOptionAttr:$boundary_option);
+
+  let assemblyFormat = [{
+    $boundary_option $memrefI `,`  $memrefK `,` $memrefCO `,` $memrefCOI `,` $memrefCOII `,` $memrefIR `,` $centerX `,` $centerY `,` $iterations `,` $constantValue attr-dict `:` type($memrefI) `,` type($memrefK) `,` type($memrefCO) `,` type($memrefCOI) `,` type($memrefCOII) `,` type($memrefIR) `,` type($centerX) `,` type($centerY) `,` type($iterations) `,` type($constantValue)
+  }];
+}
+
 #endif // DIP_DIPOPS_TD

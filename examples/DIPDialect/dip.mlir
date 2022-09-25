@@ -104,3 +104,17 @@ func.func @bottomhat_2d_replicate_padding(%inputImage : memref<?x?xf32>, %kernel
   return 
 }
 
+func.func @morphgrad_2d_constant_padding(%inputImage : memref<?x?xf32>, %kernel : memref<?x?xf32>, %outputImage : memref<?x?xf32>, %outputImage1 : memref<?x?xf32>,%outputImage2 : memref<?x?xf32>, %inputImage1 : memref<?x?xf32>, %centerX : index, %centerY : index,%iterations : index, %constantValue: f32)
+{
+  dip.morphgrad_2d <CONSTANT_PADDING> %inputImage, %kernel, %outputImage, %outputImage1,%outputImage2,  %inputImage1, %centerX, %centerY, %iterations, %constantValue : memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>,memref<?x?xf32>,memref<?x?xf32>, index, index,index, f32
+  return
+}
+
+func.func @morphgrad_2d_replicate_padding(%inputImage : memref<?x?xf32>, %kernel : memref<?x?xf32>, %outputImage : memref<?x?xf32>, %outputImage1 : memref<?x?xf32>,%outputImage2 : memref<?x?xf32>, %inputImage1 : memref<?x?xf32>, %centerX : index, %centerY : index, %iterations : index, %constantValue : f32)
+{
+  dip.morphgrad_2d <REPLICATE_PADDING> %inputImage, %kernel, %outputImage, %outputImage1,%outputImage2, %inputImage1, %centerX, %centerY, %iterations, %constantValue : memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>,memref<?x?xf32>,memref<?x?xf32>,memref<?x?xf32>, index, index, index, f32
+  return 
+}
+
+
+

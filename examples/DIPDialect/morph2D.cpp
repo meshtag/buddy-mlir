@@ -290,6 +290,44 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
     std::cout << "x, y = " << x << ", " << y << "\n";
     return 0;
   }
+
+  dip::MorphGrad2D(&input, &kernel, &output1, x, y, 1,
+                   dip::BOUNDARY_OPTION::CONSTANT_PADDING, 0.0);
+
+  // Define a cv::Mat with the output of MorphGrad2D.
+  Mat outputImageConstantPaddingmorphgrad(sizesOutput[0], sizesOutput[1],
+                                          CV_32FC1, output1.getData());
+  imwrite(argv[2], outputImageConstantPaddingmorphgrad);
+
+  Mat o13 = imread(argv[2], IMREAD_GRAYSCALE);
+  Mat opencvConstantPaddingmorphgrad;
+  morphologyEx(image, opencvConstantPaddingmorphgrad, 4, kernel1,
+               cv::Point(x, y), 1, 0, 0.0);
+
+  if (!testImages(o13, opencvConstantPaddingmorphgrad)) {
+    std::cout << "x, y = " << x << ", " << y << "\n";
+    return 0;
+  }
+
+  dip::MorphGrad2D(&input, &kernel, &output1, x, y, 2,
+                   dip::BOUNDARY_OPTION::REPLICATE_PADDING, 0.0);
+
+  // Define a cv::Mat with the output of MorphGrad2D.
+  Mat outputImagereplicatePaddingmorphgrad(sizesOutput[0], sizesOutput[1],
+                                          CV_32FC1, output1.getData());
+  imwrite(argv[13], outputImageConstantPaddingmorphgrad);
+
+  Mat o14 = imread(argv[13], IMREAD_GRAYSCALE);
+  Mat opencvReplicatePaddingmorphgrad;
+  morphologyEx(image, opencvReplicatePaddingmorphgrad, 4, kernel1,
+               cv::Point(x, y), 2, 0, 0.0);
+
+  if (!testImages(o14, opencvReplicatePaddingmorphgrad)) {
+    std::cout << "x, y = " << x << ", " << y << "\n";
+    return 0;
+  }
+
+
   return 1;
 }
 
