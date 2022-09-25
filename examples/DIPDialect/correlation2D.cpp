@@ -135,7 +135,7 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
 
   // Mat o2 = imread(argv[3], IMREAD_GRAYSCALE);
   filter2D(image, opencvConstantPadding, CV_8UC1, kernel1, cv::Point(x, y), 0.0,
-           cv::BORDER_CONSTANT);
+           cv::BORDER_REPLICATE);
 
   // std::cout << "OpenCV here\n";
   // for (int i = 0; i < 4; ++i)

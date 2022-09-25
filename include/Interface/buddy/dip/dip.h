@@ -146,18 +146,38 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
     }
 
   // Obtain padded input image.
-  float inputPaddedDataReal[paddedSize] = {0};
+  float inputPaddedDataReal[paddedSize];
   // float *inputPaddedDataReal = new float[paddedSize];
-  for (uint32_t i = 0; i < input->getSizes()[0]; ++i) {
-    for (uint32_t j = 0; j < input->getSizes()[1]; ++j) {
-      inputPaddedDataReal[i * paddedSizes[1] + j] = input->getData()[i * input->getSizes()[1] + j];
+
+  if (option == BOUNDARY_OPTION::CONSTANT_PADDING)
+  {
+    for (uint32_t i = 0; i < paddedSizes[0]; ++i)
+    {
+      for (uint32_t j = 0; j < paddedSizes[1]; ++j)
+      {
+        if (i < input->getSizes()[0] && j < input->getSizes()[1])
+          inputPaddedDataReal[i * paddedSizes[1] + j] = input->getData()[i * input->getSizes()[1] + j];
+        else
+          inputPaddedDataReal[i * paddedSizes[1] + j] = constantValue;
+      }
+    }
+  }
+  else if (option == BOUNDARY_OPTION::REPLICATE_PADDING)
+  {
+    for (uint32_t i = 0; i < paddedSizes[0]; ++i)
+    {
+      uint32_t r = (i < input->getSizes()[0]) ? i 
+                    : ((i < input->getSizes()[0] + centerY) ? (input->getSizes()[0] - 1) : 0);
+      for (uint32_t j = 0; j < paddedSizes[1]; ++j)
+      {
+        uint32_t c = (j < input->getSizes()[1]) ? j 
+                      : ((j < input->getSizes()[1] + centerX) ? (input->getSizes()[1] - 1) : 0);
+        inputPaddedDataReal[i * paddedSizes[1] + j] = input->getData()[r * input->getSizes()[1] + c];
+      }
     }
   }
 
   // std::cout << paddedSize << "\n";
-
-  // Do padding related modifications in above step. Constant padding with zero as constant for now.
-  // flip kernel for correlation instead of convolution.
 
   intptr_t kernelSize[2] = {kernel->getSizes()[0], kernel->getSizes()[1]};
   MemRef<float, 2> flippedKernel(flippedKernelData, kernelSize);
