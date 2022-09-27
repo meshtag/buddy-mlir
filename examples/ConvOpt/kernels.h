@@ -25,7 +25,8 @@ float prewittKernelAlign[9] = {-1, 0, 1, -1, 0, 1, -1, 0, 1};
 int prewittKernelRows = 3;
 int prewittKernelCols = 3;
 
-float sobel3x3KernelAlign[9] = {1, 0, -1, 2, 0, -2, 1, 0, -1};
+float sobel3x3KernelAlign[9] = {1, 0, -1, 3, 0, -2, 1, 0, -1};
+// float sobel3x3KernelAlign[9] = {1, 1, 1, 1, 4, 1, 1, 1, 1};
 int sobel3x3KernelRows = 3;
 int sobel3x3KernelCols = 3;
 
