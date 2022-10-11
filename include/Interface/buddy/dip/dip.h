@@ -106,40 +106,40 @@ void _mlir_ciface_closing_2d_replicate_padding(
     unsigned int iterations, float constantValue);
 
 void _mlir_ciface_tophat_2d_constant_padding(
-    Img<float, 2> *input, MemRef<float, 2> *kernel,
-    MemRef<float, 2> *output, MemRef<float, 2> *output1,
-    MemRef<float, 2> *output2, MemRef<float, 2> *input1, unsigned int centerX, unsigned int centerY,
+    Img<float, 2> *input, MemRef<float, 2> *kernel, MemRef<float, 2> *output,
+    MemRef<float, 2> *output1, MemRef<float, 2> *output2,
+    MemRef<float, 2> *input1, unsigned int centerX, unsigned int centerY,
     unsigned int iterations, float constantValue);
 
 void _mlir_ciface_tophat_2d_replicate_padding(
-    Img<float, 2> *input, MemRef<float, 2> *kernel,
-    MemRef<float, 2> *output, MemRef<float, 2> *output1,
-    MemRef<float, 2> *output2,MemRef<float, 2> *input1, unsigned int centerX, unsigned int centerY,
+    Img<float, 2> *input, MemRef<float, 2> *kernel, MemRef<float, 2> *output,
+    MemRef<float, 2> *output1, MemRef<float, 2> *output2,
+    MemRef<float, 2> *input1, unsigned int centerX, unsigned int centerY,
     unsigned int iterations, float constantValue);
 
 void _mlir_ciface_bottomhat_2d_constant_padding(
-    Img<float, 2> *input,  MemRef<float, 2> *kernel,
-    MemRef<float, 2> *output, MemRef<float, 2> *output1,
-    MemRef<float, 2> *output2, MemRef<float, 2> *input1, unsigned int centerX, unsigned int centerY,
+    Img<float, 2> *input, MemRef<float, 2> *kernel, MemRef<float, 2> *output,
+    MemRef<float, 2> *output1, MemRef<float, 2> *output2,
+    MemRef<float, 2> *input1, unsigned int centerX, unsigned int centerY,
     unsigned int iterations, float constantValue);
 
 void _mlir_ciface_bottomhat_2d_replicate_padding(
-    Img<float, 2> *input, MemRef<float, 2> *kernel,
-    MemRef<float, 2> *output, MemRef<float, 2> *output1,
-    MemRef<float, 2> *output2, MemRef<float, 2> *input1, unsigned int centerX, unsigned int centerY,
+    Img<float, 2> *input, MemRef<float, 2> *kernel, MemRef<float, 2> *output,
+    MemRef<float, 2> *output1, MemRef<float, 2> *output2,
+    MemRef<float, 2> *input1, unsigned int centerX, unsigned int centerY,
     unsigned int iterations, float constantValue);
 
 void _mlir_ciface_morphgrad_2d_constant_padding(
-    Img<float, 2> *input, MemRef<float, 2> *kernel,
-    MemRef<float, 2> *output, MemRef<float, 2> *output1,
-    MemRef<float, 2> *output2, MemRef<float, 2> input1, unsigned int centerX, unsigned int centerY,
-    unsigned int iterations, float constantValue);  
+    Img<float, 2> *input, MemRef<float, 2> *kernel, MemRef<float, 2> *output,
+    MemRef<float, 2> *output1, MemRef<float, 2> *output2,
+    MemRef<float, 2> input1, unsigned int centerX, unsigned int centerY,
+    unsigned int iterations, float constantValue);
 
 void _mlir_ciface_morphgrad_2d_replicate_padding(
-    Img<float, 2> *input, MemRef<float, 2> *kernel,
-    MemRef<float, 2> *output, MemRef<float, 2> *output1,
-    MemRef<float, 2> *output2,MemRef<float, 2> input1, unsigned int centerX, unsigned int centerY,
-    unsigned int iterations, float constantValue);        
+    Img<float, 2> *input, MemRef<float, 2> *kernel, MemRef<float, 2> *output,
+    MemRef<float, 2> *output1, MemRef<float, 2> *output2,
+    MemRef<float, 2> input1, unsigned int centerX, unsigned int centerY,
+    unsigned int iterations, float constantValue);
 }
 
 // Helper function for applying 2D resize operation on images.
@@ -310,13 +310,10 @@ void TopHat2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
   intptr_t sizesOutput[2] = {outputRows, outputCols};
   MemRef<float, 2> output1(sizesOutput);
   MemRef<float, 2> output2(sizesOutput);
-  intptr_t inputRows = input->getSizes()[0];
-  intptr_t inputCols = input->getSizes()[1];
-  intptr_t sizesInput[2] = {inputRows, inputCols};
-  MemRef<float, 2> input1(sizesInput);
+  MemRef<float, 2> input1(sizesOutput);
   if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
     detail::_mlir_ciface_tophat_2d_constant_padding(
-        input,  kernel, output, &output1, &output2, &input1, centerX, centerY,
+        input, kernel, output, &output1, &output2, &input1, centerX, centerY,
         iterations, constantValue);
   } else if (option == BOUNDARY_OPTION::REPLICATE_PADDING) {
     detail::_mlir_ciface_tophat_2d_replicate_padding(
@@ -334,13 +331,10 @@ void BottomHat2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
   intptr_t sizesOutput[2] = {outputRows, outputCols};
   MemRef<float, 2> output1(sizesOutput);
   MemRef<float, 2> output2(sizesOutput);
-  intptr_t inputRows = input->getSizes()[0];
-  intptr_t inputCols = input->getSizes()[1];
-  intptr_t sizesInput[2] = {inputRows, inputCols};
-  MemRef<float, 2> input1(sizesInput);
+  MemRef<float, 2> input1(sizesOutput);
   if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
     detail::_mlir_ciface_bottomhat_2d_constant_padding(
-        input, kernel, output, &output1, &output2,  &input1, centerX, centerY,
+        input, kernel, output, &output1, &output2, &input1, centerX, centerY,
         iterations, constantValue);
   } else if (option == BOUNDARY_OPTION::REPLICATE_PADDING) {
     detail::_mlir_ciface_bottomhat_2d_replicate_padding(
@@ -353,16 +347,13 @@ void MorphGrad2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
                  MemRef<float, 2> *output, unsigned int centerX,
                  unsigned int centerY, unsigned int iterations,
                  BOUNDARY_OPTION option, float constantValue = 0) {
-                    intptr_t outputRows = output->getSizes()[0];
+  intptr_t outputRows = output->getSizes()[0];
   intptr_t outputCols = output->getSizes()[1];
   intptr_t sizesOutput[2] = {outputRows, outputCols};
   MemRef<float, 2> output1(sizesOutput);
   MemRef<float, 2> output2(sizesOutput);
-  intptr_t inputRows = input->getSizes()[0];
-  intptr_t inputCols = input->getSizes()[1];
-  intptr_t sizesInput[2] = {inputRows, inputCols};
-  MemRef<float, 2> input1(sizesInput);
-    if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
+  MemRef<float, 2> input1(sizesOutput);
+  if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
     detail::_mlir_ciface_morphgrad_2d_constant_padding(
         input, kernel, output, &output1, &output2, input1, centerX, centerY,
         iterations, constantValue);
@@ -371,7 +362,6 @@ void MorphGrad2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
         input, kernel, output, &output1, &output2, input1, centerX, centerY,
         iterations, 0);
   }
-
-                 }
+}
 } // namespace dip
 #endif

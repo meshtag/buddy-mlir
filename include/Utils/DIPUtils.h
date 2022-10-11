@@ -520,6 +520,7 @@ void BilinearInterpolationResizing(
             inputColLastElemF32, c0F32, c1F32);
       });
 }
+
 // Inserts a constant op with value -1 into a location `loc` based on type
 // `type`. Supported types are : f32, f64, integer types
 Value insertMinusOneConstantOp(MLIRContext *ctx, OpBuilder &builder,
@@ -598,6 +599,7 @@ Value zeroCond(OpBuilder &builder, Location loc, Type elemType,
   }
   return cond;
 }
+
 // Utility function for morphological operations ; cannot handle tail processing
 void calcAndStorewoTailProcessingMorph(OpBuilder &builder, Location loc,
                                        VectorType vecType, Value inputVec,
@@ -635,7 +637,9 @@ void calcAndStorewoTailProcessingMorph(OpBuilder &builder, Location loc,
     builder.create<scf::YieldOp>(loc);
   });
 }
-// Utility function for morphological transformations, can handle tail processing
+
+// Utility function for morphological transformations, can handle tail
+// processing
 void calcAndStorewTailProcessingMorph(
     OpBuilder &builder, Location loc, VectorType vecType, Value inputVec,
     Value kernelVec, Value output, Value beginIdx, Value endIdx, Value tailCond,
@@ -1300,7 +1304,7 @@ void traverseImagewBoundaryExtrapolation(
                                   Value tailCond = tailChecker(
                                       builder, loc, calcHelper, strideVal,
                                       kernelSize, c1, pseudoCol, ivs[2]);
-                                  // 11
+
                                   if (op == DIP_OP::CORRELATION_2D) {
                                     calcAndStoreFMAwTailProcessing(
                                         builder, loc, vectorTy32, inputVec,

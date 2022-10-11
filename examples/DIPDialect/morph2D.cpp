@@ -14,9 +14,9 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file implements examples of morphological transformations of the DIP Dialect.
-// This file will be linked with the object file to generate the executable
-// file.
+// This file implements examples of morphological transformations of the DIP
+// Dialect. This file will be linked with the object file to generate the
+// executable file.
 //
 //===----------------------------------------------------------------------===//
 
@@ -74,6 +74,19 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   Img<float, 2> input(image);
   MemRef<float, 2> kernel(kernelAlign, sizesKernel);
   MemRef<float, 2> output1(sizesOutput);
+  MemRef<float, 2> output2(sizesOutput);
+  MemRef<float, 2> output3(sizesOutput);
+  MemRef<float, 2> output4(sizesOutput);
+  MemRef<float, 2> output5(sizesOutput);
+  MemRef<float, 2> output6(sizesOutput);
+  MemRef<float, 2> output7(sizesOutput);
+  MemRef<float, 2> output8(sizesOutput);
+  MemRef<float, 2> output9(sizesOutput);
+  MemRef<float, 2> output10(sizesOutput);
+  MemRef<float, 2> output11(sizesOutput);
+  MemRef<float, 2> output12(sizesOutput);
+  MemRef<float, 2> output13(sizesOutput);
+  MemRef<float, 2> output14(sizesOutput);
 
   // kernel for morphological transformations.
   Mat kernel1 = cv::getStructuringElement(MORPH_ELLIPSE, Size(7, 7));
@@ -105,22 +118,22 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
                                          CV_32FC1, output2.getData());
   imwrite(argv[3], outputImageConstantPaddingdilation);
   Mat o2 = imread(argv[3], IMREAD_GRAYSCALE);
-  //Define a cv::Mat for storing output of Opencv's dilate method.
+  // Define a cv::Mat for storing output of Opencv's dilate method.
   Mat opencvConstantPaddingdilation;
   cv::dilate(image, opencvConstantPaddingdilation, kernel1, cv::Point(x, y), 5,
-         cv::BORDER_CONSTANT, 0.0);
+             cv::BORDER_CONSTANT, 0.0);
   if (!testImages(o2, opencvConstantPaddingdilation)) {
     std::cout << "x, y = " << x << ", " << y << "\n";
     return 0;
   }
 
   // Call the MLIR Erosion2D function.
-  dip::Erosion2D(&input, &kernel, &output1, x, y,1,
+  dip::Erosion2D(&input, &kernel, &output3, x, y, 1,
                  dip::BOUNDARY_OPTION::REPLICATE_PADDING, 0);
 
   // Define a cv::Mat with the output of Erosion2D.
   Mat outputImageReplicatePaddingerosion(sizesOutput[0], sizesOutput[1],
-                                         CV_32FC1, output1.getData());
+                                         CV_32FC1, output3.getData());
   imwrite(argv[4], outputImageReplicatePaddingerosion);
 
   Mat o3 = imread(argv[4], IMREAD_GRAYSCALE);
@@ -135,17 +148,17 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   }
 
   // Call the MLIR Erosion2D function.
-  dip::Erosion2D(&input, &kernel, &output2, x, y,2,
+  dip::Erosion2D(&input, &kernel, &output4, x, y, 2,
                  dip::BOUNDARY_OPTION::CONSTANT_PADDING, 0.0);
 
   // Define a cv::Mat with the output of Erosion2D.
   Mat outputImageConstantPaddingerosion(sizesOutput[0], sizesOutput[1],
-                                        CV_32FC1, output2.getData());
+                                        CV_32FC1, output4.getData());
   imwrite(argv[5], outputImageConstantPaddingerosion);
 
   Mat o4 = imread(argv[5], IMREAD_GRAYSCALE);
   Mat opencvConstantPaddingerosion;
-  erode(image, opencvConstantPaddingerosion, kernel1, cv::Point(x, y), 1,
+  erode(image, opencvConstantPaddingerosion, kernel1, cv::Point(x, y), 2,
         cv::BORDER_CONSTANT, 0.0);
 
   if (!testImages(o4, opencvConstantPaddingerosion)) {
@@ -153,14 +166,14 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
     return 0;
   }
 
-  dip::Opening2D(&input, &kernel, &output2, x, y, 3,
+  dip::Opening2D(&input, &kernel, &output5, x, y, 3,
                  dip::BOUNDARY_OPTION::REPLICATE_PADDING, 0.0);
   // Define a cv::Mat with the output of Opening2D.
   Mat outputImageConstantPaddingopening(sizesOutput[0], sizesOutput[1],
-                                        CV_32FC1, output2.getData());
+                                        CV_32FC1, output5.getData());
   imwrite(argv[6], outputImageConstantPaddingopening);
   Mat o5 = imread(argv[6], IMREAD_GRAYSCALE);
-  //Define a cv::mat to store the output of Opencv's opening.
+  // Define a cv::mat to store the output of Opencv's opening.
   Mat opencvConstantPaddingopening;
   morphologyEx(image, opencvConstantPaddingopening, 2, kernel1, cv::Point(x, y),
                3, cv::BORDER_REPLICATE, 0.0);
@@ -169,10 +182,10 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
     return 0;
   }
 
-  dip::Opening2D(&input, &kernel, &output1, x, y, 2,
+  dip::Opening2D(&input, &kernel, &output6, x, y, 2,
                  dip::BOUNDARY_OPTION::CONSTANT_PADDING, 0);
   Mat outputImageReplicatePaddingopening(sizesOutput[0], sizesOutput[1],
-                                         CV_32FC1, output1.getData());
+                                         CV_32FC1, output6.getData());
   imwrite(argv[7], outputImageReplicatePaddingopening);
 
   Mat o6 = imread(argv[7], IMREAD_GRAYSCALE);
@@ -186,10 +199,10 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
     return 0;
   }
 
-  dip::Closing2D(&input, &kernel, &output1, x, y, 3,
+  dip::Closing2D(&input, &kernel, &output7, x, y, 3,
                  dip::BOUNDARY_OPTION::REPLICATE_PADDING, 0);
   Mat outputImageReplicatePaddingclosing(sizesOutput[0], sizesOutput[1],
-                                         CV_32FC1, output1.getData());
+                                         CV_32FC1, output7.getData());
   imwrite(argv[8], outputImageReplicatePaddingclosing);
 
   Mat o7 = imread(argv[8], IMREAD_GRAYSCALE);
@@ -203,12 +216,12 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
     return 0;
   }
 
-  dip::Closing2D(&input, &kernel, &output2, x, y,2,
+  dip::Closing2D(&input, &kernel, &output8, x, y, 2,
                  dip::BOUNDARY_OPTION::CONSTANT_PADDING, 0.0);
 
   // Define a cv::Mat with the output of Closing2D.
   Mat outputImageConstantPaddingclosing(sizesOutput[0], sizesOutput[1],
-                                        CV_32FC1, output2.getData());
+                                        CV_32FC1, output8.getData());
   imwrite(argv[9], outputImageConstantPaddingclosing);
 
   Mat o8 = imread(argv[9], IMREAD_GRAYSCALE);
@@ -221,10 +234,10 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
     return 0;
   }
 
-  dip::TopHat2D(&input, &kernel, &output1, x, y, 3,
+  dip::TopHat2D(&input, &kernel, &output9, x, y, 3,
                 dip::BOUNDARY_OPTION::REPLICATE_PADDING, 0);
   Mat outputImageReplicatePaddingtophat(sizesOutput[0], sizesOutput[1],
-                                        CV_32FC1, output1.getData());
+                                        CV_32FC1, output9.getData());
   imwrite(argv[10], outputImageReplicatePaddingtophat);
 
   Mat o9 = imread(argv[10], IMREAD_GRAYSCALE);
@@ -238,12 +251,12 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
     return 0;
   }
 
-  dip::TopHat2D(&input, &kernel, &output2, x, y, 2,
+  dip::TopHat2D(&input, &kernel, &output10, x, y, 2,
                 dip::BOUNDARY_OPTION::CONSTANT_PADDING, 0.0);
 
   // Define a cv::Mat with the output of TopHat2D.
   Mat outputImageConstantPaddingtophat(sizesOutput[0], sizesOutput[1], CV_32FC1,
-                                       output2.getData());
+                                       output10.getData());
   imwrite(argv[11], outputImageConstantPaddingtophat);
 
   Mat o10 = imread(argv[11], IMREAD_GRAYSCALE);
@@ -256,10 +269,10 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
     return 0;
   }
 
-  dip::BottomHat2D(&input, &kernel, &output1, x, y, 2,
+  dip::BottomHat2D(&input, &kernel, &output11, x, y, 2,
                    dip::BOUNDARY_OPTION::REPLICATE_PADDING, 0);
   Mat outputImageReplicatePaddingbottomhat(sizesOutput[0], sizesOutput[1],
-                                           CV_32FC1, output1.getData());
+                                           CV_32FC1, output11.getData());
   imwrite(argv[12], outputImageReplicatePaddingbottomhat);
 
   Mat o11 = imread(argv[12], IMREAD_GRAYSCALE);
@@ -273,12 +286,12 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
     return 0;
   }
 
-  dip::BottomHat2D(&input, &kernel, &output2, x, y, 2,
+  dip::BottomHat2D(&input, &kernel, &output12, x, y, 2,
                    dip::BOUNDARY_OPTION::CONSTANT_PADDING, 0.0);
 
   // Define a cv::Mat with the output of BottomHat2D.
   Mat outputImageConstantPaddingbottomhat(sizesOutput[0], sizesOutput[1],
-                                          CV_32FC1, output2.getData());
+                                          CV_32FC1, output12.getData());
   imwrite(argv[13], outputImageConstantPaddingbottomhat);
 
   Mat o12 = imread(argv[13], IMREAD_GRAYSCALE);
@@ -291,12 +304,12 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
     return 0;
   }
 
-  dip::MorphGrad2D(&input, &kernel, &output1, x, y, 1,
+  dip::MorphGrad2D(&input, &kernel, &output13, x, y, 1,
                    dip::BOUNDARY_OPTION::CONSTANT_PADDING, 0.0);
 
   // Define a cv::Mat with the output of MorphGrad2D.
   Mat outputImageConstantPaddingmorphgrad(sizesOutput[0], sizesOutput[1],
-                                          CV_32FC1, output1.getData());
+                                          CV_32FC1, output13.getData());
   imwrite(argv[2], outputImageConstantPaddingmorphgrad);
 
   Mat o13 = imread(argv[2], IMREAD_GRAYSCALE);
@@ -309,12 +322,12 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
     return 0;
   }
 
-  dip::MorphGrad2D(&input, &kernel, &output1, x, y, 2,
+  dip::MorphGrad2D(&input, &kernel, &output14, x, y, 2,
                    dip::BOUNDARY_OPTION::REPLICATE_PADDING, 0.0);
 
   // Define a cv::Mat with the output of MorphGrad2D.
   Mat outputImagereplicatePaddingmorphgrad(sizesOutput[0], sizesOutput[1],
-                                          CV_32FC1, output1.getData());
+                                           CV_32FC1, output14.getData());
   imwrite(argv[13], outputImageConstantPaddingmorphgrad);
 
   Mat o14 = imread(argv[13], IMREAD_GRAYSCALE);
@@ -326,7 +339,6 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
     std::cout << "x, y = " << x << ", " << y << "\n";
     return 0;
   }
-
 
   return 1;
 }
