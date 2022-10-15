@@ -613,22 +613,14 @@ void calcAndStorewoTailProcessingMorph(OpBuilder &builder, Location loc,
   builder.create<scf::IfOp>(loc, cond, [&](OpBuilder &builder, Location loc) {
     Value outputVec = builder.create<LoadOp>(loc, vecType, output,
                                              ValueRange{beginIdx, endIdx});
-    Value MaskVec =
-        createMaskVecOp(builder, loc, vecType, outputVec, PaddingVec);
-
-    Value outputVec1 = builder.create<MaskedLoadOp>(
-        loc, vecType, output, ValueRange{beginIdx, endIdx}, MaskVec, inputVec);
     Value compVec = {};
     if (op == DIP_OP::EROSION_2D) {
-      compVec = createCompVecMorph(builder, loc, vecType, inputVec, outputVec1,
+      compVec = createCompVecMorph(builder, loc, vecType, inputVec, outputVec,
                                    DIP_OP::EROSION_2D);
     } else if (op == DIP_OP::DILATION_2D) {
-      compVec = createCompVecMorph(builder, loc, vecType, inputVec, outputVec1,
+      compVec = createCompVecMorph(builder, loc, vecType, inputVec, outputVec,
                                    DIP_OP::DILATION_2D);
     }
-
-    builder.create<StoreOp>(loc, outputVec1, output,
-                            ValueRange{beginIdx, endIdx});
 
     Value resVec = builder.create<MaskedLoadOp>(
         loc, vecType, output, ValueRange{beginIdx, endIdx}, compVec, inputVec);
@@ -653,21 +645,15 @@ void calcAndStorewTailProcessingMorph(
         [&](OpBuilder &builder, Location loc) {
           Value outputVec = builder.create<LoadOp>(
               loc, vecType, output, ValueRange{beginIdx, endIdx});
-          Value MaskVec =
-              createMaskVecOp(builder, loc, vecType, outputVec, PaddingVec);
-          Value outputVec1 = builder.create<MaskedLoadOp>(
-              loc, vecType, output, ValueRange{beginIdx, endIdx}, MaskVec,
-              inputVec);
+
           Value compVec = {};
           if (op == DIP_OP::EROSION_2D) {
             compVec = createCompVecMorph(builder, loc, vecType, inputVec,
-                                         outputVec1, DIP_OP::EROSION_2D);
+                                         outputVec, DIP_OP::EROSION_2D);
           } else if (op == DIP_OP::DILATION_2D) {
             compVec = createCompVecMorph(builder, loc, vecType, inputVec,
-                                         outputVec1, DIP_OP::DILATION_2D);
+                                         outputVec, DIP_OP::DILATION_2D);
           }
-          builder.create<StoreOp>(loc, outputVec1, output,
-                                  ValueRange{beginIdx, endIdx});
 
           Value resVec = builder.create<MaskedLoadOp>(
               loc, vecType, output, ValueRange{beginIdx, endIdx}, compVec,
@@ -686,22 +672,15 @@ void calcAndStorewTailProcessingMorph(
               loc, vecType, output, ValueRange{beginIdx, endIdx}, extraElemMask,
               zeroPadding);
 
-          Value MaskVec =
-              createMaskVecOp(builder, loc, vecType, outputVec, PaddingVec);
-          Value outputVec1 = builder.create<MaskedLoadOp>(
-              loc, vecType, output, ValueRange{beginIdx, endIdx}, MaskVec,
-              inputVec);
           Value compVec;
           if (op == DIP_OP::EROSION_2D) {
             compVec = createCompVecMorph(builder, loc, vecType, inputVec,
-                                         outputVec1, DIP_OP::EROSION_2D);
+                                         outputVec, DIP_OP::EROSION_2D);
           } else if (op == DIP_OP::DILATION_2D) {
             compVec = createCompVecMorph(builder, loc, vecType, inputVec,
-                                         outputVec1, DIP_OP::DILATION_2D);
+                                         outputVec, DIP_OP::DILATION_2D);
           }
-          builder.create<MaskedStoreOp>(loc, output,
-                                        ValueRange{beginIdx, endIdx},
-                                        extraElemMask, outputVec1);
+
           Value resVec = builder.create<MaskedLoadOp>(
               loc, vecType, output, ValueRange{beginIdx, endIdx}, compVec,
               inputVec);
@@ -754,17 +733,6 @@ void traverseImagewBoundaryExtrapolation(
       rewriter.create<BroadcastOp>(loc, VectorOne, Paddingel);
   Value Paddingvec = rewriter.create<BroadcastOp>(loc, vectorTy32, Paddingel);
 
-  if (op == DIP_OP::EROSION_2D || op == DIP_OP::DILATION_2D) {
-    SmallVector<Value, 8> lowerBounds1(2, c0);
-    SmallVector<Value, 8> upperBounds1{outputrow, outputcol};
-    SmallVector<int64_t, 8> steps1{1, 1};
-    // Initializes the Output memref with -1
-    buildAffineLoopNest(rewriter, loc, lowerBounds1, upperBounds1, steps1,
-                        [&](OpBuilder &builder, Location loc, ValueRange ivs1) {
-                          builder.create<StoreOp>(loc, PaddingElement, output,
-                                                  ValueRange{ivs1[0], ivs1[1]});
-                        });
-  }
   AffineExpr a, b, c;
   bindDims(ctx, a, b, c);
   AffineMap calcHelper = AffineMap::get(3, 0, {a + b - c}, ctx);

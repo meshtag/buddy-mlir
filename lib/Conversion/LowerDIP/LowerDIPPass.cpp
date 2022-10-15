@@ -396,6 +396,7 @@ public:
     Value centerY = op->getOperand(4);
     Value iterations = op->getOperand(5);
     Value constantValue = op->getOperand(6);
+    Value copymemref = op->getOperand(7);
     dip::BoundaryOption boundaryOptionAttr = op.getBoundaryOption();
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
@@ -427,6 +428,7 @@ public:
                 builder.create<memref::CopyOp>(loc, output, input);
                 builder.create<scf::YieldOp>(loc);
               });
+              builder.create<memref::CopyOp>(loc, copymemref, output);
           traverseImagewBoundaryExtrapolation(
               rewriter, loc, ctx, input, kernel, output, centerX, centerY,
               constantValue, strideVal, inElemTy, boundaryOptionAttr, stride,
@@ -466,6 +468,7 @@ public:
     Value centerY = op->getOperand(4);
     Value iterations = op->getOperand(5);
     Value constantValue = op->getOperand(6);
+    Value copymemref = op->getOperand(7);
     dip::BoundaryOption boundaryOptionAttr = op.getBoundaryOption();
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
@@ -495,6 +498,7 @@ auto inElemTy = input.getType().cast<MemRefType>().getElementType();
                 builder.create<memref::CopyOp>(loc, output, input);
                 builder.create<scf::YieldOp>(loc);
               });
+              builder.create<memref::CopyOp>(loc, copymemref, output);
           traverseImagewBoundaryExtrapolation(
               rewriter, loc, ctx, input, kernel, output, centerX, centerY,
               constantValue, strideVal, inElemTy, boundaryOptionAttr, stride,
@@ -534,6 +538,8 @@ public:
     Value centerY = op->getOperand(5);
     Value iterations = op->getOperand(6);
     Value constantValue = op->getOperand(7);
+    Value copymemref = op->getOperand(8);
+    Value copymemref1 = op->getOperand(9);
     dip::BoundaryOption boundaryOptionAttr = op.getBoundaryOption();
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
@@ -563,6 +569,7 @@ auto inElemTy = input.getType().cast<MemRefType>().getElementType();
                 builder.create<memref::CopyOp>(loc, output1, input);
                 builder.create<scf::YieldOp>(loc);
               });
+              builder.create<memref::CopyOp>(loc, copymemref, output1);
           traverseImagewBoundaryExtrapolation(
               rewriter, loc, ctx, input, kernel, output1, centerX, centerY,
               constantValue, strideVal, inElemTy, boundaryOptionAttr, stride,
@@ -582,6 +589,7 @@ auto inElemTy = input.getType().cast<MemRefType>().getElementType();
                 builder.create<memref::CopyOp>(loc, output, output1);
                 builder.create<scf::YieldOp>(loc);
               });
+              builder.create<memref::CopyOp>(loc, copymemref1, output);
           traverseImagewBoundaryExtrapolation(
               rewriter, loc, ctx, output1, kernel, output, centerX, centerY,
               constantValue, strideVal, inElemTy, boundaryOptionAttr, stride,
@@ -621,6 +629,8 @@ public:
     Value centerY = op->getOperand(5);
     Value iterations = op->getOperand(6);
     Value constantValue = op->getOperand(7);
+    Value copymemref = op->getOperand(8);
+    Value copymemref1 = op->getOperand(9);
     dip::BoundaryOption boundaryOptionAttr = op.getBoundaryOption();
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
@@ -650,6 +660,7 @@ public:
                 builder.create<memref::CopyOp>(loc, output1, input);
                 builder.create<scf::YieldOp>(loc);
               });
+              builder.create<memref::CopyOp>(loc, copymemref, output1);
           traverseImagewBoundaryExtrapolation(
               rewriter, loc, ctx, input, kernel, output1, centerX, centerY,
               constantValue, strideVal, inElemTy, boundaryOptionAttr, stride,
@@ -669,6 +680,7 @@ public:
                 builder.create<memref::CopyOp>(loc, output, output1);
                 builder.create<scf::YieldOp>(loc);
               });
+              builder.create<memref::CopyOp>(loc, copymemref1, output);
           traverseImagewBoundaryExtrapolation(
               rewriter, loc, ctx, output1, kernel, output, centerX, centerY,
               constantValue, strideVal, inElemTy, boundaryOptionAttr, stride,
@@ -714,6 +726,8 @@ public:
     Value centerY = op->getOperand(7);
     Value iterations = op->getOperand(8);
     Value constantValue = op->getOperand(9);
+    Value copymemref = op->getOperand(10);
+    Value copymemref1 = op->getOperand(11);
     dip::BoundaryOption boundaryOptionAttr = op.getBoundaryOption();
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
@@ -742,6 +756,7 @@ public:
                 builder.create<memref::CopyOp>(loc, output1, input1);
                 builder.create<scf::YieldOp>(loc);
               });
+              builder.create<memref::CopyOp>(loc, copymemref, output1);
           traverseImagewBoundaryExtrapolation(
               rewriter, loc, ctx, input1, kernel, output1, centerX, centerY,
               constantValue, strideVal, inElemTy, boundaryOptionAttr, stride,
@@ -761,6 +776,7 @@ public:
                 builder.create<memref::CopyOp>(loc, output2, output1);
                 builder.create<scf::YieldOp>(loc);
               });
+              builder.create<memref::CopyOp>(loc, copymemref1, output2);
           traverseImagewBoundaryExtrapolation(
               rewriter, loc, ctx, output1, kernel, output2, centerX, centerY,
               constantValue, strideVal, inElemTy, boundaryOptionAttr, stride,
@@ -840,6 +856,8 @@ public:
     Value centerY = op->getOperand(7);
     Value iterations = op->getOperand(8);
     Value constantValue = op->getOperand(9);
+    Value copymemref = op->getOperand(10);
+    Value copymemref1 = op->getOperand(11);
     dip::BoundaryOption boundaryOptionAttr = op.getBoundaryOption();
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
@@ -868,6 +886,7 @@ public:
                 builder.create<memref::CopyOp>(loc, output1, input1);
                 builder.create<scf::YieldOp>(loc);
               });
+              builder.create<memref::CopyOp>(loc, copymemref, output1);
           traverseImagewBoundaryExtrapolation(
               rewriter, loc, ctx, input1, kernel, output1, centerX, centerY,
               constantValue, strideVal, inElemTy, boundaryOptionAttr, stride,
@@ -887,6 +906,7 @@ public:
                 builder.create<memref::CopyOp>(loc, output2, output1);
                 builder.create<scf::YieldOp>(loc);
               });
+              builder.create<memref::CopyOp>(loc, copymemref1, output2);
           traverseImagewBoundaryExtrapolation(
               rewriter, loc, ctx, output1, kernel, output2, centerX, centerY,
               constantValue, strideVal, inElemTy, boundaryOptionAttr, stride,
