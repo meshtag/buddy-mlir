@@ -351,10 +351,15 @@ def DIP_MorphGrad2DOp : DIP_Op<"morphgrad_2d"> {
                        Index : $centerY,
                        Index : $iterations,
                        AnyTypeOf<[AnyI8, AnyI32, AnyI64, AnyFloat]> : $constantValue,
+                       Arg<AnyRankedOrUnrankedMemRef, "outputMemrefcopy",
+                           [MemRead]>:$memrefCopy, 
+                       Arg<AnyRankedOrUnrankedMemRef, "outputMemref",
+                           [MemRead]>:$memrefCopyone,
+
                        DIP_BoundaryOptionAttr:$boundary_option);
 
   let assemblyFormat = [{
-    $boundary_option $memrefI `,`  $memrefK `,` $memrefCO `,` $memrefCOI `,` $memrefCOII `,` $memrefIR `,` $centerX `,` $centerY `,` $iterations `,` $constantValue attr-dict `:` type($memrefI) `,` type($memrefK) `,` type($memrefCO) `,` type($memrefCOI) `,` type($memrefCOII) `,` type($memrefIR) `,` type($centerX) `,` type($centerY) `,` type($iterations) `,` type($constantValue)
+    $boundary_option $memrefI `,`  $memrefK `,` $memrefCO `,` $memrefCOI `,` $memrefCOII `,` $memrefIR `,` $centerX `,` $centerY `,` $iterations `,` $constantValue `,` $memrefCopy `,` $memrefCopyone attr-dict `:` type($memrefI) `,` type($memrefK) `,` type($memrefCO) `,` type($memrefCOI) `,` type($memrefCOII) `,` type($memrefIR) `,` type($centerX) `,` type($centerY) `,` type($iterations) `,` type($constantValue) `,` type($memrefCopy) `,` type($memrefCopyone)
   }];
 }
 

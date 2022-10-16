@@ -133,13 +133,13 @@ void _mlir_ciface_morphgrad_2d_constant_padding(
     Img<float, 2> *input, MemRef<float, 2> *kernel, MemRef<float, 2> *output,
     MemRef<float, 2> *output1, MemRef<float, 2> *output2,
     MemRef<float, 2> input1, unsigned int centerX, unsigned int centerY,
-    unsigned int iterations, float constantValue);
+    unsigned int iterations, float constantValue, MemRef<float, 2>*copymemref, MemRef<float, 2>*copymemref1);
 
 void _mlir_ciface_morphgrad_2d_replicate_padding(
     Img<float, 2> *input, MemRef<float, 2> *kernel, MemRef<float, 2> *output,
     MemRef<float, 2> *output1, MemRef<float, 2> *output2,
     MemRef<float, 2> input1, unsigned int centerX, unsigned int centerY,
-    unsigned int iterations, float constantValue);
+    unsigned int iterations, float constantValue, MemRef<float, 2>*copymemref, MemRef<float, 2>*copymemref1);
 }
 
 // Helper function for applying 2D resize operation on images.
@@ -416,14 +416,25 @@ void MorphGrad2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
   MemRef<float, 2> output1(sizesOutput);
   MemRef<float, 2> output2(sizesOutput);
   MemRef<float, 2> input1(sizesOutput);
+  float *data = new float[outputRows*outputCols];
+  for(int i =0; i<outputRows*outputCols;++i)
+  {
+    data[i] = -1;
+  }
+  MemRef<float, 2>copymemref(data, sizesOutput, 0);
+    for(int i =0; i<outputRows*outputCols;++i)
+  {
+    data[i] = 256;
+  }
+  MemRef<float, 2>copymemref1(data, sizesOutput, 0);
   if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
     detail::_mlir_ciface_morphgrad_2d_constant_padding(
         input, kernel, output, &output1, &output2, input1, centerX, centerY,
-        iterations, constantValue);
+        iterations, constantValue, &copymemref, &copymemref1);
   } else if (option == BOUNDARY_OPTION::REPLICATE_PADDING) {
     detail::_mlir_ciface_morphgrad_2d_replicate_padding(
         input, kernel, output, &output1, &output2, input1, centerX, centerY,
-        iterations, 0);
+        iterations, 0, &copymemref, &copymemref1);
   }
 }
 } // namespace dip
