@@ -558,35 +558,6 @@ Value createMaskVecOp(OpBuilder &builder, Location loc, VectorType type,
   return maskVec;
 }
 
-/*void memrefSubOp(OpBuilder &builder, Location loc, VectorType type, Value output1, Value output2, Value output, Value stride, Value zeroPaddingVec, Value outputRow, Value outputCol) {
-    Value c0 = builder.create<ConstantIndexOp>(loc, 0);
-     Value c1 = builder.create<ConstantIndexOp>(loc, 1); 
-    SmallVector<Value, 8> lowerbounds4(2, c0);
-    SmallVector<Value, 8> upperbounds4{outputRow, outputCol};
-    SmallVector<int64_t, 8> steps4{1, stride};
-    auto elemTy = type.getElementType();
-    auto bitWidth = elemTy.getIntOrFloatBitWidth();
-    if(elemTy.isF32() || elemTy.isF64())
-    {
-      buildAffineLoopNest(
-        builder, loc, lowerbounds4, upperbounds4, steps4, 
-        [&](OpBuilder&builder, Location loc, ValueRange ivs4)
-        {
-          Value pseudoCol = builder.create<AddIOp>(loc, ivs4[1], stride);
-          Value cond = builder.create<CmpFOp>(loc, CmpFPredicate::OGT, pseudoCol, outputCol);
-          builder.create<scf::IfOp>(loc, cond, [&](OpBuilder &builder, Location loc){
-            Value res = builder.create<SubFOp>(loc, pseudoCol, outputCol);
-            Value maskVal = builder.create<SubFOp>(loc, stride, res);
-            Value maskVec = builder.create<CreateMaskOp>(loc, type, maskVal);
-            Value ou1 = builder.create<MaskedLoadOp>(loc, type, output1, ValueRange{ivs4[0], ivs4[1]}, maskVec, zeroPaddingVec);
-            Value ou2 = builder.create<MaskedLoadOp>(loc, type, output2, ValueRange{ivs4[0], ivs4[1]}, maskVec, zeroPaddingVec);
-            Value resVec = builder.create<SubFOp>(loc, ou1, ou2);
-            builder.create<MaskedStoreOp>(loc, output, ValueRange{ivs4[0], ivs4[1]}, maskVec, resVec);
-          });
-        } 
-      );
-    }
-}*/
 // Util function for morphological transformations ; compares two vectors and
 // returns a mask
 Value createCompVecMorph(OpBuilder &builder, Location loc, VectorType type,
