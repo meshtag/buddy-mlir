@@ -785,37 +785,73 @@ public:
         });
 
     VectorType VectorOne = VectorType::get({1}, inElemTy);
-    Value outputrow = rewriter.create<memref::DimOp>(loc, output, c0);
-    Value outputcol = rewriter.create<memref::DimOp>(loc, output, c1);
+    Value outputRow = rewriter.create<memref::DimOp>(loc, output, c0);
+    Value outputCol = rewriter.create<memref::DimOp>(loc, output, c1);
 
     SmallVector<Value, 8> lowerbounds4(2, c0);
-    SmallVector<Value, 8> upperbounds4{outputrow, outputcol};
-    SmallVector<int64_t, 8> steps4{1, 1};
-    if(inElemTy.isF32() || inElemTy.isF64()) {
-    buildAffineLoopNest(
-        rewriter, loc, lowerbounds4, upperbounds4, steps4,
-        [&](OpBuilder &builder, Location loc, ValueRange ivs4) {
-          Value ou = builder.create<LoadOp>(loc, VectorOne, output2,
-                                            ValueRange{ivs4[0], ivs4[1]});
-          Value in = builder.create<LoadOp>(loc, VectorOne, input,
-                                            ValueRange{ivs4[0], ivs4[1]});
-          Value res = builder.create<SubFOp>(loc, in, ou);
-          builder.create<StoreOp>(loc, res, output,
-                                  ValueRange{ivs4[0], ivs4[1]});
-        });
+    SmallVector<Value, 8> upperbounds4{outputRow, outputCol};
+    SmallVector<int64_t, 8> steps4{1, stride};
+        VectorType vectorTy32 = VectorType::get({stride}, inElemTy);
+        IntegerType i1 = IntegerType::get(ctx, 1);
+         VectorType vectorMaskTy = VectorType::get({stride}, i1);
+                   Value zeroPaddingElem = insertZeroConstantOp(ctx, rewriter, loc, inElemTy);
+  Value zeroPaddingVec =
+      rewriter.create<BroadcastOp>(loc, vectorTy32, zeroPaddingElem);
+  
+    if(inElemTy.isF32() || inElemTy.isF64())
+    {
+      buildAffineLoopNest(
+        rewriter, loc, lowerbounds4, upperbounds4, steps4, 
+        [&](OpBuilder &builder, Location loc, ValueRange ivs4)
+        {
+          Value pseudoCol = builder.create<AddIOp>(loc, ivs4[1], strideVal);
+          Value pseudoCol1 = builder.create<SubIOp>(loc, pseudoCol, c1);
+          Value cond = builder.create<CmpIOp>(loc, CmpIPredicate::sgt, pseudoCol1, outputCol);
+          builder.create<scf::IfOp>(loc, cond, [&](OpBuilder &builder, Location loc){
+            Value res = builder.create<SubIOp>(loc, pseudoCol1, outputCol);
+            Value maskVal = builder.create<SubIOp>(loc, strideVal, res);
+            Value maskVec = builder.create<CreateMaskOp>(loc, vectorMaskTy, maskVal);
+            Value ou1 = builder.create<MaskedLoadOp>(loc, vectorTy32, output2, ValueRange{ivs4[0], ivs4[1]}, maskVec, zeroPaddingVec);
+            Value ou2 = builder.create<MaskedLoadOp>(loc, vectorTy32, input, ValueRange{ivs4[0], ivs4[1]}, maskVec, zeroPaddingVec);
+            Value resVec = builder.create<SubFOp>(loc, ou2, ou1);
+            builder.create<MaskedStoreOp>(loc, output, ValueRange{ivs4[0], ivs4[1]}, maskVec, resVec);
+            builder.create<scf::YieldOp>(loc);
+          }, [&](OpBuilder &builder, Location loc) {
+             Value ou1 = builder.create<LoadOp>(loc, vectorTy32, output2, ValueRange{ivs4[0], ivs4[1]});
+             Value ou2 = builder.create<LoadOp>(loc, vectorTy32, input, ValueRange{ivs4[0], ivs4[1]});
+             Value resVec = builder.create<SubFOp>(loc, ou2, ou1);
+             builder.create<StoreOp>(loc, resVec, output, ValueRange{ivs4[0], ivs4[1]});
+             builder.create<scf::YieldOp>(loc);
+          });
+        }
+        
+      );
     }
-    else if (inElemTy.isInteger(bitWidth)) {
-       buildAffineLoopNest(
-        rewriter, loc, lowerbounds4, upperbounds4, steps4,
-        [&](OpBuilder &builder, Location loc, ValueRange ivs4) {
-          Value ou = builder.create<LoadOp>(loc, VectorOne, output2,
-                                            ValueRange{ivs4[0], ivs4[1]});
-          Value in = builder.create<LoadOp>(loc, VectorOne, input,
-                                            ValueRange{ivs4[0], ivs4[1]});
-          Value res = builder.create<SubIOp>(loc, in, ou);
-          builder.create<StoreOp>(loc, res, output,
-                                  ValueRange{ivs4[0], ivs4[1]});
-        });
+    else if (inElemTy.isInteger(bitWidth))
+    {
+        buildAffineLoopNest(
+        rewriter, loc, lowerbounds4, upperbounds4, steps4, 
+        [&](OpBuilder &builder, Location loc, ValueRange ivs4)
+        {
+          Value pseudoCol = builder.create<AddIOp>(loc, ivs4[1], strideVal);
+          Value pseudoCol1 = builder.create<SubIOp>(loc, pseudoCol, c1);
+          Value cond = builder.create<CmpIOp>(loc, CmpIPredicate::sgt, pseudoCol1, outputCol);
+          builder.create<scf::IfOp>(loc, cond, [&](OpBuilder &builder, Location loc){
+            Value res = builder.create<SubIOp>(loc, pseudoCol1, outputCol);
+            Value maskVal = builder.create<SubIOp>(loc, strideVal, res);
+            Value maskVec = builder.create<CreateMaskOp>(loc, vectorMaskTy, maskVal);
+            Value ou1 = builder.create<MaskedLoadOp>(loc, vectorTy32, output1, ValueRange{ivs4[0], ivs4[1]}, maskVec, zeroPaddingVec);
+            Value ou2 = builder.create<MaskedLoadOp>(loc, vectorTy32, output2, ValueRange{ivs4[0], ivs4[1]}, maskVec, zeroPaddingVec);
+            Value resVec = builder.create<SubFOp>(loc, ou1, ou2);
+            builder.create<MaskedStoreOp>(loc, output, ValueRange{ivs4[0], ivs4[1]}, maskVec, resVec);
+          }, [&](OpBuilder &builder, Location loc) {
+             Value ou1 = builder.create<LoadOp>(loc, vectorTy32, output1, ValueRange{ivs4[0], ivs4[1]});
+             Value ou2 = builder.create<LoadOp>(loc, vectorTy32, output2, ValueRange{ivs4[0], ivs4[1]});
+             Value resVec = builder.create<SubFOp>(loc, ou1, ou2);
+             builder.create<StoreOp>(loc, resVec, output, ValueRange{ivs4[0], ivs4[1]});
+          });
+        }
+      );
     }
 
     // Remove the origin tophat operation.
@@ -914,44 +950,76 @@ public:
           builder.create<AffineYieldOp>(loc);
         });
 
-    VectorType VectorOne = VectorType::get({1}, inElemTy);
-    Value outputrow = rewriter.create<memref::DimOp>(loc, output, c0);
-    Value outputcol = rewriter.create<memref::DimOp>(loc, output, c1);
+       VectorType VectorOne = VectorType::get({1}, inElemTy);
+    Value outputRow = rewriter.create<memref::DimOp>(loc, output, c0);
+    Value outputCol = rewriter.create<memref::DimOp>(loc, output, c1);
+
     SmallVector<Value, 8> lowerbounds4(2, c0);
-    SmallVector<Value, 8> upperbounds4{outputrow, outputcol};
-    SmallVector<int64_t, 8> steps4{1, 1};
-   if(inElemTy.isF32() || inElemTy.isF64()) {
-    buildAffineLoopNest(
-        rewriter, loc, lowerbounds4, upperbounds4, steps4,
-        [&](OpBuilder &builder, Location loc, ValueRange ivs4) {
-          
-          Value ou = builder.create<LoadOp>(loc, VectorOne, output2,
-                                            ValueRange{ivs4[0], ivs4[1]});
-          Value in = builder.create<LoadOp>(loc, VectorOne, input,
-                                            ValueRange{ivs4[0], ivs4[1]});
+    SmallVector<Value, 8> upperbounds4{outputRow, outputCol};
+    SmallVector<int64_t, 8> steps4{1, stride};
 
-          Value res = builder.create<SubFOp>(loc, ou, in);
-          builder.create<StoreOp>(loc, res, output,
-                                  ValueRange{ivs4[0], ivs4[1]});
-         
-        });
-   }
-   else if (inElemTy.isInteger(bitWidth)) {
-    buildAffineLoopNest(
-        rewriter, loc, lowerbounds4, upperbounds4, steps4,
-        [&](OpBuilder &builder, Location loc, ValueRange ivs4) {
-          
-          Value ou = builder.create<LoadOp>(loc, VectorOne, output2,
-                                            ValueRange{ivs4[0], ivs4[1]});
-          Value in = builder.create<LoadOp>(loc, VectorOne, input,
-                                            ValueRange{ivs4[0], ivs4[1]});
-
-          Value res = builder.create<SubIOp>(loc, ou, in);
-          builder.create<StoreOp>(loc, res, output,
-                                  ValueRange{ivs4[0], ivs4[1]});
-         
-        });
-   }
+        VectorType vectorTy32 = VectorType::get({stride}, inElemTy);
+        IntegerType i1 = IntegerType::get(ctx, 1);
+         VectorType vectorMaskTy = VectorType::get({stride}, i1);
+                   Value zeroPaddingElem = insertZeroConstantOp(ctx, rewriter, loc, inElemTy);
+  Value zeroPaddingVec =
+      rewriter.create<BroadcastOp>(loc, vectorTy32, zeroPaddingElem);
+  
+    if(inElemTy.isF32() || inElemTy.isF64())
+    {
+      buildAffineLoopNest(
+        rewriter, loc, lowerbounds4, upperbounds4, steps4, 
+        [&](OpBuilder &builder, Location loc, ValueRange ivs4)
+        {
+          Value pseudoCol = builder.create<AddIOp>(loc, ivs4[1], strideVal);
+          Value pseudoCol1 = builder.create<SubIOp>(loc, pseudoCol, c1);
+          Value cond = builder.create<CmpIOp>(loc, CmpIPredicate::sgt, pseudoCol1, outputCol);
+          builder.create<scf::IfOp>(loc, cond, [&](OpBuilder &builder, Location loc){
+            Value res = builder.create<SubIOp>(loc, pseudoCol1, outputCol);
+            Value maskVal = builder.create<SubIOp>(loc, strideVal, res);
+            Value maskVec = builder.create<CreateMaskOp>(loc, vectorMaskTy, maskVal);
+            Value ou = builder.create<MaskedLoadOp>(loc, vectorTy32, output2, ValueRange{ivs4[0], ivs4[1]}, maskVec, zeroPaddingVec);
+            Value in = builder.create<MaskedLoadOp>(loc, vectorTy32, input, ValueRange{ivs4[0], ivs4[1]}, maskVec, zeroPaddingVec);
+            Value resVec = builder.create<SubFOp>(loc, ou, in);
+            builder.create<MaskedStoreOp>(loc, output, ValueRange{ivs4[0], ivs4[1]}, maskVec, resVec);
+            builder.create<scf::YieldOp>(loc);
+          }, [&](OpBuilder &builder, Location loc) {
+             Value ou = builder.create<LoadOp>(loc, vectorTy32, output2, ValueRange{ivs4[0], ivs4[1]});
+             Value in = builder.create<LoadOp>(loc, vectorTy32, input, ValueRange{ivs4[0], ivs4[1]});
+             Value resVec = builder.create<SubFOp>(loc, ou, in);
+             builder.create<StoreOp>(loc, resVec, output, ValueRange{ivs4[0], ivs4[1]});
+             builder.create<scf::YieldOp>(loc);
+          });
+        }
+        
+      );
+    }
+    else if (inElemTy.isInteger(bitWidth))
+    {
+        buildAffineLoopNest(
+        rewriter, loc, lowerbounds4, upperbounds4, steps4, 
+        [&](OpBuilder &builder, Location loc, ValueRange ivs4)
+        {
+          Value pseudoCol = builder.create<AddIOp>(loc, ivs4[1], strideVal);
+          Value pseudoCol1 = builder.create<SubIOp>(loc, pseudoCol, c1);
+          Value cond = builder.create<CmpIOp>(loc, CmpIPredicate::sgt, pseudoCol1, outputCol);
+          builder.create<scf::IfOp>(loc, cond, [&](OpBuilder &builder, Location loc){
+            Value res = builder.create<SubIOp>(loc, pseudoCol1, outputCol);
+            Value maskVal = builder.create<SubIOp>(loc, strideVal, res);
+            Value maskVec = builder.create<CreateMaskOp>(loc, vectorMaskTy, maskVal);
+            Value ou = builder.create<MaskedLoadOp>(loc, vectorTy32, output2, ValueRange{ivs4[0], ivs4[1]}, maskVec, zeroPaddingVec);
+            Value in = builder.create<MaskedLoadOp>(loc, vectorTy32, input, ValueRange{ivs4[0], ivs4[1]}, maskVec, zeroPaddingVec);
+            Value resVec = builder.create<SubFOp>(loc, ou, in);
+            builder.create<MaskedStoreOp>(loc, output, ValueRange{ivs4[0], ivs4[1]}, maskVec, resVec);
+          }, [&](OpBuilder &builder, Location loc) {
+             Value ou = builder.create<LoadOp>(loc, vectorTy32, output2, ValueRange{ivs4[0], ivs4[1]});
+             Value in = builder.create<LoadOp>(loc, vectorTy32, input, ValueRange{ivs4[0], ivs4[1]});
+             Value resVec = builder.create<SubFOp>(loc, ou, in);
+             builder.create<StoreOp>(loc, resVec, output, ValueRange{ivs4[0], ivs4[1]});
+          });
+        }
+      );
+    }
     // Remove the origin bottomhat operation.
     rewriter.eraseOp(op);
     return success();
@@ -1047,44 +1115,76 @@ public:
           builder.create<AffineYieldOp>(loc);
         });
 
-            VectorType VectorOne = VectorType::get({1}, inElemTy);
-    Value outputrow = rewriter.create<memref::DimOp>(loc, output, c0);
-    Value outputcol = rewriter.create<memref::DimOp>(loc, output, c1);
+    VectorType VectorOne = VectorType::get({1}, inElemTy);
+    Value outputRow = rewriter.create<memref::DimOp>(loc, output, c0);
+    Value outputCol = rewriter.create<memref::DimOp>(loc, output, c1);
+
     SmallVector<Value, 8> lowerbounds4(2, c0);
-    SmallVector<Value, 8> upperbounds4{outputrow, outputcol};
-    SmallVector<int64_t, 8> steps4{1, 1};
-   if(inElemTy.isF32() || inElemTy.isF64()) {
-    buildAffineLoopNest(
-        rewriter, loc, lowerbounds4, upperbounds4, steps4,
-        [&](OpBuilder &builder, Location loc, ValueRange ivs4) {
-          
-          Value ou1 = builder.create<LoadOp>(loc, VectorOne, output1,
-                                            ValueRange{ivs4[0], ivs4[1]});
-          Value ou2 = builder.create<LoadOp>(loc, VectorOne, output2,
-                                            ValueRange{ivs4[0], ivs4[1]});
+    SmallVector<Value, 8> upperbounds4{outputRow, outputCol};
+    SmallVector<int64_t, 8> steps4{1, stride};
 
-          Value res = builder.create<SubFOp>(loc, ou1, ou2);
-          builder.create<StoreOp>(loc, res, output,
-                                  ValueRange{ivs4[0], ivs4[1]});
-         
-        });
-   }
-   else if (inElemTy.isInteger(bitWidth)) {
-    buildAffineLoopNest(
-        rewriter, loc, lowerbounds4, upperbounds4, steps4,
-        [&](OpBuilder &builder, Location loc, ValueRange ivs4) {
-          
-          Value ou1 = builder.create<LoadOp>(loc, VectorOne, output1,
-                                            ValueRange{ivs4[0], ivs4[1]});
-          Value ou2 = builder.create<LoadOp>(loc, VectorOne, output2,
-                                            ValueRange{ivs4[0], ivs4[1]});
-
-          Value res = builder.create<SubIOp>(loc, ou1, ou2);
-          builder.create<StoreOp>(loc, res, output,
-                                  ValueRange{ivs4[0], ivs4[1]});
-         
-        });
-   }
+        VectorType vectorTy32 = VectorType::get({stride}, inElemTy);
+        IntegerType i1 = IntegerType::get(ctx, 1);
+         VectorType vectorMaskTy = VectorType::get({stride}, i1);
+                   Value zeroPaddingElem = insertZeroConstantOp(ctx, rewriter, loc, inElemTy);
+  Value zeroPaddingVec =
+      rewriter.create<BroadcastOp>(loc, vectorTy32, zeroPaddingElem);
+  
+    if(inElemTy.isF32() || inElemTy.isF64())
+    {
+      buildAffineLoopNest(
+        rewriter, loc, lowerbounds4, upperbounds4, steps4, 
+        [&](OpBuilder &builder, Location loc, ValueRange ivs4)
+        {
+          Value pseudoCol = builder.create<AddIOp>(loc, ivs4[1], strideVal);
+          Value pseudoCol1 = builder.create<SubIOp>(loc, pseudoCol, c1);
+          Value cond = builder.create<CmpIOp>(loc, CmpIPredicate::sgt, pseudoCol1, outputCol);
+          builder.create<scf::IfOp>(loc, cond, [&](OpBuilder &builder, Location loc){
+            Value res = builder.create<SubIOp>(loc, pseudoCol1, outputCol);
+            Value maskVal = builder.create<SubIOp>(loc, strideVal, res);
+            Value maskVec = builder.create<CreateMaskOp>(loc, vectorMaskTy, maskVal);
+            Value ou1 = builder.create<MaskedLoadOp>(loc, vectorTy32, output1, ValueRange{ivs4[0], ivs4[1]}, maskVec, zeroPaddingVec);
+            Value ou2 = builder.create<MaskedLoadOp>(loc, vectorTy32, output2, ValueRange{ivs4[0], ivs4[1]}, maskVec, zeroPaddingVec);
+            Value resVec = builder.create<SubFOp>(loc, ou1, ou2);
+            builder.create<MaskedStoreOp>(loc, output, ValueRange{ivs4[0], ivs4[1]}, maskVec, resVec);
+            builder.create<scf::YieldOp>(loc);
+          }, [&](OpBuilder &builder, Location loc) {
+             Value ou1 = builder.create<LoadOp>(loc, vectorTy32, output1, ValueRange{ivs4[0], ivs4[1]});
+             Value ou2 = builder.create<LoadOp>(loc, vectorTy32, output2, ValueRange{ivs4[0], ivs4[1]});
+             Value resVec = builder.create<SubFOp>(loc, ou1, ou2);
+             builder.create<StoreOp>(loc, resVec, output, ValueRange{ivs4[0], ivs4[1]});
+             builder.create<scf::YieldOp>(loc);
+          });
+        }
+        
+      );
+    }
+    else if (inElemTy.isInteger(bitWidth))
+    {
+        buildAffineLoopNest(
+        rewriter, loc, lowerbounds4, upperbounds4, steps4, 
+        [&](OpBuilder &builder, Location loc, ValueRange ivs4)
+        {
+          Value pseudoCol = builder.create<AddIOp>(loc, ivs4[1], strideVal);
+          Value pseudoCol1 = builder.create<SubIOp>(loc, pseudoCol, c1);
+          Value cond = builder.create<CmpIOp>(loc, CmpIPredicate::sgt, pseudoCol1, outputCol);
+          builder.create<scf::IfOp>(loc, cond, [&](OpBuilder &builder, Location loc){
+            Value res = builder.create<SubIOp>(loc, pseudoCol1, outputCol);
+            Value maskVal = builder.create<SubIOp>(loc, strideVal, res);
+            Value maskVec = builder.create<CreateMaskOp>(loc, vectorMaskTy, maskVal);
+            Value ou1 = builder.create<MaskedLoadOp>(loc, vectorTy32, output1, ValueRange{ivs4[0], ivs4[1]}, maskVec, zeroPaddingVec);
+            Value ou2 = builder.create<MaskedLoadOp>(loc, vectorTy32, output2, ValueRange{ivs4[0], ivs4[1]}, maskVec, zeroPaddingVec);
+            Value resVec = builder.create<SubFOp>(loc, ou1, ou2);
+            builder.create<MaskedStoreOp>(loc, output, ValueRange{ivs4[0], ivs4[1]}, maskVec, resVec);
+          }, [&](OpBuilder &builder, Location loc) {
+             Value ou1 = builder.create<LoadOp>(loc, vectorTy32, output1, ValueRange{ivs4[0], ivs4[1]});
+             Value ou2 = builder.create<LoadOp>(loc, vectorTy32, output2, ValueRange{ivs4[0], ivs4[1]});
+             Value resVec = builder.create<SubFOp>(loc, ou1, ou2);
+             builder.create<StoreOp>(loc, resVec, output, ValueRange{ivs4[0], ivs4[1]});
+          });
+        }
+      );
+    }
 
     // Remove the origin morphological gradient operation.
     rewriter.eraseOp(op);
