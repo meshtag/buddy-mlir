@@ -425,10 +425,10 @@ public:
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
     auto inElemTy = input.getType().cast<MemRefType>().getElementType();
-    DIP_ERROR error = checkDIPCommonTypes<dip::Erosion2DOp>(
-        op, input, kernel, output, constantValue);
+    DIP_ERROR error = checkDIPCommonTypes<dip::Erosion2DOp>(op, 4, input, kernel,
+                                                         output, constantValue);
 
-    if (error == DIP_ERROR::INCONSISTENT_INPUT_KERNEL_OUTPUT_TYPES) {
+    if (error == DIP_ERROR::INCONSISTENT_TYPES) {
       return op->emitOpError() << "input, kernel, output and constant must "
                                   "have the same element type";
     } else if (error == DIP_ERROR::UNSUPPORTED_TYPE) {
@@ -496,10 +496,10 @@ public:
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
     auto inElemTy = input.getType().cast<MemRefType>().getElementType();
-    DIP_ERROR error = checkDIPCommonTypes<dip::Dilation2DOp>(
-        op, input, kernel, output, constantValue);
+    DIP_ERROR error = checkDIPCommonTypes<dip::Dilation2DOp>(op, 4, input, kernel,
+                                                         output, constantValue);
 
-    if (error == DIP_ERROR::INCONSISTENT_INPUT_KERNEL_OUTPUT_TYPES) {
+    if (error == DIP_ERROR::INCONSISTENT_TYPES) {
       return op->emitOpError() << "input, kernel, output and constant must "
                                   "have the same element type";
     } else if (error == DIP_ERROR::UNSUPPORTED_TYPE) {
@@ -567,10 +567,10 @@ public:
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
     auto inElemTy = input.getType().cast<MemRefType>().getElementType();
-    DIP_ERROR error = checkDIPCommonTypes<dip::Opening2DOp>(
-        op, input, kernel, output, constantValue);
+    DIP_ERROR error = checkDIPCommonTypes<dip::Opening2DOp>(op, 4, input, kernel,
+                                                         output, constantValue);
 
-    if (error == DIP_ERROR::INCONSISTENT_INPUT_KERNEL_OUTPUT_TYPES) {
+    if (error == DIP_ERROR::INCONSISTENT_TYPES) {
       return op->emitOpError() << "input, kernel, output and constant must "
                                   "have the same element type";
     } else if (error == DIP_ERROR::UNSUPPORTED_TYPE) {
@@ -658,10 +658,10 @@ public:
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
     auto inElemTy = input.getType().cast<MemRefType>().getElementType();
-    DIP_ERROR error = checkDIPCommonTypes<dip::Closing2DOp>(
-        op, input, kernel, output, constantValue);
+    DIP_ERROR error = checkDIPCommonTypes<dip::Closing2DOp>(op, 4, input, kernel,
+                                                         output, constantValue);
 
-    if (error == DIP_ERROR::INCONSISTENT_INPUT_KERNEL_OUTPUT_TYPES) {
+    if (error == DIP_ERROR::INCONSISTENT_TYPES) {
       return op->emitOpError() << "input, kernel, output and constant must "
                                   "have the same element type";
     } else if (error == DIP_ERROR::UNSUPPORTED_TYPE) {
@@ -753,13 +753,14 @@ public:
     Value copymemref1 = op->getOperand(11);
     dip::BoundaryOption boundaryOptionAttr = op.getBoundaryOption();
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
+    
 
     auto inElemTy = input.getType().cast<MemRefType>().getElementType();
     auto bitWidth = inElemTy.getIntOrFloatBitWidth();
-    DIP_ERROR error = checkDIPCommonTypes<dip::TopHat2DOp>(
-        op, input, kernel, output, constantValue);
+    DIP_ERROR error = checkDIPCommonTypes<dip::TopHat2DOp>(op, 4, input, kernel,
+                                                         output, constantValue);
 
-    if (error == DIP_ERROR::INCONSISTENT_INPUT_KERNEL_OUTPUT_TYPES) {
+    if (error == DIP_ERROR::INCONSISTENT_TYPES) {
       return op->emitOpError() << "input, kernel, output and constant must "
                                   "have the same element type";
     } else if (error == DIP_ERROR::UNSUPPORTED_TYPE) {
@@ -947,13 +948,14 @@ public:
     Value copymemref1 = op->getOperand(11);
     dip::BoundaryOption boundaryOptionAttr = op.getBoundaryOption();
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
+   
 
     auto inElemTy = input.getType().cast<MemRefType>().getElementType();
     auto bitWidth = inElemTy.getIntOrFloatBitWidth();
-    DIP_ERROR error = checkDIPCommonTypes<dip::BottomHat2DOp>(
-        op, input, kernel, output, constantValue);
+    DIP_ERROR error = checkDIPCommonTypes<dip::BottomHat2DOp>(op, 4, input, kernel,
+                                                         output, constantValue);
 
-    if (error == DIP_ERROR::INCONSISTENT_INPUT_KERNEL_OUTPUT_TYPES) {
+    if (error == DIP_ERROR::INCONSISTENT_TYPES) {
       return op->emitOpError() << "input, kernel, output and constant must "
                                   "have the same element type";
     } else if (error == DIP_ERROR::UNSUPPORTED_TYPE) {
@@ -1136,12 +1138,13 @@ public:
     dip::BoundaryOption boundaryOptionAttr = op.getBoundaryOption();
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
-    auto inElemTy = input.getType().cast<MemRefType>().getElementType();
-    auto bitWidth = inElemTy.getIntOrFloatBitWidth();
-    DIP_ERROR error = checkDIPCommonTypes<dip::MorphGrad2DOp>(
-        op, input, kernel, output, constantValue);
 
-    if (error == DIP_ERROR::INCONSISTENT_INPUT_KERNEL_OUTPUT_TYPES) {
+    auto inElemTy = input.getType().cast<MemRefType>().getElementType();
+    auto bitWidth = inElemTy.getIntOrFloatBitWidth();    
+    DIP_ERROR error = checkDIPCommonTypes<dip::MorphGrad2DOp>(op, 4, input, kernel,
+                                                         output, constantValue);
+
+    if (error == DIP_ERROR::INCONSISTENT_TYPES) {
       return op->emitOpError() << "input, kernel, output and constant must "
                                   "have the same element type";
     } else if (error == DIP_ERROR::UNSUPPORTED_TYPE) {
