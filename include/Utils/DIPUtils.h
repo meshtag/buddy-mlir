@@ -56,7 +56,7 @@ Value insertZeroConstantOp(MLIRContext *ctx, OpBuilder &builder, Location loc,
 // Function for applying type check mechanisms for all DIP dialect operations.
 template <typename DIPOP>
 auto checkDIPCommonTypes(DIPOP op, size_t numArgs, ...) {
-  if (op->getName().stripDialect() == "corr_2d") {
+  if (op->getName().stripDialect() == "corr_2d"|| op->getName().stripDialect() == "erosion_2d" || op->getName().stripDialect() == "dilation_2d" || op->getName().stripDialect() == "opening_2d" || op->getName().stripDialect() == "closing_2d" || op->getName().stripDialect() == "tophat_2d" || op->getName().stripDialect() == "bottomhat_2d" || op->getName().stripDialect() == "morphgrad_2d") {
     // Define variable arguments list.
     va_list vaList;
 
@@ -108,6 +108,7 @@ auto checkDIPCommonTypes(DIPOP op, size_t numArgs, ...) {
       return DIP_ERROR::UNSUPPORTED_TYPE;
     }
   }
+  
   return DIP_ERROR::NO_ERROR;
 }
 
