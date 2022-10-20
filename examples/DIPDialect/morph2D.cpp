@@ -245,7 +245,7 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   Mat opencvReplicatePaddingtophat;
   morphologyEx(image, opencvReplicatePaddingtophat, 5, kernel1, cv::Point(x, y),
                3, cv::BORDER_REPLICATE, 0);
-  imwrite(argv[2], opencvReplicatePaddingtophat);
+
   if (!testImages(o9, opencvReplicatePaddingtophat)) {
     std::cout << "x, y = " << x << ", " << y << "\n";
     return 0;

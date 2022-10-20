@@ -74,7 +74,15 @@ memref.global "private" @global_kernel2 : memref<3x3xf32> = dense<[[1., 0., 0.],
 
 memref.global "private" @global_kernel3 : memref<3x3xf32> = dense<[[100., 0., 0.],
                                                                     [0., 0., 110.],
-                                                                    [190., 0., 0.]]>                                                                                                                                    
+                                                                    [190., 0., 0.]]> 
+
+memref.global "private" @global_copymemref1 : memref<3x3xf32> = dense<[[-1., -1., -1.],
+                                                                    [-1., -1., -1.],
+                                                                    [-1., -1., -1.]]> 
+
+memref.global "private" @global_copymemref2 : memref<3x3xf32> = dense<[[256., 256., 256.],
+                                                                    [256., 256., 256.],
+                                                                    [256., 256., 256.]]>                                                                                                                                                                                                                                                                         
                                                                                                                                                                             
 
 
@@ -101,18 +109,20 @@ func.func @main() -> i32 {
   %outputbottomhat1 = memref.get_global @global_outputbottomhatinter : memref<3x3xf32>
   %outputbottomhat2 = memref.get_global @global_outputbottomhatinter1 : memref<3x3xf32>
   %inputbottomhat1 = memref.get_global @global_inputbottomhatinter : memref<3x3xf32>
+  %copymemref1 = memref.get_global @global_copymemref1 : memref<3x3xf32>
+  %copymemref2 = memref.get_global @global_copymemref2 : memref<3x3xf32>
 
   %kernelAnchorX = arith.constant 1 : index
   %kernelAnchorY = arith.constant 1 : index
   %iterations = arith.constant 1 : index
   %c = arith.constant 0. : f32 
 
-  dip.erosion_2d <CONSTANT_PADDING> %input, %identity, %outpute, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xf32>, memref<3x3xf32>, memref<3x3xf32>, index, index, index, f32
-  dip.dilation_2d <REPLICATE_PADDING> %input, %kernel, %outputd, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xf32>, memref<3x3xf32>, memref<3x3xf32>, index, index, index, f32
-  dip.opening_2d <CONSTANT_PADDING> %input, %kernel1, %outputopening, %outputopening1, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xf32>, memref<3x3xf32>, memref<3x3xf32>, memref<3x3xf32>, index, index, index, f32
-  dip.closing_2d <REPLICATE_PADDING> %input, %kernel2, %outputclosing, %outputclosing1, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xf32>, memref<3x3xf32>, memref<3x3xf32>, memref<3x3xf32>, index, index, index, f32
-  dip.tophat_2d <REPLICATE_PADDING> %input, %kernel3, %outputtophat, %outputtophat1,%outputtophat2, %inputtophat1, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xf32>, memref<3x3xf32>, memref<3x3xf32>,memref<3x3xf32>,memref<3x3xf32>,memref<3x3xf32>, index, index, index, f32
-  dip.bottomhat_2d <CONSTANT_PADDING> %input, %kernel, %outputbottomhat, %outputbottomhat1,%outputbottomhat2, %inputbottomhat1, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xf32>, memref<3x3xf32>, memref<3x3xf32>,memref<3x3xf32>,memref<3x3xf32>,memref<3x3xf32>, index, index, index, f32
+  dip.erosion_2d <CONSTANT_PADDING> %input, %identity, %outpute, %kernelAnchorX, %kernelAnchorY, %iterations, %c, %copymemref2 : memref<3x3xf32>, memref<3x3xf32>, memref<3x3xf32>, index, index, index, f32, memref<3x3xf32>
+  dip.dilation_2d <REPLICATE_PADDING> %input, %kernel, %outputd, %kernelAnchorX, %kernelAnchorY, %iterations, %c, %copymemref1 : memref<3x3xf32>, memref<3x3xf32>, memref<3x3xf32>, index, index, index, f32, memref<3x3xf32>
+  dip.opening_2d <CONSTANT_PADDING> %input, %kernel1, %outputopening, %outputopening1, %kernelAnchorX, %kernelAnchorY, %iterations, %c, %copymemref2, %copymemref1 : memref<3x3xf32>, memref<3x3xf32>, memref<3x3xf32>, memref<3x3xf32>, index, index, index, f32, memref<3x3xf32>, memref<3x3xf32>
+  dip.closing_2d <REPLICATE_PADDING> %input, %kernel2, %outputclosing, %outputclosing1, %kernelAnchorX, %kernelAnchorY, %iterations, %c, %copymemref1, %copymemref2 : memref<3x3xf32>, memref<3x3xf32>, memref<3x3xf32>, memref<3x3xf32>, index, index, index, f32, memref<3x3xf32>, memref<3x3xf32>
+  dip.tophat_2d <REPLICATE_PADDING> %input, %kernel3, %outputtophat, %outputtophat1,%outputtophat2, %inputtophat1, %kernelAnchorX, %kernelAnchorY, %iterations, %c, %copymemref2, %copymemref1 : memref<3x3xf32>, memref<3x3xf32>, memref<3x3xf32>,memref<3x3xf32>,memref<3x3xf32>,memref<3x3xf32>, index, index, index, f32, memref<3x3xf32>, memref<3x3xf32>
+  dip.bottomhat_2d <CONSTANT_PADDING> %input, %kernel, %outputbottomhat, %outputbottomhat1,%outputbottomhat2, %inputbottomhat1, %kernelAnchorX, %kernelAnchorY, %iterations, %c, %copymemref1, %copymemref2 : memref<3x3xf32>, memref<3x3xf32>, memref<3x3xf32>,memref<3x3xf32>,memref<3x3xf32>,memref<3x3xf32>, index, index, index, f32, memref<3x3xf32>, memref<3x3xf32>
 
   %printed_outpute = memref.cast %outpute : memref<3x3xf32> to memref<*xf32>
   %printed_outputd = memref.cast %outputd : memref<3x3xf32> to memref<*xf32>

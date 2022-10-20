@@ -64,7 +64,14 @@ memref.global "private" @global_kernel2 : memref<3x3xi8> = dense<[[1, 0, 0],
 
 memref.global "private" @global_kernel3 : memref<3x3xi8> = dense<[[100, 0, 0],
                                                                     [0, 0, 110],
-                                                                    [190, 0, 0]]>                                                                                                                                                                                                                                                                                                        
+                                                                    [190, 0, 0]]>  
+memref.global "private" @global_copymemref1 : memref<3x3xi8> = dense<[[-1, -1, -1],
+                                                                    [-1, -1, -1],
+                                                                    [-1, -1, -1]]> 
+
+memref.global "private" @global_copymemref2 : memref<3x3xi8> = dense<[[255, 255, 255],
+                                                                    [255, 255, 255],
+                                                                    [255, 255, 255]]>                                                                                                                                                                                                                                                                                                                                                                             
 
                                                                                                                                                                                                  
 
@@ -86,6 +93,8 @@ func.func @main() -> i32 {
   %inputinter = memref.get_global @global_inputinter : memref<3x3xi8>
   %outputinter = memref.get_global @global_outputinter : memref<3x3xi8>
   %outputinter1 = memref.get_global @global_outputinter1 : memref<3x3xi8>
+  %copymemref1 = memref.get_global @global_copymemref1 : memref<3x3xi8>
+  %copymemref2 = memref.get_global @global_copymemref2 : memref<3x3xi8>
 
   
   %kernelAnchorX = arith.constant 1 : index
@@ -93,12 +102,12 @@ func.func @main() -> i32 {
   %iterations = arith.constant 1 : index
   %c = arith.constant 0 : i8 
 
-  dip.erosion_2d <CONSTANT_PADDING> %input, %identity, %outputerosion, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi8>, memref<3x3xi8>, memref<3x3xi8>, index, index, index, i8
-  dip.dilation_2d <REPLICATE_PADDING> %input, %kernel, %outputdilation, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi8>, memref<3x3xi8>, memref<3x3xi8>, index, index, index, i8
-  dip.opening_2d <CONSTANT_PADDING> %input, %kernel2, %outputopening, %outputinter, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi8>, memref<3x3xi8>, memref<3x3xi8>, memref<3x3xi8>, index, index, index, i8
-  dip.opening_2d <CONSTANT_PADDING> %input, %kernel3, %outputclosing, %outputinter, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi8>, memref<3x3xi8>, memref<3x3xi8>, memref<3x3xi8>, index, index, index, i8
-  dip.tophat_2d <REPLICATE_PADDING> %input, %kernel1,%outputtophat, %outputinter, %outputinter1, %inputinter, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi8>, memref<3x3xi8>, memref<3x3xi8>,memref<3x3xi8>,memref<3x3xi8>,memref<3x3xi8>, index, index, index, i8
-  dip.bottomhat_2d <CONSTANT_PADDING> %input, %kernel2, %outputbottomhat, %outputinter,%outputinter1, %inputinter, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi8>, memref<3x3xi8>, memref<3x3xi8>,memref<3x3xi8>,memref<3x3xi8>,memref<3x3xi8>, index, index, index, i8  
+  dip.erosion_2d <CONSTANT_PADDING> %input, %identity, %outputerosion, %kernelAnchorX, %kernelAnchorY, %iterations, %c, %copymemref2 : memref<3x3xi8>, memref<3x3xi8>, memref<3x3xi8>, index, index, index, i8, memref<3x3xi8>
+  dip.dilation_2d <REPLICATE_PADDING> %input, %kernel, %outputdilation, %kernelAnchorX, %kernelAnchorY, %iterations, %c, %copymemref1 : memref<3x3xi8>, memref<3x3xi8>, memref<3x3xi8>, index, index, index, i8, memref<3x3xi8>
+  dip.opening_2d <CONSTANT_PADDING> %input, %kernel2, %outputopening, %outputinter, %kernelAnchorX, %kernelAnchorY, %iterations, %c, %copymemref2, %copymemref1 : memref<3x3xi8>, memref<3x3xi8>, memref<3x3xi8>, memref<3x3xi8>, index, index, index, i8, memref<3x3xi8>, memref<3x3xi8>
+  dip.closing_2d <CONSTANT_PADDING> %input, %kernel3, %outputclosing, %outputinter, %kernelAnchorX, %kernelAnchorY, %iterations, %c, %copymemref1, %copymemref2 : memref<3x3xi8>, memref<3x3xi8>, memref<3x3xi8>, memref<3x3xi8>, index, index, index, i8, memref<3x3xi8>, memref<3x3xi8>
+  dip.tophat_2d <REPLICATE_PADDING> %input, %kernel1,%outputtophat, %outputinter, %outputinter1, %inputinter, %kernelAnchorX, %kernelAnchorY, %iterations, %c, %copymemref2, %copymemref1 : memref<3x3xi8>, memref<3x3xi8>, memref<3x3xi8>,memref<3x3xi8>,memref<3x3xi8>,memref<3x3xi8>, index, index, index, i8, memref<3x3xi8>, memref<3x3xi8>
+  dip.bottomhat_2d <CONSTANT_PADDING> %input, %kernel2, %outputbottomhat, %outputinter,%outputinter1, %inputinter, %kernelAnchorX, %kernelAnchorY, %iterations, %c, %copymemref1, %copymemref2 : memref<3x3xi8>, memref<3x3xi8>, memref<3x3xi8>,memref<3x3xi8>,memref<3x3xi8>,memref<3x3xi8>, index, index, index, i8, memref<3x3xi8>, memref<3x3xi8>  
 
   %printed_outpute = memref.cast %outputerosion : memref<3x3xi8> to memref<*xi8>
   %printed_outputd = memref.cast %outputdilation : memref<3x3xi8> to memref<*xi8>
