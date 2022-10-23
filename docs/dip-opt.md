@@ -326,7 +326,3 @@ An example depicting the syntax of created API is :
   - copymemref : Intermidiate memref to reinitialize the output container after every iteration.(used in dilation sub-part)
   - copymemref1 : INtermidiate memref to reinitialize the output container after every iteration.(used in erosion sub-part)
   - boundaryOption : Specifies desired type of boundary extrapolation. Permissible values are `CONSTANT_PADDING` and `REPLICATE_PADDING`.     
-
-
-
-
