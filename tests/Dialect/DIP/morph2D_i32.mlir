@@ -118,14 +118,14 @@ func.func @main() -> i32 {
   %iterations = arith.constant 1 : index
   %c = arith.constant 0 : i32 
 
-  dip.erosion_2d <CONSTANT_PADDING> %input, %identity, %outputerosion, %kernelAnchorX, %kernelAnchorY, %iterations, %c, %copymemref2 : memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32, memref<3x3xi32>
-  dip.dilation_2d <REPLICATE_PADDING> %input, %kernel, %outputdilation, %kernelAnchorX, %kernelAnchorY, %iterations, %c, %copymemref1 : memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32, memref<3x3xi32>
+  dip.erosion_2d <CONSTANT_PADDING> %input, %identity, %outputerosion, %copymemref2, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32
+  dip.dilation_2d <REPLICATE_PADDING> %input, %kernel, %outputdilation, %copymemref1, %kernelAnchorX, %kernelAnchorY, %iterations, %c: memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32
 
-  dip.opening_2d <CONSTANT_PADDING> %input, %kernel1, %outputopening, %outputopening1, %kernelAnchorX, %kernelAnchorY, %iterations, %c, %copymemref2, %copymemref1 : memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32, memref<3x3xi32>, memref<3x3xi32>
-  dip.closing_2d <CONSTANT_PADDING> %input, %kernel3, %outputclosing, %outputclosing1, %kernelAnchorX, %kernelAnchorY, %iterations, %c, %copymemref1, %copymemref2 : memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32, memref<3x3xi32>, memref<3x3xi32>
+  dip.opening_2d <CONSTANT_PADDING> %input, %kernel1, %outputopening, %outputopening1, %copymemref2, %copymemref1, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32
+  dip.closing_2d <CONSTANT_PADDING> %input, %kernel3, %outputclosing, %outputclosing1, %copymemref1, %copymemref2, %kernelAnchorX, %kernelAnchorY, %iterations, %c: memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32
 
-  dip.tophat_2d <REPLICATE_PADDING> %input, %kernel2, %outputtophat, %outputtophat1,%outputtophat2, %inputtophat1, %kernelAnchorX, %kernelAnchorY, %iterations, %c, %copymemref2, %copymemref1 : memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>,memref<3x3xi32>,memref<3x3xi32>,memref<3x3xi32>, index, index, index, i32, memref<3x3xi32>, memref<3x3xi32>
-  dip.bottomhat_2d <CONSTANT_PADDING> %input, %kernel, %outputbottomhat, %outputbottomhat1,%outputbottomhat2, %inputbottomhat1, %kernelAnchorX, %kernelAnchorY, %iterations, %c, %copymemref1, %copymemref2 : memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>,memref<3x3xi32>,memref<3x3xi32>,memref<3x3xi32>, index, index, index, i32, memref<3x3xi32>, memref<3x3xi32>  
+  dip.tophat_2d <REPLICATE_PADDING> %input, %kernel2, %outputtophat, %outputtophat1,%outputtophat2, %inputtophat1, %copymemref2, %copymemref1, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32
+  dip.bottomhat_2d <CONSTANT_PADDING> %input, %kernel, %outputbottomhat, %outputbottomhat1,%outputbottomhat2, %inputbottomhat1, %copymemref1, %copymemref2, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32  
 
   %printed_outpute = memref.cast %outputerosion : memref<3x3xi32> to memref<*xi32>
   %printed_outputd = memref.cast %outputdilation : memref<3x3xi32> to memref<*xi32>

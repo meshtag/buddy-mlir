@@ -124,6 +124,9 @@ image for obtaining the boundary extrapolated output image. (kkk|abcdefg|kkk)
 padding the extra region used for creating the boundary extrapolated output
 image. (aaa|abcdefg|ggg)
 
+The approach is similar to 2d correlation except the minimum element in the input image in the rectangular region of the kernel 
+is filled.
+
 An example depicting the syntax of created API is :
  ```mlir
    dip.erosion_2d boundaryOption %input, %kernel, %output, %centerX, %centerY, %constantValue, %copymemref :
@@ -153,6 +156,9 @@ image for obtaining the boundary extrapolated output image. (kkk|abcdefg|kkk)
 padding the extra region used for creating the boundary extrapolated output
 image. (aaa|abcdefg|ggg)
 
+The approch is similar to 2D correlation except instead of FmaOp we use CmpIOp to get the maximum element in the rectangular region 
+of the kernel as the result.
+
 An example depicting the syntax of created API is :
  ```mlir
    dip.dilation_2d boundaryOption %input, %kernel, %output, %centerX, %centerY, %constantValue, %copymemref :
@@ -181,6 +187,8 @@ image for obtaining the boundary extrapolated output image. (kkk|abcdefg|kkk)
  - Replicate Padding : Uses last/first element of respective column/row for
 padding the extra region used for creating the boundary extrapolated output
 image. (aaa|abcdefg|ggg)
+
+opening(image) = dilation(erosion(image))
 
 An example depicting the syntax of created API is :
  ```mlir
@@ -213,6 +221,8 @@ image for obtaining the boundary extrapolated output image. (kkk|abcdefg|kkk)
 padding the extra region used for creating the boundary extrapolated output
 image. (aaa|abcdefg|ggg)
 
+closing(image) = erosion(dilation(image))
+
 An example depicting the syntax of created API is :
  ```mlir
    dip.closing_2d boundaryOption %input, %kernel, %output, %output1, %centerX, %centerY, %constantValue, %copymemref, %copymemref1 :
@@ -243,6 +253,8 @@ image for obtaining the boundary extrapolated output image. (kkk|abcdefg|kkk)
  - Replicate Padding : Uses last/first element of respective column/row for
 padding the extra region used for creating the boundary extrapolated output
 image. (aaa|abcdefg|ggg)
+
+tophat(image) = image - opening(image)
 
 An example depicting the syntax of created API is :
  ```mlir
@@ -277,6 +289,8 @@ image for obtaining the boundary extrapolated output image. (kkk|abcdefg|kkk)
 padding the extra region used for creating the boundary extrapolated output
 image. (aaa|abcdefg|ggg)
 
+bottomhat(image) = closing(image) - image
+
 An example depicting the syntax of created API is :
  ```mlir
    dip.bottomhat_2d boundaryOption %input, %kernel, %output, %output1, %output2, %centerX, %centerY, %constantValue, %copymemref, %copymemref1 :
@@ -308,6 +322,8 @@ image for obtaining the boundary extrapolated output image. (kkk|abcdefg|kkk)
  - Replicate Padding : Uses last/first element of respective column/row for
 padding the extra region used for creating the boundary extrapolated output
 image. (aaa|abcdefg|ggg)
+
+Morph_grad = dilation(input) - erosion(input)
 
 An example depicting the syntax of created API is :
  ```mlir

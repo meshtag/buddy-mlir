@@ -416,21 +416,22 @@ public:
     Value input = op->getOperand(0);
     Value kernel = op->getOperand(1);
     Value output = op->getOperand(2);
-    Value centerX = op->getOperand(3);
-    Value centerY = op->getOperand(4);
-    Value iterations = op->getOperand(5);
-    Value constantValue = op->getOperand(6);
-    Value copymemref = op->getOperand(7);
+    Value copymemref = op->getOperand(3);
+    Value centerX = op->getOperand(4);
+    Value centerY = op->getOperand(5);
+    Value iterations = op->getOperand(6);
+    Value constantValue = op->getOperand(7);
     dip::BoundaryOption boundaryOptionAttr = op.getBoundaryOption();
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
     auto inElemTy = input.getType().cast<MemRefType>().getElementType();
-    DIP_ERROR error = checkDIPCommonTypes<dip::Erosion2DOp>(op, 4, input, kernel,
-                                                         output, constantValue);
+    DIP_ERROR error = checkDIPCommonTypes<dip::Erosion2DOp>(
+        op, 5, input, kernel, output, copymemref, constantValue);
 
     if (error == DIP_ERROR::INCONSISTENT_TYPES) {
-      return op->emitOpError() << "input, kernel, output and constant must "
-                                  "have the same element type";
+      return op->emitOpError()
+             << "input, kernel, output, copymemref and constant must "
+                "have the same element type";
     } else if (error == DIP_ERROR::UNSUPPORTED_TYPE) {
       return op->emitOpError() << "supports only f32, f64 and integer types. "
                                << inElemTy << "is passed";
@@ -487,21 +488,22 @@ public:
     Value input = op->getOperand(0);
     Value kernel = op->getOperand(1);
     Value output = op->getOperand(2);
-    Value centerX = op->getOperand(3);
-    Value centerY = op->getOperand(4);
-    Value iterations = op->getOperand(5);
-    Value constantValue = op->getOperand(6);
-    Value copymemref = op->getOperand(7);
+    Value copymemref = op->getOperand(3);
+    Value centerX = op->getOperand(4);
+    Value centerY = op->getOperand(5);
+    Value iterations = op->getOperand(6);
+    Value constantValue = op->getOperand(7);
     dip::BoundaryOption boundaryOptionAttr = op.getBoundaryOption();
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
     auto inElemTy = input.getType().cast<MemRefType>().getElementType();
-    DIP_ERROR error = checkDIPCommonTypes<dip::Dilation2DOp>(op, 4, input, kernel,
-                                                         output, constantValue);
+    DIP_ERROR error = checkDIPCommonTypes<dip::Dilation2DOp>(
+        op, 5, input, kernel, output, copymemref, constantValue);
 
     if (error == DIP_ERROR::INCONSISTENT_TYPES) {
-      return op->emitOpError() << "input, kernel, output and constant must "
-                                  "have the same element type";
+      return op->emitOpError()
+             << "input, kernel, output, copymemref and constant must "
+                "have the same element type";
     } else if (error == DIP_ERROR::UNSUPPORTED_TYPE) {
       return op->emitOpError() << "supports only f32, f64 and integer types. "
                                << inElemTy << "is passed";
@@ -557,21 +559,23 @@ public:
     Value kernel = op->getOperand(1);
     Value output = op->getOperand(2);
     Value output1 = op->getOperand(3);
-    Value centerX = op->getOperand(4);
-    Value centerY = op->getOperand(5);
-    Value iterations = op->getOperand(6);
-    Value constantValue = op->getOperand(7);
-    Value copymemref = op->getOperand(8);
-    Value copymemref1 = op->getOperand(9);
+    Value copymemref = op->getOperand(4);
+    Value copymemref1 = op->getOperand(5);
+    Value centerX = op->getOperand(6);
+    Value centerY = op->getOperand(7);
+    Value iterations = op->getOperand(8);
+    Value constantValue = op->getOperand(9);
     dip::BoundaryOption boundaryOptionAttr = op.getBoundaryOption();
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
     auto inElemTy = input.getType().cast<MemRefType>().getElementType();
-    DIP_ERROR error = checkDIPCommonTypes<dip::Opening2DOp>(op, 4, input, kernel,
-                                                         output, constantValue);
+    DIP_ERROR error = checkDIPCommonTypes<dip::Opening2DOp>(
+        op, 7, input, kernel, output, output1, copymemref, copymemref1,
+        constantValue);
 
     if (error == DIP_ERROR::INCONSISTENT_TYPES) {
-      return op->emitOpError() << "input, kernel, output and constant must "
+      return op->emitOpError() << "input, kernel, output, output1, copymemref, "
+                                  "copymemref1 and constant must "
                                   "have the same element type";
     } else if (error == DIP_ERROR::UNSUPPORTED_TYPE) {
       return op->emitOpError() << "supports only f32, f64 and integer types. "
@@ -648,21 +652,23 @@ public:
     Value kernel = op->getOperand(1);
     Value output = op->getOperand(2);
     Value output1 = op->getOperand(3);
-    Value centerX = op->getOperand(4);
-    Value centerY = op->getOperand(5);
-    Value iterations = op->getOperand(6);
-    Value constantValue = op->getOperand(7);
-    Value copymemref = op->getOperand(8);
-    Value copymemref1 = op->getOperand(9);
+    Value copymemref = op->getOperand(4);
+    Value copymemref1 = op->getOperand(5);
+    Value centerX = op->getOperand(6);
+    Value centerY = op->getOperand(7);
+    Value iterations = op->getOperand(8);
+    Value constantValue = op->getOperand(9);
     dip::BoundaryOption boundaryOptionAttr = op.getBoundaryOption();
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
     auto inElemTy = input.getType().cast<MemRefType>().getElementType();
-    DIP_ERROR error = checkDIPCommonTypes<dip::Closing2DOp>(op, 4, input, kernel,
-                                                         output, constantValue);
+    DIP_ERROR error = checkDIPCommonTypes<dip::Closing2DOp>(
+        op, 7, input, kernel, output, output1, copymemref, copymemref1,
+        constantValue);
 
     if (error == DIP_ERROR::INCONSISTENT_TYPES) {
-      return op->emitOpError() << "input, kernel, output and constant must "
+      return op->emitOpError() << "input, kernel, output, output1, copymemref, "
+                                  "copymemref1 and constant must "
                                   "have the same element type";
     } else if (error == DIP_ERROR::UNSUPPORTED_TYPE) {
       return op->emitOpError() << "supports only f32, f64 and integer types. "
@@ -745,24 +751,26 @@ public:
     Value output1 = op->getOperand(3);
     Value output2 = op->getOperand(4);
     Value input1 = op->getOperand(5);
-    Value centerX = op->getOperand(6);
-    Value centerY = op->getOperand(7);
-    Value iterations = op->getOperand(8);
-    Value constantValue = op->getOperand(9);
-    Value copymemref = op->getOperand(10);
-    Value copymemref1 = op->getOperand(11);
+    Value copymemref = op->getOperand(6);
+    Value copymemref1 = op->getOperand(7);
+    Value centerX = op->getOperand(8);
+    Value centerY = op->getOperand(9);
+    Value iterations = op->getOperand(10);
+    Value constantValue = op->getOperand(11);
     dip::BoundaryOption boundaryOptionAttr = op.getBoundaryOption();
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
-    
 
     auto inElemTy = input.getType().cast<MemRefType>().getElementType();
     auto bitWidth = inElemTy.getIntOrFloatBitWidth();
-    DIP_ERROR error = checkDIPCommonTypes<dip::TopHat2DOp>(op, 4, input, kernel,
-                                                         output, constantValue);
+    DIP_ERROR error = checkDIPCommonTypes<dip::TopHat2DOp>(
+        op, 9, input, kernel, output, output1, output2, input1, copymemref,
+        copymemref1, constantValue);
 
     if (error == DIP_ERROR::INCONSISTENT_TYPES) {
-      return op->emitOpError() << "input, kernel, output and constant must "
-                                  "have the same element type";
+      return op->emitOpError()
+             << "input, kernel, output, output1, output2, input1, copymemref, "
+                "copymemref1 and constant must "
+                "have the same element type";
     } else if (error == DIP_ERROR::UNSUPPORTED_TYPE) {
       return op->emitOpError() << "supports only f32, f64 and integer types. "
                                << inElemTy << "is passed";
@@ -940,24 +948,26 @@ public:
     Value output1 = op->getOperand(3);
     Value output2 = op->getOperand(4);
     Value input1 = op->getOperand(5);
-    Value centerX = op->getOperand(6);
-    Value centerY = op->getOperand(7);
-    Value iterations = op->getOperand(8);
-    Value constantValue = op->getOperand(9);
-    Value copymemref = op->getOperand(10);
-    Value copymemref1 = op->getOperand(11);
+    Value copymemref = op->getOperand(6);
+    Value copymemref1 = op->getOperand(7);
+    Value centerX = op->getOperand(8);
+    Value centerY = op->getOperand(9);
+    Value iterations = op->getOperand(10);
+    Value constantValue = op->getOperand(11);
     dip::BoundaryOption boundaryOptionAttr = op.getBoundaryOption();
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
-   
 
     auto inElemTy = input.getType().cast<MemRefType>().getElementType();
     auto bitWidth = inElemTy.getIntOrFloatBitWidth();
-    DIP_ERROR error = checkDIPCommonTypes<dip::BottomHat2DOp>(op, 4, input, kernel,
-                                                         output, constantValue);
+    DIP_ERROR error = checkDIPCommonTypes<dip::BottomHat2DOp>(
+        op, 9, input, kernel, output, output1, output2, input1, copymemref,
+        copymemref1, constantValue);
 
     if (error == DIP_ERROR::INCONSISTENT_TYPES) {
-      return op->emitOpError() << "input, kernel, output and constant must "
-                                  "have the same element type";
+      return op->emitOpError()
+             << "input, kernel, output, output1, output2, input1, copymemref, "
+                "copymemref1 and constant must "
+                "have the same element type";
     } else if (error == DIP_ERROR::UNSUPPORTED_TYPE) {
       return op->emitOpError() << "supports only f32, f64 and integer types. "
                                << inElemTy << "is passed";
@@ -1129,24 +1139,26 @@ public:
     Value output1 = op->getOperand(3);
     Value output2 = op->getOperand(4);
     Value input1 = op->getOperand(5);
-    Value centerX = op->getOperand(6);
-    Value centerY = op->getOperand(7);
-    Value iterations = op->getOperand(8);
-    Value constantValue = op->getOperand(9);
-    Value copymemref = op->getOperand(10);
-    Value copymemref1 = op->getOperand(11);
+    Value copymemref = op->getOperand(6);
+    Value copymemref1 = op->getOperand(7);
+    Value centerX = op->getOperand(8);
+    Value centerY = op->getOperand(9);
+    Value iterations = op->getOperand(10);
+    Value constantValue = op->getOperand(11);
     dip::BoundaryOption boundaryOptionAttr = op.getBoundaryOption();
     Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
 
-
     auto inElemTy = input.getType().cast<MemRefType>().getElementType();
-    auto bitWidth = inElemTy.getIntOrFloatBitWidth();    
-    DIP_ERROR error = checkDIPCommonTypes<dip::MorphGrad2DOp>(op, 4, input, kernel,
-                                                         output, constantValue);
+    auto bitWidth = inElemTy.getIntOrFloatBitWidth();
+    DIP_ERROR error = checkDIPCommonTypes<dip::MorphGrad2DOp>(
+        op, 9, input, kernel, output, output1, output2, input1, copymemref,
+        copymemref1, constantValue);
 
     if (error == DIP_ERROR::INCONSISTENT_TYPES) {
-      return op->emitOpError() << "input, kernel, output and constant must "
-                                  "have the same element type";
+      return op->emitOpError()
+             << "input, kernel, output, output1, output2, input1, copymemref, "
+                "copymemref1 and constant must "
+                "have the same element type";
     } else if (error == DIP_ERROR::UNSUPPORTED_TYPE) {
       return op->emitOpError() << "supports only f32, f64 and integer types. "
                                << inElemTy << "is passed";
