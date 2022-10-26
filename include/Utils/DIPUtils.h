@@ -847,8 +847,6 @@ void traverseImagewBoundaryExtrapolation(
   // Create DimOp.
   Value inputRow = rewriter.create<memref::DimOp>(loc, input, c0);
   Value inputCol = rewriter.create<memref::DimOp>(loc, input, c1);
-  Value outputrow = rewriter.create<memref::DimOp>(loc, output, c0);
-  Value outputcol = rewriter.create<memref::DimOp>(loc, output, c1);
   Value kernelSize = rewriter.create<memref::DimOp>(loc, kernel, c0);
 
   // Variables used for detecting rowMid, rowDown, colMid and colRight
@@ -861,7 +859,6 @@ void traverseImagewBoundaryExtrapolation(
   SmallVector<int64_t, 8> steps{1, 1, stride, 1};
 
   VectorType vectorTy32 = VectorType::get({stride}, elemTy);
-  VectorType VectorOne = VectorType::get({1}, elemTy);
   VectorType vectorMaskTy = VectorType::get({stride}, i1);
 
   Value zeroPaddingElem = insertZeroConstantOp(ctx, rewriter, loc, elemTy);
@@ -869,8 +866,6 @@ void traverseImagewBoundaryExtrapolation(
       rewriter.create<BroadcastOp>(loc, vectorTy32, zeroPaddingElem);
 
   Value Paddingel = insertMinusOneConstantOp(ctx, rewriter, loc, elemTy);
-  Value PaddingElement =
-      rewriter.create<BroadcastOp>(loc, VectorOne, Paddingel);
   Value Paddingvec = rewriter.create<BroadcastOp>(loc, vectorTy32, Paddingel);
 
   AffineExpr a, b, c;

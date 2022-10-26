@@ -93,48 +93,48 @@ func.func @main() -> i32 {
   %kernel1 = memref.get_global @global_kernel1 : memref<3x3xi32>
   %kernel2 = memref.get_global @global_kernel2 : memref<3x3xi32>
   %kernel3 = memref.get_global @global_kernel3 : memref<3x3xi32>
-  %outputerosion = memref.get_global @global_outputerosion: memref<3x3xi32>
-  %outputdilation = memref.get_global @global_outputdilation : memref<3x3xi32>
+  %outputErosion = memref.get_global @global_outputerosion: memref<3x3xi32>
+  %outputDilation = memref.get_global @global_outputdilation : memref<3x3xi32>
 
-  %outputopening = memref.get_global @global_outputopening: memref<3x3xi32>
-  %outputopening1 = memref.get_global @global_outputopeninginter : memref<3x3xi32>
-  %outputclosing = memref.get_global @global_outputclosing: memref<3x3xi32>
-  %outputclosing1 = memref.get_global @global_outputclosinginter : memref<3x3xi32>
+  %outputOpening = memref.get_global @global_outputopening: memref<3x3xi32>
+  %outputOpening1 = memref.get_global @global_outputopeninginter : memref<3x3xi32>
+  %outputClosing = memref.get_global @global_outputclosing: memref<3x3xi32>
+  %outputClosing1 = memref.get_global @global_outputclosinginter : memref<3x3xi32>
 
-  %outputtophat = memref.get_global @global_outputtophat : memref<3x3xi32>
-  %outputtophat1 = memref.get_global @global_outputtophatinter : memref<3x3xi32>
-  %outputtophat2 = memref.get_global @global_outputtophatinter1 : memref<3x3xi32>
-  %inputtophat1 = memref.get_global @global_inputtophatinter : memref<3x3xi32>
+  %outputTopHat = memref.get_global @global_outputtophat : memref<3x3xi32>
+  %outputTopHat1 = memref.get_global @global_outputtophatinter : memref<3x3xi32>
+  %outputTopHat2 = memref.get_global @global_outputtophatinter1 : memref<3x3xi32>
+  %inputTopHat1 = memref.get_global @global_inputtophatinter : memref<3x3xi32>
 
-  %outputbottomhat = memref.get_global @global_outputbottomhat : memref<3x3xi32>
-  %outputbottomhat1 = memref.get_global @global_outputbottomhatinter : memref<3x3xi32>
-  %outputbottomhat2 = memref.get_global @global_outputbottomhatinter1 : memref<3x3xi32>
-  %inputbottomhat1 = memref.get_global @global_inputbottomhatinter : memref<3x3xi32>
-  %copymemref1 = memref.get_global @global_copymemref1 : memref<3x3xi32>
-  %copymemref2 = memref.get_global @global_copymemref2 : memref<3x3xi32>
+  %outputBottomHat = memref.get_global @global_outputbottomhat : memref<3x3xi32>
+  %outputBottomHat1 = memref.get_global @global_outputbottomhatinter : memref<3x3xi32>
+  %outputBottomHat2 = memref.get_global @global_outputbottomhatinter1 : memref<3x3xi32>
+  %inputBottomHat1 = memref.get_global @global_inputbottomhatinter : memref<3x3xi32>
+  %copyMemref1 = memref.get_global @global_copymemref1 : memref<3x3xi32>
+  %copyMemref2 = memref.get_global @global_copymemref2 : memref<3x3xi32>
 
   %kernelAnchorX = arith.constant 1 : index
   %kernelAnchorY = arith.constant 1 : index
   %iterations = arith.constant 1 : index
   %c = arith.constant 0 : i32 
 
-  dip.erosion_2d <CONSTANT_PADDING> %input, %identity, %outputerosion, %copymemref2, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32
-  dip.dilation_2d <REPLICATE_PADDING> %input, %kernel, %outputdilation, %copymemref1, %kernelAnchorX, %kernelAnchorY, %iterations, %c: memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32
+  dip.erosion_2d <CONSTANT_PADDING> %input, %identity, %outputErosion, %copyMemref2, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32
+  dip.dilation_2d <REPLICATE_PADDING> %input, %kernel, %outputDilation, %copyMemref1, %kernelAnchorX, %kernelAnchorY, %iterations, %c: memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32
 
-  dip.opening_2d <CONSTANT_PADDING> %input, %kernel1, %outputopening, %outputopening1, %copymemref2, %copymemref1, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32
-  dip.closing_2d <CONSTANT_PADDING> %input, %kernel3, %outputclosing, %outputclosing1, %copymemref1, %copymemref2, %kernelAnchorX, %kernelAnchorY, %iterations, %c: memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32
+  dip.opening_2d <CONSTANT_PADDING> %input, %kernel1, %outputOpening, %outputOpening1, %copyMemref2, %copyMemref1, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32
+  dip.closing_2d <CONSTANT_PADDING> %input, %kernel3, %outputClosing, %outputClosing1, %copyMemref1, %copyMemref2, %kernelAnchorX, %kernelAnchorY, %iterations, %c: memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32
 
-  dip.tophat_2d <REPLICATE_PADDING> %input, %kernel2, %outputtophat, %outputtophat1,%outputtophat2, %inputtophat1, %copymemref2, %copymemref1, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32
-  dip.bottomhat_2d <CONSTANT_PADDING> %input, %kernel, %outputbottomhat, %outputbottomhat1,%outputbottomhat2, %inputbottomhat1, %copymemref1, %copymemref2, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32  
+  dip.tophat_2d <REPLICATE_PADDING> %input, %kernel2, %outputTopHat, %outputTopHat1,%outputTopHat2, %inputTopHat1, %copyMemref2, %copyMemref1, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32
+  dip.bottomhat_2d <CONSTANT_PADDING> %input, %kernel, %outputBottomHat, %outputBottomHat1,%outputBottomHat2, %inputBottomHat1, %copyMemref1, %copyMemref2, %kernelAnchorX, %kernelAnchorY, %iterations, %c : memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, memref<3x3xi32>, index, index, index, i32  
 
-  %printed_outpute = memref.cast %outputerosion : memref<3x3xi32> to memref<*xi32>
-  %printed_outputd = memref.cast %outputdilation : memref<3x3xi32> to memref<*xi32>
+  %printed_outpute = memref.cast %outputErosion : memref<3x3xi32> to memref<*xi32>
+  %printed_outputd = memref.cast %outputDilation : memref<3x3xi32> to memref<*xi32>
 
-  %printed_outputc = memref.cast %outputclosing : memref<3x3xi32> to memref<*xi32>
-  %printed_outputo = memref.cast %outputopening : memref<3x3xi32> to memref<*xi32>
+  %printed_outputc = memref.cast %outputClosing : memref<3x3xi32> to memref<*xi32>
+  %printed_outputo = memref.cast %outputOpening : memref<3x3xi32> to memref<*xi32>
 
-  %printed_outputt = memref.cast %outputtophat : memref<3x3xi32> to memref<*xi32>
-  %printed_outputb = memref.cast %outputbottomhat : memref<3x3xi32> to memref<*xi32>
+  %printed_outputt = memref.cast %outputTopHat : memref<3x3xi32> to memref<*xi32>
+  %printed_outputb = memref.cast %outputBottomHat : memref<3x3xi32> to memref<*xi32>
 
   call @printMemrefI32(%printed_outpute) : (memref<*xi32>) -> ()
   call @printMemrefI32(%printed_outputd) : (memref<*xi32>) -> ()

@@ -254,11 +254,7 @@ void Erosion2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
   intptr_t outputRows = output->getSizes()[0];
   intptr_t outputCols = output->getSizes()[1];
   intptr_t sizesOutput[2] = {outputRows, outputCols};
-  float *data = new float[outputRows * outputCols];
-  for (int i = 0; i < outputRows * outputCols; ++i) {
-    data[i] = 256;
-  }
-  MemRef<float, 2> copymemref(data, sizesOutput, 0);
+  MemRef<float, 2> copymemref(sizesOutput, 256.f);
 
   if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
     detail::_mlir_ciface_erosion_2d_constant_padding(
@@ -277,11 +273,7 @@ void Dilation2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
   intptr_t outputRows = output->getSizes()[0];
   intptr_t outputCols = output->getSizes()[1];
   intptr_t sizesOutput[2] = {outputRows, outputCols};
-  float *data = new float[outputRows * outputCols];
-  for (int i = 0; i < outputRows * outputCols; ++i) {
-    data[i] = -1;
-  }
-  MemRef<float, 2> copymemref(data, sizesOutput, 0);
+  MemRef<float, 2> copymemref(sizesOutput, -1.f);
   if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
     detail::_mlir_ciface_dilation_2d_constant_padding(
         input, kernel, output, &copymemref, centerX, centerY, iterations,
@@ -301,15 +293,8 @@ void Opening2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
 
   intptr_t sizesOutput[2] = {outputRows, outputCols};
   MemRef<float, 2> output1(sizesOutput);
-  float *data = new float[outputRows * outputCols];
-  for (int i = 0; i < outputRows * outputCols; ++i) {
-    data[i] = 256;
-  }
-  MemRef<float, 2> copymemref(data, sizesOutput, 0);
-  for (int i = 0; i < outputRows * outputCols; ++i) {
-    data[i] = -1;
-  }
-  MemRef<float, 2> copymemref1(data, sizesOutput, 0);
+  MemRef<float, 2> copymemref(sizesOutput, 256.f);
+  MemRef<float, 2> copymemref1(sizesOutput, -1.f);
   if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
     detail::_mlir_ciface_opening_2d_constant_padding(
         input, kernel, output, &output1, &copymemref, &copymemref1, centerX,
@@ -330,15 +315,8 @@ void Closing2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
 
   intptr_t sizesOutput[2] = {outputRows, outputCols};
   MemRef<float, 2> output1(sizesOutput);
-  float *data = new float[outputRows * outputCols];
-  for (int i = 0; i < outputRows * outputCols; ++i) {
-    data[i] = -1;
-  }
-  MemRef<float, 2> copymemref(data, sizesOutput, 0);
-  for (int i = 0; i < outputRows * outputCols; ++i) {
-    data[i] = 256;
-  }
-  MemRef<float, 2> copymemref1(data, sizesOutput, 0);
+  MemRef<float, 2> copymemref(sizesOutput, -1.f);
+  MemRef<float, 2> copymemref1(sizesOutput, 256.f);
   if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
     detail::_mlir_ciface_closing_2d_constant_padding(
         input, kernel, output, &output1, &copymemref, &copymemref1, centerX,
@@ -360,15 +338,8 @@ void TopHat2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
   MemRef<float, 2> output1(sizesOutput);
   MemRef<float, 2> output2(sizesOutput);
   MemRef<float, 2> input1(sizesOutput);
-  float *data = new float[outputRows * outputCols];
-  for (int i = 0; i < outputRows * outputCols; ++i) {
-    data[i] = 256;
-  }
-  MemRef<float, 2> copymemref(data, sizesOutput, 0);
-  for (int i = 0; i < outputRows * outputCols; ++i) {
-    data[i] = -1;
-  }
-  MemRef<float, 2> copymemref1(data, sizesOutput, 0);
+  MemRef<float, 2> copymemref(sizesOutput, 256.f);
+  MemRef<float, 2> copymemref1(sizesOutput, -1.f);
   if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
     detail::_mlir_ciface_tophat_2d_constant_padding(
         input, kernel, output, &output1, &output2, &input1, &copymemref,
@@ -390,15 +361,8 @@ void BottomHat2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
   MemRef<float, 2> output1(sizesOutput);
   MemRef<float, 2> output2(sizesOutput);
   MemRef<float, 2> input1(sizesOutput);
-  float *data = new float[outputRows * outputCols];
-  for (int i = 0; i < outputRows * outputCols; ++i) {
-    data[i] = -1;
-  }
-  MemRef<float, 2> copymemref(data, sizesOutput, 0);
-  for (int i = 0; i < outputRows * outputCols; ++i) {
-    data[i] = 256;
-  }
-  MemRef<float, 2> copymemref1(data, sizesOutput, 0);
+  MemRef<float, 2> copymemref(sizesOutput, -1.f);
+  MemRef<float, 2> copymemref1(sizesOutput, 256.f);
   if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
     detail::_mlir_ciface_bottomhat_2d_constant_padding(
         input, kernel, output, &output1, &output2, &input1, &copymemref,
@@ -420,15 +384,8 @@ void MorphGrad2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
   MemRef<float, 2> output1(sizesOutput);
   MemRef<float, 2> output2(sizesOutput);
   MemRef<float, 2> input1(sizesOutput);
-  float *data = new float[outputRows * outputCols];
-  for (int i = 0; i < outputRows * outputCols; ++i) {
-    data[i] = -1;
-  }
-  MemRef<float, 2> copymemref(data, sizesOutput, 0);
-  for (int i = 0; i < outputRows * outputCols; ++i) {
-    data[i] = 256;
-  }
-  MemRef<float, 2> copymemref1(data, sizesOutput, 0);
+  MemRef<float, 2> copymemref(sizesOutput, -1.f);
+  MemRef<float, 2> copymemref1(sizesOutput, 256.f);
   if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
     detail::_mlir_ciface_morphgrad_2d_constant_padding(
         input, kernel, output, &output1, &output2, input1, &copymemref,

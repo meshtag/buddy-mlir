@@ -398,7 +398,6 @@ private:
 };
 
 class DIPErosion2DOpLowering : public OpRewritePattern<dip::Erosion2DOp> {
-
 public:
   using OpRewritePattern<dip::Erosion2DOp>::OpRewritePattern;
 
@@ -816,7 +815,6 @@ public:
           builder.create<AffineYieldOp>(loc);
         });
 
-    VectorType VectorOne = VectorType::get({1}, inElemTy);
     Value outputRow = rewriter.create<memref::DimOp>(loc, output, c0);
     Value outputCol = rewriter.create<memref::DimOp>(loc, output, c1);
 
@@ -1013,7 +1011,6 @@ public:
           builder.create<AffineYieldOp>(loc);
         });
 
-    VectorType VectorOne = VectorType::get({1}, inElemTy);
     Value outputRow = rewriter.create<memref::DimOp>(loc, output, c0);
     Value outputCol = rewriter.create<memref::DimOp>(loc, output, c1);
 
@@ -1207,7 +1204,6 @@ public:
           builder.create<AffineYieldOp>(loc);
         });
 
-    VectorType VectorOne = VectorType::get({1}, inElemTy);
     Value outputRow = rewriter.create<memref::DimOp>(loc, output, c0);
     Value outputCol = rewriter.create<memref::DimOp>(loc, output, c1);
 
