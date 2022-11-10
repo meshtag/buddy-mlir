@@ -7,20 +7,14 @@ on:
     branches: [ main ]
 
 jobs:
-  jobs:
-  posix:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - toolset: gcc-9
-            cxxstd: "14,17"
-            os: ubuntu-20.04
-            install: g++-9
-
   build:
 
-    runs-on: ${{matrix.os}}
+    runs-on: ${{ matrix.image }}
+
+    strategy:
+      matrix:
+        image: [ 'windows-latest', 'ubuntu-latest', 'macos-latest' ]
+        # version: [ '1.9.0', '1.10.2' ]
 
     steps:
       - name: Checkout
