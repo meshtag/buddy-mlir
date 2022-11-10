@@ -2,7 +2,7 @@ name: test build process
 
 on:
   push:
-    branches: [ main, check_build2 ]
+    branches: [ main, check_build3 ]
   pull_request:
     branches: [ main ]
 
