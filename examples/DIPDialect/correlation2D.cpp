@@ -81,7 +81,7 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   Mat kernel1 = Mat(3, 3, CV_32FC1, laplacianKernelAlign);
 
   // Call the MLIR Corr2D function.
-  dip::Corr2D(&input, &kernel, &output1, x, y,
+  dip::CorrFFT2D(&input, &kernel, &output1, 2 - x, 2 - y,
               dip::BOUNDARY_OPTION::REPLICATE_PADDING);
 
   // Define a cv::Mat with the output of Corr2D.
@@ -99,9 +99,8 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
     return 0;
   }
 
-  // Call the MLIR Corr2D function.
-  dip::Corr2D(&input, &kernel, &output2, x, y,
-              dip::BOUNDARY_OPTION::CONSTANT_PADDING, 0);
+  dip::CorrFFT2D(&input, &kernel, &output1, 2 - x, 2 - y,
+              dip::BOUNDARY_OPTION::CONSTANT_PADDING);
 
   // Define a cv::Mat with the output of Corr2D.
   Mat outputImageConstantPadding(sizesOutput[0], sizesOutput[1], CV_32FC1,
