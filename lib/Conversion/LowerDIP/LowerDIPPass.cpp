@@ -40,6 +40,9 @@
 using namespace mlir;
 using namespace buddy;
 
+using namespace vector;
+using namespace mlir::arith;
+
 //===----------------------------------------------------------------------===//
 // Rewrite Pattern
 //===----------------------------------------------------------------------===//
@@ -87,6 +90,68 @@ public:
                                         strideVal, inElemTy, boundaryOptionAttr,
                                         stride, dip::DIP_OP::CORRELATION_2D);
     // Remove the origin convolution operation.
+    rewriter.eraseOp(op);
+    return success();
+  }
+
+private:
+  int64_t stride;
+};
+
+class DIPCorrFFT2DOpLowering : public OpRewritePattern<dip::CorrFFT2DOp> {
+public:
+  using OpRewritePattern<dip::CorrFFT2DOp>::OpRewritePattern;
+
+  explicit DIPCorrFFT2DOpLowering(MLIRContext *context, int64_t strideParam)
+      : OpRewritePattern(context) {
+    // stride = strideParam;
+    stride = 1;
+    // stride = 2;
+  }
+
+  LogicalResult matchAndRewrite(dip::CorrFFT2DOp op,
+                                PatternRewriter &rewriter) const override {
+    auto loc = op->getLoc();
+    auto ctx = op->getContext();
+
+    // Create constant indices.
+    Value c0 = rewriter.create<ConstantIndexOp>(loc, 0);
+    Value c1 = rewriter.create<ConstantIndexOp>(loc, 1);
+
+    // Register operand values.
+    Value inputReal = op->getOperand(0);
+    Value inputImag = op->getOperand(1);
+    Value kernelReal = op->getOperand(2);
+    Value kernelImag = op->getOperand(3);
+    Value intermediateReal = op->getOperand(4);
+    Value intermediateImag = op->getOperand(5);
+    Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
+
+    // Create DimOp for padded input image.
+    Value inputRow = rewriter.create<memref::DimOp>(loc, inputReal, c0);
+    Value inputCol = rewriter.create<memref::DimOp>(loc, inputReal, c1);
+
+    // Create DimOp for padded original kernel.
+    Value kernelRow = rewriter.create<memref::DimOp>(loc, kernelReal, c0);
+    Value kernelCol = rewriter.create<memref::DimOp>(loc, kernelReal, c1);
+
+    FloatType f32 = FloatType::getF32(ctx);
+    VectorType vectorTy32 = VectorType::get({stride}, f32);
+
+    dft2D(rewriter, loc, inputReal, inputImag, inputRow, inputCol,
+          intermediateReal, intermediateImag, c0, c1, strideVal, vectorTy32);
+
+    dft2D(rewriter, loc, kernelReal, kernelImag, kernelRow, kernelCol,
+          intermediateReal, intermediateImag, c0, c1, strideVal, vectorTy32);
+
+    vector2DMemRefMultiply(rewriter, loc, inputReal, inputImag, kernelReal,
+                           kernelImag, inputReal, inputImag, inputRow, inputCol,
+                           c0, vectorTy32);
+
+    idft2D(rewriter, loc, inputReal, inputImag, inputRow, inputCol,
+           intermediateReal, intermediateImag, c0, c1, strideVal, vectorTy32);
+
+    // Remove the origin convolution operation involving FFT.
     rewriter.eraseOp(op);
     return success();
   }
@@ -1343,6 +1408,7 @@ private:
 void populateLowerDIPConversionPatterns(RewritePatternSet &patterns,
                                         int64_t stride) {
   patterns.add<DIPCorr2DOpLowering>(patterns.getContext(), stride);
+  patterns.add<DIPCorrFFT2DOpLowering>(patterns.getContext(), stride);
   patterns.add<DIPRotate2DOpLowering>(patterns.getContext(), stride);
   patterns.add<DIPResize2DOpLowering>(patterns.getContext(), stride);
   patterns.add<DIPErosion2DOpLowering>(patterns.getContext(), stride);
