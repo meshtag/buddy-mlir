@@ -240,7 +240,6 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
 
   // Obtain padded input image.
   float inputPaddedDataReal[paddedSize];
-  // float *inputPaddedDataReal = new float[paddedSize];
 
   if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
     for (uint32_t i = 0; i < paddedSizes[0]; ++i) {
@@ -271,8 +270,6 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
     }
   }
 
-  // std::cout << paddedSize << "\n";
-
   intptr_t kernelSize[2] = {kernel->getSizes()[0], kernel->getSizes()[1]};
   MemRef<float, 2> flippedKernel(flippedKernelData, kernelSize);
 
@@ -301,24 +298,6 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
     for (uint32_t j = 0; j < output->getSizes()[1]; ++j)
       output->getData()[i * output->getSizes()[1] + j] =
           inputPaddedReal.getData()[i * paddedSizes[1] + j];
-
-  // for (int i = 0; i < paddedSizes[0]; ++i)
-  // {
-  //   for (int j = 0; j < paddedSizes[1]; ++j)
-  //     std::cout << inputPaddedReal.getData()[i * paddedSizes[1] + j] << " ";
-  //   std::cout << "\n";
-  // }
-  // std::cout << "\n\n";
-  // for (int i = 0; i < paddedSizes[0]; ++i)
-  // {
-  //   for (int j = 0; j < paddedSizes[1]; ++j)
-  //     std::cout << inputPaddedImag.getData()[i * paddedSizes[1] + j] << " ";
-  //   std::cout << "\n";
-  // }
-
-  // delete[] inputPaddedDataReal;
-  // delete[] kernelPaddedDataReal;
-  // delete[] generalPaddedContainer;
 }
 
 // User interface for 2D Rotation.

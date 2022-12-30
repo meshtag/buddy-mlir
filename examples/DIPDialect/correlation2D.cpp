@@ -58,11 +58,14 @@ bool testImages(cv::Mat img1, cv::Mat img2) {
 
 bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
                         std::ptrdiff_t y, std::ptrdiff_t boundaryOption) {
-  // Read as grayscale image.
-  Mat image = imread(argv[1], IMREAD_GRAYSCALE);
-  if (image.empty()) {
+  Mat imageOrig = imread(argv[1], IMREAD_GRAYSCALE);
+  Mat image;
+
+  if (imageOrig.empty()) {
     cout << "Could not read the image: " << argv[1] << endl;
   }
+
+  cv::resize(imageOrig, image, Size(500, 500), cv::INTER_LINEAR);
 
   // Define the kernel.
   float *kernelAlign = laplacianKernelAlign;
@@ -81,8 +84,12 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
 
   Mat kernel1 = Mat(3, 3, CV_32FC1, laplacianKernelAlign);
 
-  // Call the MLIR Corr2D function.
-  dip::Corr2D(&input, &kernel, &output1, x, y,
+  // // Call the MLIR Corr2D function.
+  // dip::Corr2D(&input, &kernel, &output1, x, y,
+  //             dip::BOUNDARY_OPTION::REPLICATE_PADDING);
+
+  // Call the MLIR CorrFFT2D function.
+  dip::CorrFFT2D(&input, &kernel, &output1, 2 - x, 2 - y,
               dip::BOUNDARY_OPTION::REPLICATE_PADDING);
 
   // Define a cv::Mat with the output of Corr2D.
@@ -100,9 +107,13 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
     return 0;
   }
 
-  // Call the MLIR Corr2D function.
-  dip::Corr2D(&input, &kernel, &output2, x, y,
-              dip::BOUNDARY_OPTION::CONSTANT_PADDING, 0);
+  // // Call the MLIR Corr2D function.
+  // dip::Corr2D(&input, &kernel, &output2, x, y,
+  //             dip::BOUNDARY_OPTION::CONSTANT_PADDING, 0);
+
+  // Call the MLIR CorrFFT2D function.
+  dip::CorrFFT2D(&input, &kernel, &output2, 2 - x, 2 - y,
+              dip::BOUNDARY_OPTION::CONSTANT_PADDING);
 
   // Define a cv::Mat with the output of Corr2D.
   Mat outputImageConstantPadding(sizesOutput[0], sizesOutput[1], CV_32FC1,
