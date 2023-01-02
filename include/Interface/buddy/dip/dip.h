@@ -163,8 +163,8 @@ void _mlir_ciface_morphgrad_2d_replicate_padding(
 
 // Pad kernel as per the requirements for using FFT in convolution.
 void padKernel(MemRef<float, 2> *kernel, unsigned int centerX,
-               unsigned int centerY, intptr_t *paddedSizes,
-               float *kernelPaddedData) {
+               unsigned int centerY, size_t *paddedSizes,
+               MemRef<float, 2> *kernelPaddedReal) {
   // Apply padding so that the center of kernel is at top left of 2D padded
   // container.
   for (long i = -static_cast<long>(centerY);
@@ -173,7 +173,7 @@ void padKernel(MemRef<float, 2> *kernel, unsigned int centerX,
     for (long j = -static_cast<long>(centerX);
          j < static_cast<long>(kernel->getSizes()[1]) - centerX; ++j) {
       uint32_t c = (j < 0) ? (j + paddedSizes[1]) : j;
-      kernelPaddedData[r * paddedSizes[1] + c] =
+      kernelPaddedReal->getData()[r * paddedSizes[1] + c] =
           kernel
               ->getData()[(i + centerY) * kernel->getSizes()[1] + j + centerX];
     }
@@ -221,13 +221,13 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
                unsigned int centerY, BOUNDARY_OPTION option,
                float constantValue = 0) {
   // Calculate padding sizes.
-  intptr_t paddedSizes[2] = {
+  size_t paddedSizes[2] = {
       1 << ((uint8_t)ceil(
           log2(input->getSizes()[0] + kernel->getSizes()[0] - 1))),
       1 << ((uint8_t)ceil(
           log2(input->getSizes()[1] + kernel->getSizes()[1] - 1)))};
-  intptr_t paddedTSizes[2] = {paddedSizes[1], paddedSizes[0]};
-  intptr_t paddedSize = paddedSizes[0] * paddedSizes[1];
+  size_t paddedTSizes[2] = {paddedSizes[1], paddedSizes[0]};
+  size_t paddedSize = paddedSizes[0] * paddedSizes[1];
 
   float flippedKernelData[kernel->getSizes()[0] * kernel->getSizes()[1]];
   for (uint32_t i = 0; i < kernel->getSizes()[0]; ++i)
@@ -270,25 +270,23 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
     }
   }
 
-  intptr_t kernelSize[2] = {kernel->getSizes()[0], kernel->getSizes()[1]};
+  size_t kernelSize[2] = {kernel->getSizes()[0], kernel->getSizes()[1]};
   MemRef<float, 2> flippedKernel(flippedKernelData, kernelSize);
-
-  // Obtain padded kernel.
-  // float *kernelPaddedDataReal = new float[paddedSize];
-  float kernelPaddedDataReal[paddedSize] = {0};
-  detail::padKernel(&flippedKernel, centerX, centerY, paddedSizes,
-                    kernelPaddedDataReal);
 
   // Declare padded containers for input image and kernel.
   // Also declare an intermediate container for calculation convenience.
   Img<float, 2> inputPaddedReal(inputPaddedDataReal, paddedSizes);
   MemRef<float, 2> inputPaddedImag(paddedSizes);
 
-  MemRef<float, 2> kernelPaddedReal(kernelPaddedDataReal, paddedSizes);
+  MemRef<float, 2> kernelPaddedReal(paddedSizes);
   MemRef<float, 2> kernelPaddedImag(paddedSizes);
 
   MemRef<float, 2> intermediateReal(paddedTSizes);
   MemRef<float, 2> intermediateImag(paddedTSizes);
+
+  // Obtain padded kernel.
+  detail::padKernel(&flippedKernel, centerX, centerY, paddedSizes,
+                    &kernelPaddedReal);
 
   detail::_mlir_ciface_corrfft_2d(&inputPaddedReal, &inputPaddedImag,
                                   &kernelPaddedReal, &kernelPaddedImag,
