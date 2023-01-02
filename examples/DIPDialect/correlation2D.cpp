@@ -58,19 +58,13 @@ bool testImages(cv::Mat img1, cv::Mat img2) {
 
 bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
                         std::ptrdiff_t y, std::ptrdiff_t boundaryOption) {
-  Mat imageOrig = imread(argv[1], IMREAD_GRAYSCALE);
-  Mat image;
-  // Mat image = imread(argv[1], IMREAD_GRAYSCALE);
-
-  // if (imageOrig.empty()) {
-  //   cout << "Could not read the image: " << argv[1] << endl;
-  // }
-
-  // Current upperbound on size = (1022, 1022)
-  cv::resize(imageOrig, image, Size(1022, 1022), cv::INTER_LINEAR);
+  Mat image = imread(argv[1], IMREAD_GRAYSCALE);
+  if (image.empty()) {
+    cout << "Could not read the image: " << argv[1] << endl;
+  }
 
   // Define the kernel.
-  float *kernelAlign = sobel3x3KernelAlign;
+  float *kernelAlign = laplacianKernelAlign;
   size_t kernelRows = laplacianKernelRows;
   size_t kernelCols = laplacianKernelCols;
 
@@ -84,7 +78,7 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   MemRef<float, 2> output1(sizesOutput);
   MemRef<float, 2> output2(sizesOutput);
 
-  Mat kernel1 = Mat(3, 3, CV_32FC1, sobel3x3KernelAlign);
+  Mat kernel1 = Mat(3, 3, CV_32FC1, laplacianKernelAlign);
 
   // // Call the MLIR Corr2D function.
   // dip::Corr2D(&input, &kernel, &output1, x, y,
@@ -126,10 +120,10 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   filter2D(image, opencvConstantPadding, CV_8UC1, kernel1, cv::Point(x, y), 0.0,
            cv::BORDER_CONSTANT);
 
-  // if (!testImages(o2, opencvConstantPadding)) {
-  //   std::cout << "x, y = " << x << ", " << y << "\n";
-  //   return 0;
-  // }
+  if (!testImages(o2, opencvConstantPadding)) {
+    std::cout << "x, y = " << x << ", " << y << "\n";
+    return 0;
+  }
 
   return 1;
 }

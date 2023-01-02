@@ -54,7 +54,7 @@ void _mlir_ciface_corr_2d_replicate_padding(
     unsigned int centerX, unsigned int centerY, float constantValue);
 
 
-void _mlir_ciface_corrfft_2d(Img<float, 2> *inputReal,
+void _mlir_ciface_corrfft_2d(MemRef<float, 2> *inputReal,
                              MemRef<float, 2> *inputImag,
                              MemRef<float, 2> *kernelReal,
                              MemRef<float, 2> *kernelImag,
@@ -222,33 +222,41 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
                float constantValue = 0) {
   // Calculate padding sizes.
   size_t paddedSizes[2] = {
-      1 << ((uint8_t)ceil(
-          log2(input->getSizes()[0] + kernel->getSizes()[0] - 1))),
-      1 << ((uint8_t)ceil(
-          log2(input->getSizes()[1] + kernel->getSizes()[1] - 1)))};
+      1 << (static_cast<size_t>(ceil(
+          log2(input->getSizes()[0] + kernel->getSizes()[0] - 1)))),
+      1 << (static_cast<size_t>(ceil(
+          log2(input->getSizes()[1] + kernel->getSizes()[1] - 1))))};
   size_t paddedTSizes[2] = {paddedSizes[1], paddedSizes[0]};
-  size_t paddedSize = paddedSizes[0] * paddedSizes[1];
 
-  float flippedKernelData[kernel->getSizes()[0] * kernel->getSizes()[1]];
+  // Declare padded containers for input image and kernel.
+  // Also declare an intermediate container for calculation convenience.
+  MemRef<float, 2> inputPaddedReal(paddedSizes);
+  MemRef<float, 2> inputPaddedImag(paddedSizes);
+
+  MemRef<float, 2> kernelPaddedReal(paddedSizes);
+  MemRef<float, 2> kernelPaddedImag(paddedSizes);
+
+  MemRef<float, 2> intermediateReal(paddedTSizes);
+  MemRef<float, 2> intermediateImag(paddedTSizes);
+
+  MemRef<float, 2> flippedKernel({kernel->getSizes()[0], kernel->getSizes()[1]});
+
   for (uint32_t i = 0; i < kernel->getSizes()[0]; ++i)
     for (uint32_t j = 0; j < kernel->getSizes()[1]; ++j) {
-      flippedKernelData[i * kernel->getSizes()[1] + j] =
+      flippedKernel.getData()[i * kernel->getSizes()[1] + j] =
           kernel->getData()[(kernel->getSizes()[0] - 1 - i) *
                                 kernel->getSizes()[1] +
                             kernel->getSizes()[1] - 1 - j];
     }
 
-  // Obtain padded input image.
-  float inputPaddedDataReal[paddedSize];
-
   if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
     for (uint32_t i = 0; i < paddedSizes[0]; ++i) {
       for (uint32_t j = 0; j < paddedSizes[1]; ++j) {
         if (i < input->getSizes()[0] && j < input->getSizes()[1])
-          inputPaddedDataReal[i * paddedSizes[1] + j] =
+          inputPaddedReal.getData()[i * paddedSizes[1] + j] =
               input->getData()[i * input->getSizes()[1] + j];
         else
-          inputPaddedDataReal[i * paddedSizes[1] + j] = constantValue;
+          inputPaddedReal.getData()[i * paddedSizes[1] + j] = constantValue;
       }
     }
   } else if (option == BOUNDARY_OPTION::REPLICATE_PADDING) {
@@ -264,25 +272,11 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
                          : ((j < input->getSizes()[1] + centerX)
                                 ? (input->getSizes()[1] - 1)
                                 : 0);
-        inputPaddedDataReal[i * paddedSizes[1] + j] =
+        inputPaddedReal.getData()[i * paddedSizes[1] + j] =
             input->getData()[r * input->getSizes()[1] + c];
       }
     }
   }
-
-  size_t kernelSize[2] = {kernel->getSizes()[0], kernel->getSizes()[1]};
-  MemRef<float, 2> flippedKernel(flippedKernelData, kernelSize);
-
-  // Declare padded containers for input image and kernel.
-  // Also declare an intermediate container for calculation convenience.
-  Img<float, 2> inputPaddedReal(inputPaddedDataReal, paddedSizes);
-  MemRef<float, 2> inputPaddedImag(paddedSizes);
-
-  MemRef<float, 2> kernelPaddedReal(paddedSizes);
-  MemRef<float, 2> kernelPaddedImag(paddedSizes);
-
-  MemRef<float, 2> intermediateReal(paddedTSizes);
-  MemRef<float, 2> intermediateImag(paddedTSizes);
 
   // Obtain padded kernel.
   detail::padKernel(&flippedKernel, centerX, centerY, paddedSizes,
