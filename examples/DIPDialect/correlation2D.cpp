@@ -60,12 +60,14 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
                         std::ptrdiff_t y, std::ptrdiff_t boundaryOption) {
   Mat imageOrig = imread(argv[1], IMREAD_GRAYSCALE);
   Mat image;
+  // Mat image = imread(argv[1], IMREAD_GRAYSCALE);
 
-  if (imageOrig.empty()) {
-    cout << "Could not read the image: " << argv[1] << endl;
-  }
+  // if (imageOrig.empty()) {
+  //   cout << "Could not read the image: " << argv[1] << endl;
+  // }
 
-  cv::resize(imageOrig, image, Size(700, 700), cv::INTER_LINEAR);
+  // Current upperbound on size = (1022, 1022)
+  cv::resize(imageOrig, image, Size(1022, 1022), cv::INTER_LINEAR);
 
   // Define the kernel.
   float *kernelAlign = sobel3x3KernelAlign;
