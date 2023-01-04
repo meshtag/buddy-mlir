@@ -90,24 +90,33 @@ module {
     %cx = arith.constant 1 : index
     %const = arith.constant 0.000000e+00 : f32
 
+    // Print input.
+    %print_input1 = memref.cast %imageReal : memref<?x?xf32> to memref<*xf32>
+    call @printMemrefF32(%print_input1) : (memref<*xf32>) -> ()
+
+    %print_kernel = memref.cast %filterReal : memref<?x?xf32> to memref<*xf32>
+    call @printMemrefF32(%print_kernel) : (memref<*xf32>) -> ()
+
     // Execute convolution for specific times.
     affine.for %arg0 = 0 to %reps {
       // func.call @conv_2d(%image, %filter, %output) : (memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>) -> ()
-      dip.corrfft_2d %imageReal, %imageImag, %filterReal, %filterImag, %outputReal, %outputImag, %intReal, %intImag, %cx, %cx, %const : memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, index, index, f32
+      dip.corrfft_2d %imageReal, %imageImag, %filterReal, %filterImag, %outputReal, %outputImag : memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>, memref<?x?xf32>
+      // dip.rotate_2d %inputImage, %angle, %outputImage : memref<?x?xf32>, f32, memref<?x?xf32>
+      // dip.rotate_2d %imageReal, %const, %outputReal : memref<?x?xf32>, f32, memref<?x?xf32>
     }
 
     // Print input.
     %print_input = memref.cast %imageReal : memref<?x?xf32> to memref<*xf32>
     call @printMemrefF32(%print_input) : (memref<*xf32>) -> ()
 
-    %print_input_imag = memref.cast %imageImag : memref<?x?xf32> to memref<*xf32>
-    call @printMemrefF32(%print_input_imag) : (memref<*xf32>) -> ()
+    // %print_input_imag = memref.cast %imageImag : memref<?x?xf32> to memref<*xf32>
+    // call @printMemrefF32(%print_input_imag) : (memref<*xf32>) -> ()
 
-    %print_int_real = memref.cast %intReal : memref<?x?xf32> to memref<*xf32>
-    call @printMemrefF32(%print_int_real) : (memref<*xf32>) -> ()
+    // %print_int_real = memref.cast %intReal : memref<?x?xf32> to memref<*xf32>
+    // call @printMemrefF32(%print_int_real) : (memref<*xf32>) -> ()
 
-    %print_int_imag = memref.cast %intImag : memref<?x?xf32> to memref<*xf32>
-    call @printMemrefF32(%print_int_imag) : (memref<*xf32>) -> ()
+    // %print_int_imag = memref.cast %intImag : memref<?x?xf32> to memref<*xf32>
+    // call @printMemrefF32(%print_int_imag) : (memref<*xf32>) -> ()
 
     // // Print kernel.
     // %print_kernel = memref.cast %filterReal : memref<?x?xf32> to memref<*xf32>
