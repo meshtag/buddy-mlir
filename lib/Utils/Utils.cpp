@@ -227,7 +227,7 @@ void idft1DCooleyTukeyButterfly(OpBuilder &builder, Location loc,
                                 Value memRefReal2D, Value memRefImag2D,
                                 Value memRefLength, Value strideVal,
                                 VectorType vecType, Value rowIndex, Value c0,
-                                Value c1, int64_t step) {
+                                Value c1) {
   // Cooley Tukey Butterfly algorithm implementation.
   Value subProbs = builder.create<arith::ShRSIOp>(loc, memRefLength, c1);
   Value subProbSize, half = c1, i, jBegin, jEnd, j, angle;
@@ -364,7 +364,7 @@ void dft1DGentlemanSandeButterfly(OpBuilder &builder, Location loc,
                                   Value memRefReal2D, Value memRefImag2D,
                                   Value memRefLength, Value strideVal,
                                   VectorType vecType, Value rowIndex, Value c0,
-                                  Value c1, int64_t step) {
+                                  Value c1) {
   // Gentleman Sande Butterfly algorithm implementation.
   Value subProbs = c1, subProbSize = memRefLength, i, jBegin, jEnd, j, half,
         angle;
@@ -480,7 +480,7 @@ void idft2D(OpBuilder &builder, Location loc, Value container2DReal,
           ValueRange itrArg) {
         idft1DCooleyTukeyButterfly(builder, loc, container2DReal,
                                    container2DImag, container2DCols, strideVal,
-                                   vecType, iv, c0, c1, 1);
+                                   vecType, iv, c0, c1);
 
         nestedBuilder.create<AffineYieldOp>(nestedLoc);
       });
@@ -499,7 +499,7 @@ void idft2D(OpBuilder &builder, Location loc, Value container2DReal,
           ValueRange itrArg) {
         idft1DCooleyTukeyButterfly(builder, loc, intermediateReal,
                                    intermediateImag, container2DRows, strideVal,
-                                   vecType, iv, c0, c1, 1);
+                                   vecType, iv, c0, c1);
 
         nestedBuilder.create<AffineYieldOp>(nestedLoc);
       });
@@ -539,7 +539,7 @@ void dft2D(OpBuilder &builder, Location loc, Value container2DReal,
           ValueRange itrArg) {
         dft1DGentlemanSandeButterfly(builder, loc, container2DReal,
                                      container2DImag, container2DCols,
-                                     strideVal, vecType, iv, c0, c1, 1);
+                                     strideVal, vecType, iv, c0, c1);
 
         nestedBuilder.create<AffineYieldOp>(nestedLoc);
       });
@@ -558,7 +558,7 @@ void dft2D(OpBuilder &builder, Location loc, Value container2DReal,
           ValueRange itrArg) {
         dft1DGentlemanSandeButterfly(builder, loc, intermediateReal,
                                      intermediateImag, container2DRows,
-                                     strideVal, vecType, iv, c0, c1, 1);
+                                     strideVal, vecType, iv, c0, c1);
 
         nestedBuilder.create<AffineYieldOp>(nestedLoc);
       });
