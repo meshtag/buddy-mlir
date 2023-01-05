@@ -623,6 +623,21 @@ void dft1DGentlemanSandeButterfly(OpBuilder &builder, Location loc,
   Value neg2MPI = builder.create<ConstantFloatOp>(
       loc, (llvm::APFloat)(float)(-2.0 * M_PI), builder.getF32Type());
 
+  Value c3 = builder.create<ConstantIndexOp>(loc, 3);
+  Value c55 = builder.create<ConstantIndexOp>(loc, 55);
+  auto loop = builder.create<scf::ForOp>(loc, c0, c3, c1, ValueRange{c0}, 
+    [&](OpBuilder &builder, Location loc, ValueRange iv, ValueRange updateVar) {
+      builder.create<vector::PrintOp>(loc, updateVar[0]);
+
+      Value check_val = builder.create<arith::AddIOp>(loc, updateVar[0], c1);
+
+      builder.create<scf::YieldOp>(loc, ValueRange{check_val});
+    });
+//   builder.create<vector::PrintOp>(loc, c55);
+//   builder.create<vector::PrintOp>(loc, loop.getInductionVar());
+    builder.create<vector::PrintOp>(loc, loop);
+  // builder.create<vector::PrintOp>(loc, updateVar[0]);
+
   builder.create<scf::ForOp>(
       loc, c0, upperBound, c1, ValueRange{subProbs, subProbSize},
       [&](OpBuilder &builder, Location loc, ValueRange iv,
@@ -705,10 +720,14 @@ void dft1DGentlemanSandeButterfly(OpBuilder &builder, Location loc,
                     // Value rowMidCond = builder.create<arith::CmpIOp>(
                     //     loc, arith::CmpIPredicate::slt, currRow, rowMidHelper);
                     // Value lastIterCond = builder.create<
+                    // builder.create<vector::PrintOp>(loc, wUpdate[0]);
+                    // builder.create<vector::PrintOp>(loc, c0);
 
                     builder.create<scf::YieldOp>(
                         loc, ValueRange{wUpdate[0], wUpdate[1]});
                   });
+                  // builder.create<vector::PrintOp>(loc, wRealVec);
+                  // builder.create<vector::PrintOp>(loc, wImagVec);
 
               builder.create<scf::YieldOp>(loc);
             });
