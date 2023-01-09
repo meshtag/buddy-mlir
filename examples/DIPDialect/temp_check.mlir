@@ -89,6 +89,7 @@ module {
           scf.yield %25 : index
         }
         vector.print %23 : index
+        vector.print %c55 : index
         %24:2 = scf.for %arg2 = %c0_6 to %22 step %c1_7 iter_args(%arg3 = %c1_7, %arg4 = %12) -> (index, index) {
           %25 = arith.shrsi %arg4, %c1_7 : index
           %26 = arith.index_cast %arg4 : index to i32
