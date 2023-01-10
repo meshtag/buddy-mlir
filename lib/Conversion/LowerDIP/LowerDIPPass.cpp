@@ -612,7 +612,7 @@ void dft1DGentlemanSandeButterfly(OpBuilder &builder, Location loc,
                                   Value c0, Value c1) {
   // Gentleman Sande Butterfly algorithm implementation.
   Value subProbs = c1, subProbSize = memRefLength, i, jBegin, jEndOrig,
-        jEndMultiple, jEnd1, jEnd2, j, half, angle;
+        jEndMultiple, jEnd1, j, half, angle;
   Value wStepReal, wStepImag, wReal, wImag, tmp1Real, tmp1Imag, tmp2Real,
       tmp2Imag;
   Value wRealVec, wImagVec, wStepRealVec, wStepImagVec;
@@ -623,27 +623,6 @@ void dft1DGentlemanSandeButterfly(OpBuilder &builder, Location loc,
                      loc, indexToF32(builder, loc, memRefLength)));
   Value neg2MPI = builder.create<ConstantFloatOp>(
       loc, (llvm::APFloat)(float)(-2.0 * M_PI), builder.getF32Type());
-
-  Value c3 = builder.create<ConstantIndexOp>(loc, 3);
-  Value c55 = builder.create<ConstantIndexOp>(loc, 55);
-  auto loop = builder.create<scf::ForOp>(loc, c0, c3, c1, ValueRange{c0, c0}, 
-    [&](OpBuilder &builder, Location loc, ValueRange iv, ValueRange updateVar) {
-      Value check_val = builder.create<arith::AddIOp>(loc, updateVar[0], c1);
-      Value check_val_val = builder.create<arith::AddIOp>(loc, check_val, c1);
-
-      builder.create<scf::YieldOp>(loc, ValueRange{check_val, check_val_val});
-    });
-  builder.create<vector::PrintOp>(loc, loop.getResults()[0]);
-  builder.create<vector::PrintOp>(loc, loop.getResults()[1]);
-
-//   Value check1 = loop.getInductionVar();
-//   Value check2 = loop.getResultForOpOperand(ValueRange{c0});
-//   builder.create<vector::PrintOp>(loc, check1[0]);
-//   Value check2 = builder.create<arith::AddIOp>(loc, check1, c3);
-//   builder.create<vector::PrintOp>(loc, c55);
-//   builder.create<vector::PrintOp>(loc, loop.getInductionVar());
-    // builder.create<vector::PrintOp>(loc, loop);
-  // builder.create<vector::PrintOp>(loc, updateVar[0]);
 
   builder.create<scf::ForOp>(
       loc, c0, upperBound, c1, ValueRange{subProbs, subProbSize},
@@ -667,11 +646,26 @@ void dft1DGentlemanSandeButterfly(OpBuilder &builder, Location loc,
               jBegin =
                   builder.create<arith::MulIOp>(loc, iv1[0], outerIterVR[1]);
               jEndOrig = builder.create<arith::AddIOp>(loc, jBegin, half);
-              jEndMultiple = builder.create<arith::DivUIOp>(loc, jEndOrig, strideVal);
-              jEnd1 = builder.create<arith::MulIOp>(loc, jEndMultiple, strideVal);
-              jEnd2 = builder.create<arith::SubIOp>(loc, jEndOrig, jEnd1);
+              Value p1 = builder.create<arith::SubIOp>(loc, jEndOrig, jBegin);
+              jEndMultiple =
+                  builder.create<arith::DivUIOp>(loc, p1, strideVal);
+              Value jEnd1_1 =
+                  builder.create<arith::MulIOp>(loc, jEndMultiple, strideVal);
+              jEnd1 = builder.create<arith::AddIOp>(loc, jEnd1_1, jBegin);
 
-              Value wUpdateFinal1, wUpdateFinal2;
+            //   Value p1 = builder.create<arith::SubIOp>(loc, jEndOrig, jBegin);
+            //   Value p4 = builder.create<arith::SubIOp>(loc, jEndMultiple, jBegin);
+            //   Value p2 = builder.create<arith::MulIOp>(loc, p4, strideVal);
+              Value p3 = builder.create<arith::SubIOp>(loc, jEndOrig, jEnd1);
+              Value p_sep = builder.create<ConstantIndexOp>(loc, 7000000);
+
+              builder.create<vector::PrintOp>(loc, jBegin);
+              builder.create<vector::PrintOp>(loc, jEndOrig);
+              builder.create<vector::PrintOp>(loc, jEnd1_1);
+            // //   builder.create<vector::PrintOp>(loc, p1);
+            //   builder.create<vector::PrintOp>(loc, p4);
+            // //   builder.create<vector::PrintOp>(loc, p3);
+              builder.create<vector::PrintOp>(loc, p_sep);
 
               wReal = builder.create<ConstantFloatOp>(loc, (llvm::APFloat)1.0f,
                                                       builder.getF32Type());
@@ -683,15 +677,33 @@ void dft1DGentlemanSandeButterfly(OpBuilder &builder, Location loc,
               wImagVec =
                   builder.create<vector::BroadcastOp>(loc, vecType, wImag);
 
-              Value c1 = builder.create<ConstantIndexOp>(loc, 1);
-              Value jEnd1_1 = builder.create<arith::SubIOp>(loc, jEnd1, c1);
-
               // Vectorize stuff inside this loop (take care of tail processing
               // as well)
-              builder.create<scf::ForOp>(
+              auto loop = builder.create<scf::ForOp>(
                   loc, jBegin, jEnd1, strideVal, ValueRange{wRealVec, wImagVec},
                   [&](OpBuilder &builder, Location loc, ValueRange iv2,
                       ValueRange wVR) {
+                        //   Value tailProcessingCond = builder.create<arith::CmpIOp>(
+                //   loc, arith::CmpIPredicate::ne, jEnd1, jEndOrig);
+                    Value c22 = builder.create<ConstantIndexOp>(loc, 2);
+                    Value c33 = builder.create<ConstantIndexOp>(loc, 3);
+                    Value cond1 = builder.create<arith::CmpIOp>(loc, arith::CmpIPredicate::eq,
+                                    jBegin, c22);
+                    Value cond2 = builder.create<arith::CmpIOp>(loc, arith::CmpIPredicate::eq,
+                                    jEndOrig, c33);
+
+                    builder.create<scf::IfOp>(loc, cond1, 
+                        [&](OpBuilder &builder, Location loc) {
+                            builder.create<scf::IfOp>(loc, cond2, 
+                            [&](OpBuilder &builder, Location loc) {
+
+                                // builder.create<vector::PrintOp>(loc, jEndOrig);
+                                builder.create<scf::YieldOp>(loc);
+                            });
+                            builder.create<scf::YieldOp>(loc);
+                        });
+
+
                     tmp1Real =
                         builder.create<LoadOp>(loc, vecType, memRefReal2D,
                                                ValueRange{rowIndex, iv2[0]});
@@ -729,82 +741,97 @@ void dft1DGentlemanSandeButterfly(OpBuilder &builder, Location loc,
                         complexVecMulI(builder, loc, wVR[0], wVR[1],
                                        wStepRealVec, wStepImagVec);
 
-                    // Value rowMidCond = builder.create<arith::CmpIOp>(
-                    //     loc, arith::CmpIPredicate::slt, currRow, rowMidHelper);
-                    // Value lastIterCond = builder.create<
+                    Value checky = builder.create<ConstantIndexOp>(loc, 5000000);
                     // builder.create<vector::PrintOp>(loc, wUpdate[0]);
-                    // builder.create<vector::PrintOp>(loc, c0);
-
-                    // wUpdateFinal1 = wUpdate[0];
-                    // wUpdateFinal2 = wUpdate[1];
-
-                    // Value endCond = builder.create<arith::CmpIOp>(loc, arith::CmpIPredicate::eq, 
-                    //         jEnd1_1, iv2[0]);
-                    // builder.create<scf::IfOp>(loc, endCond, 
-                    //     [&](OpBuilder &builder, Location loc) {
-                    //         wUpdateFinal1 = wUpdate[0];
-                    //         wUpdateFinal2 = wUpdate[1];
-
-                    //         builder.create<scf::YieldOp>(loc);
-                    //     });
+                    // builder.create<vector::PrintOp>(loc, wUpdate[1]);
+                    // builder.create<vector::PrintOp>(loc, int3Vec[0]);
+                    Value p = builder.create<arith::SubIOp>(loc, jEnd1, jBegin);
+                    // builder.create<vector::PrintOp>(loc, checky);
+                    // builder.create<vector::PrintOp>(loc, p);
+                    // builder.create<vector::PrintOp>(loc, checky);
 
                     builder.create<scf::YieldOp>(
                         loc, ValueRange{wUpdate[0], wUpdate[1]});
                   });
 
-                // builder.create<scf::ForOp>(loc, jEnd1, jEnd2, c1, ValueRange{}, 
-                //     [&](OpBuilder &builder, Location loc, ValueRange iv, ValueRange) {
-                //         builder.create<vector::PrintOp>(loc, c0);
+                  Value checky = builder.create<ConstantIndexOp>(loc, 5000000);
+                //   builder.create<vector::PrintOp>(loc, loop.getResults()[0]);
+                //   builder.create<vector::PrintOp>(loc, loop.getResults()[1]);
+                //   builder.create<vector::PrintOp>(loc, checky);
 
-                //         builder.create<scf::YieldOp>(loc);
-                //     });
-                //     builder.create<vector::PrintOp>(loc, c55);
-
-                  Value tailProcessingCond = builder.create<arith::CmpIOp>(loc, 
-                    arith::CmpIPredicate::ne, jEnd1, jEnd2);
-                  builder.create<scf::IfOp>(loc, tailProcessingCond,
-                    [&](OpBuilder &builder, Location loc) {
-                        Value extraElemMask =
-                            tailMaskCreator(builder, loc, jEnd1, jEnd2, vectorMaskTy);
-                        tmp1Real =
-                            builder.create<vector::MaskedLoadOp>(loc, vecType, memRefReal2D,
-                                               ValueRange{rowIndex, jEnd1}, extraElemMask, zeroPadding);
-                    tmp1Imag =
-                        builder.create<vector::MaskedLoadOp>(loc, vecType, memRefImag2D,
-                                               ValueRange{rowIndex, jEnd1}, extraElemMask, zeroPadding);
+              Value tailProcessingCond = builder.create<arith::CmpIOp>(
+                  loc, arith::CmpIPredicate::ne, p1, jEnd1_1);
+              builder.create<scf::IfOp>(
+                  loc, tailProcessingCond,
+                  [&](OpBuilder &builder, Location loc) {
+                    Value extraElemMask = tailMaskCreator(builder, loc, p1,
+                                                          jEnd1_1, vectorMaskTy);
+                    builder.create<vector::PrintOp>(loc, extraElemMask);
+                    builder.create<vector::PrintOp>(loc, checky);
+                    tmp1Real = builder.create<vector::MaskedLoadOp>(
+                        loc, vecType, memRefReal2D, ValueRange{rowIndex, jEnd1},
+                        extraElemMask, zeroPadding);
+                    tmp1Imag = builder.create<vector::MaskedLoadOp>(
+                        loc, vecType, memRefImag2D, ValueRange{rowIndex, jEnd1},
+                        extraElemMask, zeroPadding);
+                    // builder.create<vector::PrintOp>(loc, jEndOrig);
+                    Value temp_const = builder.create<ConstantIndexOp>(loc, 100000);
+                    Value p = builder.create<arith::SubIOp>(loc, jEndOrig, jEnd1);
+                    // builder.create<vector::PrintOp>(loc, jEndOrig);
+                    // builder.create<vector::PrintOp>(loc, jEnd1);
+                    // builder.create<vector::PrintOp>(loc, extraElemMask);
+                    // builder.create<vector::PrintOp>(loc, temp_const);
+                    // builder.create<vector::PrintOp>(loc, p);
 
                     Value secondIndex =
                         builder.create<arith::AddIOp>(loc, jEnd1, half);
+
+                    // builder.create<vector::PrintOp>(loc, secondIndex);
+                    // builder.create<vector::PrintOp>(loc, temp_const);
+                    
                     tmp2Real = builder.create<vector::MaskedLoadOp>(
                         loc, vecType, memRefReal2D,
-                        ValueRange{rowIndex, secondIndex}, extraElemMask, zeroPadding);
+                        ValueRange{rowIndex, secondIndex}, extraElemMask,
+                        zeroPadding);
                     tmp2Imag = builder.create<vector::MaskedLoadOp>(
                         loc, vecType, memRefImag2D,
-                        ValueRange{rowIndex, secondIndex}, extraElemMask, zeroPadding);
+                        ValueRange{rowIndex, secondIndex}, extraElemMask,
+                        zeroPadding);
+                    // builder.create<vector::PrintOp>(loc, tmp2Real);
+                    // builder.create<vector::PrintOp>(loc, tmp2Imag);
+                    // builder.create<vector::PrintOp>(loc, half);
 
-                     std::vector<Value> int1Vec = complexVecAddI(
+                    std::vector<Value> int1Vec = complexVecAddI(
                         builder, loc, tmp1Real, tmp1Imag, tmp2Real, tmp2Imag);
-                    // builder.create<vector::MaskedStoreOp>(loc, memRefReal2D,
-                    //                         ValueRange{rowIndex, jEnd1}, extraElemMask, int1Vec[0]);
-                    // builder.create<vector::MaskedStoreOp>(loc, memRefImag2D,
-                    //                         ValueRange{rowIndex, jEnd1}, extraElemMask, int1Vec[1]);
+                    builder.create<vector::MaskedStoreOp>(loc, memRefReal2D,
+                                            ValueRange{rowIndex, jEnd1},
+                                            extraElemMask, int1Vec[0]);
+                    builder.create<vector::MaskedStoreOp>(loc, memRefImag2D,
+                                            ValueRange{rowIndex, jEnd1},
+                                            extraElemMask, int1Vec[1]);
 
-                    // std::vector<Value> int2Vec = complexVecSubI(
-                    //     builder, loc, tmp1Real, tmp1Imag, tmp2Real, tmp2Imag);
-                    // std::vector<Value> int3Vec = complexVecMulI(
-                    //     builder, loc, int2Vec[0], int2Vec[1], wUpdateFinal1, wUpdateFinal2);
+                    std::vector<Value> int2Vec = complexVecSubI(
+                        builder, loc, tmp1Real, tmp1Imag, tmp2Real,
+                        tmp2Imag);
+                    std::vector<Value> int3Vec = complexVecMulI(
+                        builder, loc, int2Vec[0], int2Vec[1],
+                        loop.getResults()[0], loop.getResults()[1]);
 
-                    // builder.create<vector::MaskedStoreOp>(loc, memRefReal2D,
-                    //                         ValueRange{rowIndex, secondIndex}, extraElemMask, int3Vec[0]);
-                    // builder.create<vector::MaskedStoreOp>(loc, memRefImag2D,
-                    //                         ValueRange{rowIndex, secondIndex}, extraElemMask, int3Vec[1]);
-                    
+                    // builder.create<vector::PrintOp>(loc, int3Vec[0]);
+                    // builder.create<vector::PrintOp>(loc, checky);
+                    // builder.create<vector::PrintOp>(loc, loop.getResults()[0]);
+
+                    builder.create<vector::MaskedStoreOp>(loc, memRefReal2D,
+                                            ValueRange{rowIndex,
+                                            secondIndex}, extraElemMask,
+                                            int3Vec[0]);
+                    builder.create<vector::MaskedStoreOp>(loc, memRefImag2D,
+                                            ValueRange{rowIndex,
+                                            secondIndex}, extraElemMask,
+                                            int3Vec[1]);
+
                     builder.create<scf::YieldOp>(loc);
-                    });
-
-                  // builder.create<vector::PrintOp>(loc, wRealVec);
-                  // builder.create<vector::PrintOp>(loc, wImagVec);
-
+                  });
               builder.create<scf::YieldOp>(loc);
             });
         Value updatedSubProbs =
@@ -877,16 +904,17 @@ void idft2D(OpBuilder &builder, Location loc, Value container2DReal,
 // MemRefs for real and imaginary parts are expected.
 void dft2D(OpBuilder &builder, Location loc, Value container2DReal,
            Value container2DImag, Value container2DRows, Value container2DCols,
-           Value intermediateReal, Value intermediateImag, Value zeroPadding, Value c0, Value c1,
-           Value strideVal, VectorType vecType, VectorType vecMaskTy) {
+           Value intermediateReal, Value intermediateImag, Value zeroPadding,
+           Value c0, Value c1, Value strideVal, VectorType vecType,
+           VectorType vecMaskTy) {
   builder.create<AffineForOp>(
       loc, ValueRange{c0}, builder.getDimIdentityMap(),
       ValueRange{container2DRows}, builder.getDimIdentityMap(), 1, llvm::None,
       [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv,
           ValueRange itrArg) {
-        dft1DGentlemanSandeButterfly(builder, loc, container2DReal,
-                                     container2DImag, container2DCols,
-                                     strideVal, zeroPadding, vecType, vecMaskTy, iv, c0, c1);
+        dft1DGentlemanSandeButterfly(
+            builder, loc, container2DReal, container2DImag, container2DCols,
+            strideVal, zeroPadding, vecType, vecMaskTy, iv, c0, c1);
 
         nestedBuilder.create<AffineYieldOp>(nestedLoc);
       });
@@ -903,9 +931,9 @@ void dft2D(OpBuilder &builder, Location loc, Value container2DReal,
       ValueRange{container2DCols}, builder.getDimIdentityMap(), 1, llvm::None,
       [&](OpBuilder &nestedBuilder, Location nestedLoc, Value iv,
           ValueRange itrArg) {
-        dft1DGentlemanSandeButterfly(builder, loc, intermediateReal,
-                                     intermediateImag, container2DRows,
-                                     strideVal, zeroPadding, vecType, vecMaskTy, iv, c0, c1);
+        dft1DGentlemanSandeButterfly(
+            builder, loc, intermediateReal, intermediateImag, container2DRows,
+            strideVal, zeroPadding, vecType, vecMaskTy, iv, c0, c1);
 
         nestedBuilder.create<AffineYieldOp>(nestedLoc);
       });
@@ -939,8 +967,9 @@ public:
   explicit DIPCorrFFT2DOpLowering(MLIRContext *context, int64_t strideParam)
       : OpRewritePattern(context) {
     // stride = strideParam;
-    stride = 3;
-    // stride = 2;
+    // stride = 3;
+    // stride = 1;
+    stride = 2;
   }
 
   LogicalResult matchAndRewrite(dip::CorrFFT2DOp op,
@@ -976,20 +1005,23 @@ public:
     VectorType vectorMaskTy = VectorType::get({stride}, i1);
 
     Value c0F32 = indexToF32(rewriter, loc, c0);
-    Value zeroPadding = rewriter.create<vector::BroadcastOp>(loc, vectorTy32, c0F32);
+    Value zeroPadding =
+        rewriter.create<vector::BroadcastOp>(loc, vectorTy32, c0F32);
 
     dft2D(rewriter, loc, inputReal, inputImag, inputRow, inputCol,
-          intermediateReal, intermediateImag, zeroPadding, c0, c1, strideVal, vectorTy32, vectorMaskTy);
+          intermediateReal, intermediateImag, zeroPadding, c0, c1, strideVal,
+          vectorTy32, vectorMaskTy);
 
-    dft2D(rewriter, loc, kernelReal, kernelImag, kernelRow, kernelCol,
-          intermediateReal, intermediateImag, zeroPadding, c0, c1, strideVal, vectorTy32, vectorMaskTy);
+    // dft2D(rewriter, loc, kernelReal, kernelImag, kernelRow, kernelCol,
+    //       intermediateReal, intermediateImag, zeroPadding, c0, c1, strideVal,
+    //       vectorTy32, vectorMaskTy);
 
-    vector2DMemRefMultiply(rewriter, loc, inputReal, inputImag, kernelReal,
-                           kernelImag, inputReal, inputImag, inputRow, inputCol,
-                           c0, vectorTy32);
+    // vector2DMemRefMultiply(rewriter, loc, inputReal, inputImag, kernelReal,
+    //                        kernelImag, inputReal, inputImag, inputRow, inputCol,
+    //                        c0, vectorTy32);
 
-    idft2D(rewriter, loc, inputReal, inputImag, inputRow, inputCol,
-           intermediateReal, intermediateImag, c0, c1, strideVal, vectorTy32);
+    // idft2D(rewriter, loc, inputReal, inputImag, inputRow, inputCol,
+    //        intermediateReal, intermediateImag, c0, c1, strideVal, vectorTy32);
 
     // Remove the origin convolution operation involving FFT.
     rewriter.eraseOp(op);
