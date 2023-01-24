@@ -277,7 +277,9 @@ public:
 
   explicit DIPResize2DOpLowering(MLIRContext *context, int64_t strideParam)
       : OpRewritePattern(context) {
-    stride = strideParam;
+    // stride = strideParam;
+    // stride = 2;
+    stride = 1;
   }
 
   LogicalResult matchAndRewrite(dip::Resize2DOp op,
