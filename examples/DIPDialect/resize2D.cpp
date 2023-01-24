@@ -33,8 +33,8 @@ using namespace std;
 
 bool testImplementation(int argc, char *argv[]) {
   // Read as grayscale image.
-  // Mat image = imread("../../examples/ConvOpt/images/gil_sample.png", IMREAD_GRAYSCALE);
-  Mat image = imread(argv[1], IMREAD_GRAYSCALE);
+  Mat image = imread("../../examples/ConvOpt/images/dog.png", IMREAD_GRAYSCALE);
+  // Mat image = imread(argv[1], IMREAD_GRAYSCALE);
   if (image.empty()) {
     cout << "Could not read the image: " << argv[1] << endl;
   }
@@ -42,7 +42,7 @@ bool testImplementation(int argc, char *argv[]) {
   // Define memref container for image.
   Img<float, 2> input(image);
 
-  intptr_t outputSize[2] = {250, 100};
+  intptr_t outputSize[2] = {100, 250};
   std::vector<float> scalingRatios = {4, 4};
 
   // dip::Resize2D() can be called with either scaling ratios
