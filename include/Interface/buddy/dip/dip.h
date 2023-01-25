@@ -163,7 +163,7 @@ void _mlir_ciface_morphgrad_2d_replicate_padding(
 
 // Pad kernel as per the requirements for using FFT in convolution.
 void padKernel(MemRef<float, 2> *kernel, unsigned int centerX,
-               unsigned int centerY, size_t *paddedSizes,
+               unsigned int centerY, intptr_t *paddedSizes,
                MemRef<float, 2> *kernelPaddedReal) {
   // Apply padding so that the center of kernel is at top left of 2D padded
   // container.
@@ -183,7 +183,7 @@ void padKernel(MemRef<float, 2> *kernel, unsigned int centerX,
 // Helper function for applying 2D resize operation on images.
 MemRef<float, 2> Resize2D_Impl(Img<float, 2> *input, INTERPOLATION_TYPE type,
                                std::vector<float> scalingRatios,
-                               size_t outputSize[2]) {
+                               intptr_t outputSize[2]) {
   MemRef<float, 2> output(outputSize);
 
   if (type == INTERPOLATION_TYPE::NEAREST_NEIGHBOUR_INTERPOLATION) {
@@ -221,12 +221,12 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
                unsigned int centerY, BOUNDARY_OPTION option,
                float constantValue = 0) {
   // Calculate padding sizes.
-  size_t paddedSizes[2] = {
-      1 << (static_cast<size_t>(ceil(
-          log2(input->getSizes()[0] + kernel->getSizes()[0] - 1)))),
-      1 << (static_cast<size_t>(ceil(
-          log2(input->getSizes()[1] + kernel->getSizes()[1] - 1))))};
-  size_t paddedTSizes[2] = {paddedSizes[1], paddedSizes[0]};
+  intptr_t paddedSizes[2] = {
+      1 << ceil(
+          log2(input->getSizes()[0] + kernel->getSizes()[0] - 1)),
+      1 << ceil(
+          log2(input->getSizes()[1] + kernel->getSizes()[1] - 1))};
+  intptr_t paddedTSizes[2] = {paddedSizes[1], paddedSizes[0]};
 
   // Declare padded containers for input image and kernel.
   // Also declare an intermediate container for calculation convenience.
@@ -312,7 +312,7 @@ MemRef<float, 2> Rotate2D(Img<float, 2> *input, float angle,
                               std::abs(input->getSizes()[0] * sinAngle)) +
                    1;
 
-  size_t sizesOutput[2] = {static_cast<size_t>(outputRows), static_cast<size_t>(outputCols)};
+  intptr_t sizesOutput[2] = {outputRows, outputCols};
   MemRef<float, 2> output(sizesOutput);
 
   detail::_mlir_ciface_rotate_2d(input, angleRad, &output);
@@ -330,16 +330,16 @@ MemRef<float, 2> Resize2D(Img<float, 2> *input, INTERPOLATION_TYPE type,
         "input_image_dimension / output_image_dimension\n");
   }
 
-  size_t outputSize[2] = {
-      static_cast<unsigned int>(input->getSizes()[0] / scalingRatios[1]),
-      static_cast<unsigned int>(input->getSizes()[1] / scalingRatios[0])};
+  intptr_t outputSize[2] = {
+      input->getSizes()[0] / scalingRatios[1],
+      input->getSizes()[1] / scalingRatios[0]};
 
   return detail::Resize2D_Impl(input, type, scalingRatios, outputSize);
 }
 
 // User interface for 2D Resize.
 MemRef<float, 2> Resize2D(Img<float, 2> *input, INTERPOLATION_TYPE type,
-                          size_t outputSize[2]) {
+                          intptr_t outputSize[2]) {
   if (!outputSize[0] || !outputSize[1]) {
     throw std::invalid_argument(
         "Please enter non-zero values of output dimensions.\n");
@@ -355,9 +355,9 @@ void Erosion2D(Img<float, 2> input, MemRef<float, 2> *kernel,
                MemRef<float, 2> *output, unsigned int centerX,
                unsigned int centerY, unsigned int iterations,
                BOUNDARY_OPTION option, float constantValue = 0) {
-  size_t outputRows = output->getSizes()[0];
-  size_t outputCols = output->getSizes()[1];
-  size_t sizesOutput[2] = {outputRows, outputCols};
+  intptr_t outputRows = output->getSizes()[0];
+  intptr_t outputCols = output->getSizes()[1];
+  intptr_t sizesOutput[2] = {outputRows, outputCols};
   MemRef<float, 2> copymemref(sizesOutput, 256.f);
 
   if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
@@ -374,9 +374,9 @@ void Dilation2D(Img<float, 2> input, MemRef<float, 2> *kernel,
                 MemRef<float, 2> *output, unsigned int centerX,
                 unsigned int centerY, unsigned int iterations,
                 BOUNDARY_OPTION option, float constantValue = 0) {
-  size_t outputRows = output->getSizes()[0];
-  size_t outputCols = output->getSizes()[1];
-  size_t sizesOutput[2] = {outputRows, outputCols};
+  intptr_t outputRows = output->getSizes()[0];
+  intptr_t outputCols = output->getSizes()[1];
+  intptr_t sizesOutput[2] = {outputRows, outputCols};
   MemRef<float, 2> copymemref(sizesOutput, -1.f);
   if (option == BOUNDARY_OPTION::CONSTANT_PADDING) {
     detail::_mlir_ciface_dilation_2d_constant_padding(
@@ -392,10 +392,10 @@ void Opening2D(Img<float, 2> input, MemRef<float, 2> *kernel,
                MemRef<float, 2> *output, unsigned int centerX,
                unsigned int centerY, unsigned int iterations,
                BOUNDARY_OPTION option, float constantValue = 0) {
-  size_t outputRows = output->getSizes()[0];
-  size_t outputCols = output->getSizes()[1];
+  intptr_t outputRows = output->getSizes()[0];
+  intptr_t outputCols = output->getSizes()[1];
 
-  size_t sizesOutput[2] = {outputRows, outputCols};
+  intptr_t sizesOutput[2] = {outputRows, outputCols};
   MemRef<float, 2> output1(sizesOutput);
   MemRef<float, 2> copymemref(sizesOutput, 256.f);
   MemRef<float, 2> copymemref1(sizesOutput, -1.f);
@@ -414,10 +414,10 @@ void Closing2D(Img<float, 2> input, MemRef<float, 2> *kernel,
                MemRef<float, 2> *output, unsigned int centerX,
                unsigned int centerY, unsigned int iterations,
                BOUNDARY_OPTION option, float constantValue = 0) {
-  size_t outputRows = output->getSizes()[0];
-  size_t outputCols = output->getSizes()[1];
+  intptr_t outputRows = output->getSizes()[0];
+  intptr_t outputCols = output->getSizes()[1];
 
-  size_t sizesOutput[2] = {outputRows, outputCols};
+  intptr_t sizesOutput[2] = {outputRows, outputCols};
   MemRef<float, 2> output1(sizesOutput);
   MemRef<float, 2> copymemref(sizesOutput, -1.f);
   MemRef<float, 2> copymemref1(sizesOutput, 256.f);
@@ -436,9 +436,9 @@ void TopHat2D(Img<float, 2> input, MemRef<float, 2> *kernel,
               MemRef<float, 2> *output, unsigned int centerX,
               unsigned int centerY, unsigned int iterations,
               BOUNDARY_OPTION option, float constantValue = 0) {
-  size_t outputRows = output->getSizes()[0];
-  size_t outputCols = output->getSizes()[1];
-  size_t sizesOutput[2] = {outputRows, outputCols};
+  intptr_t outputRows = output->getSizes()[0];
+  intptr_t outputCols = output->getSizes()[1];
+  intptr_t sizesOutput[2] = {outputRows, outputCols};
   MemRef<float, 2> output1(sizesOutput);
   MemRef<float, 2> output2(sizesOutput);
   MemRef<float, 2> input1(sizesOutput);
@@ -459,9 +459,9 @@ void BottomHat2D(Img<float, 2> input, MemRef<float, 2> *kernel,
                  MemRef<float, 2> *output, unsigned int centerX,
                  unsigned int centerY, unsigned int iterations,
                  BOUNDARY_OPTION option, float constantValue = 0) {
-  size_t outputRows = output->getSizes()[0];
-  size_t outputCols = output->getSizes()[1];
-  size_t sizesOutput[2] = {outputRows, outputCols};
+  intptr_t outputRows = output->getSizes()[0];
+  intptr_t outputCols = output->getSizes()[1];
+  intptr_t sizesOutput[2] = {outputRows, outputCols};
   MemRef<float, 2> output1(sizesOutput);
   MemRef<float, 2> output2(sizesOutput);
   MemRef<float, 2> input1(sizesOutput);
@@ -482,9 +482,9 @@ void MorphGrad2D(Img<float, 2> input, MemRef<float, 2> *kernel,
                  MemRef<float, 2> *output, unsigned int centerX,
                  unsigned int centerY, unsigned int iterations,
                  BOUNDARY_OPTION option, float constantValue = 0) {
-  size_t outputRows = output->getSizes()[0];
-  size_t outputCols = output->getSizes()[1];
-  size_t sizesOutput[2] = {outputRows, outputCols};
+  intptr_t outputRows = output->getSizes()[0];
+  intptr_t outputCols = output->getSizes()[1];
+  intptr_t sizesOutput[2] = {outputRows, outputCols};
   MemRef<float, 2> output1(sizesOutput);
   MemRef<float, 2> output2(sizesOutput);
   MemRef<float, 2> input1(sizesOutput);

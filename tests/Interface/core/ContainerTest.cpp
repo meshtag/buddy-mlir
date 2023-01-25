@@ -23,7 +23,7 @@
 #include "Interface/buddy/core/Container.h"
 
 int main() {
-  size_t sizes[] = {2, 3};
+  intptr_t sizes[] = {2, 3};
   //===--------------------------------------------------------------------===//
   // Test default shape constructor.
   //===--------------------------------------------------------------------===//
