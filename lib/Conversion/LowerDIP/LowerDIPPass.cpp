@@ -40,9 +40,6 @@
 using namespace mlir;
 using namespace buddy;
 
-using namespace vector;
-using namespace mlir::arith;
-
 //===----------------------------------------------------------------------===//
 // Rewrite Pattern
 //===----------------------------------------------------------------------===//
@@ -104,9 +101,7 @@ public:
 
   explicit DIPCorrFFT2DOpLowering(MLIRContext *context, int64_t strideParam)
       : OpRewritePattern(context) {
-    // stride = strideParam;
     stride = 1;
-    // stride = 2;
   }
 
   LogicalResult matchAndRewrite(dip::CorrFFT2DOp op,
@@ -115,8 +110,8 @@ public:
     auto ctx = op->getContext();
 
     // Create constant indices.
-    Value c0 = rewriter.create<ConstantIndexOp>(loc, 0);
-    Value c1 = rewriter.create<ConstantIndexOp>(loc, 1);
+    Value c0 = rewriter.create<arith::ConstantIndexOp>(loc, 0);
+    Value c1 = rewriter.create<arith::ConstantIndexOp>(loc, 1);
 
     // Register operand values.
     Value inputReal = op->getOperand(0);
@@ -125,7 +120,7 @@ public:
     Value kernelImag = op->getOperand(3);
     Value intermediateReal = op->getOperand(4);
     Value intermediateImag = op->getOperand(5);
-    Value strideVal = rewriter.create<ConstantIndexOp>(loc, stride);
+    Value strideVal = rewriter.create<arith::ConstantIndexOp>(loc, stride);
 
     // Create DimOp for padded input image.
     Value inputRow = rewriter.create<memref::DimOp>(loc, inputReal, c0);

@@ -242,8 +242,6 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
   intptr_t flippedKernelSizeRows = kernel->getSizes()[0];
   intptr_t flippedKernelSizeCols = kernel->getSizes()[1];
   intptr_t flippedKernelSizes[2] = {flippedKernelSizeRows, flippedKernelSizeCols};
-  // MemRef<float, 2> flippedKernel({static_cast<intptr_t>(kernel->getSizes()[0]), 
-  //                                 static_cast<intptr_t>(kernel->getSizes()[1])});
   MemRef<float, 2> flippedKernel(flippedKernelSizes);
 
   for (uint32_t i = 0; i < kernel->getSizes()[0]; ++i)

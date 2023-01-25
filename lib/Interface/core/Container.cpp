@@ -212,7 +212,7 @@ template <typename T, std::size_t N> void MemRef<T, N>::setStrides() {
   if (N < 2)
     return;
   // Prevent implicit conversions between unsigned and signed
-  for (std::size_t i = N - 1; i > 0; i--) {
+  for (int i = N - 1; i > 0; i--) {
     strides[i - 1] = strides[i] * sizes[i];
   }
 }
