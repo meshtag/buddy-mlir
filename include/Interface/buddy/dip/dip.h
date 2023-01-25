@@ -222,10 +222,10 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
                float constantValue = 0) {
   // Calculate padding sizes.
   intptr_t paddedSizes[2] = {
-      1 << ceil(
-          log2(input->getSizes()[0] + kernel->getSizes()[0] - 1)),
-      1 << ceil(
-          log2(input->getSizes()[1] + kernel->getSizes()[1] - 1))};
+      1 << static_cast<intptr_t>(ceil(
+          log2(input->getSizes()[0] + kernel->getSizes()[0] - 1))),
+      1 << static_cast<intptr_t>(ceil(
+          log2(input->getSizes()[1] + kernel->getSizes()[1] - 1)))};
   intptr_t paddedTSizes[2] = {paddedSizes[1], paddedSizes[0]};
 
   // Declare padded containers for input image and kernel.
@@ -239,7 +239,12 @@ void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
   MemRef<float, 2> intermediateReal(paddedTSizes);
   MemRef<float, 2> intermediateImag(paddedTSizes);
 
-  MemRef<float, 2> flippedKernel({kernel->getSizes()[0], kernel->getSizes()[1]});
+  intptr_t flippedKernelSizeRows = kernel->getSizes()[0];
+  intptr_t flippedKernelSizeCols = kernel->getSizes()[1];
+  intptr_t flippedKernelSizes[2] = {flippedKernelSizeRows, flippedKernelSizeCols};
+  // MemRef<float, 2> flippedKernel({static_cast<intptr_t>(kernel->getSizes()[0]), 
+  //                                 static_cast<intptr_t>(kernel->getSizes()[1])});
+  MemRef<float, 2> flippedKernel(flippedKernelSizes);
 
   for (uint32_t i = 0; i < kernel->getSizes()[0]; ++i)
     for (uint32_t j = 0; j < kernel->getSizes()[1]; ++j) {
@@ -331,8 +336,8 @@ MemRef<float, 2> Resize2D(Img<float, 2> *input, INTERPOLATION_TYPE type,
   }
 
   intptr_t outputSize[2] = {
-      input->getSizes()[0] / scalingRatios[1],
-      input->getSizes()[1] / scalingRatios[0]};
+      static_cast<unsigned int>(input->getSizes()[0] / scalingRatios[1]),
+      static_cast<unsigned int>(input->getSizes()[1] / scalingRatios[0])};
 
   return detail::Resize2D_Impl(input, type, scalingRatios, outputSize);
 }
