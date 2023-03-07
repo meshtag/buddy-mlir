@@ -41,7 +41,7 @@ bool testImplementation(int argc, char *argv[]) {
   // Define memref container for image.
   Img<float, 2> input(image);
 
-  intptr_t outputSize[2] = {100, 250};
+  intptr_t outputSize[2] = {425, 480}; // {image_rows, image_cols}
   std::vector<float> scalingRatios = {4, 4};
 
   // dip::Resize2D() can be called with either scaling ratios
@@ -50,11 +50,11 @@ bool testImplementation(int argc, char *argv[]) {
   // Note : Both values in output image dimensions and scaling ratios must be
   // positive numbers.
 
-  MemRef<float, 2> output = dip::Resize2D(
-      &input, dip::INTERPOLATION_TYPE::NEAREST_NEIGHBOUR_INTERPOLATION,
-      outputSize);
   // MemRef<float, 2> output = dip::Resize2D(
-  //     &input, dip::INTERPOLATION_TYPE::BILINEAR_INTERPOLATION, outputSize);
+  //     &input, dip::INTERPOLATION_TYPE::NEAREST_NEIGHBOUR_INTERPOLATION,
+  //     outputSize);
+  MemRef<float, 2> output = dip::Resize2D(
+      &input, dip::INTERPOLATION_TYPE::BILINEAR_INTERPOLATION, outputSize);
 
   // MemRef<float, 2> output = dip::Resize2D(
   //     &input, dip::INTERPOLATION_TYPE::NEAREST_NEIGHBOUR_INTERPOLATION,
