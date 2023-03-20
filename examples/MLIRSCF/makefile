@@ -82,6 +82,7 @@ scf-parallel-aot:
 		-arith-expand \
         -convert-async-to-llvm \
         -convert-scf-to-cf \
+		-convert-vector-to-llvm \
         -convert-memref-to-llvm \
         -convert-func-to-llvm \
         -reconcile-unrealized-casts |\
@@ -92,7 +93,7 @@ scf-parallel-aot:
 		-lmlir_runner_utils -lmlir_c_runner_utils \
 		-lstatic_mlir_async_runtime \
 		-lLLVMSupport -lLLVMDemangle\
-		-lstdc++ -lpthread -ltinfo -lm \
+		-lstdc++ -lpthread -ltinfo -lm -ldl \
 		-o a.out
 	@LD_LIBRARY_PATH=${MLIR_LIB} ./a.out
 
