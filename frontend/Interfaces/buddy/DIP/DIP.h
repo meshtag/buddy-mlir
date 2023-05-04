@@ -177,6 +177,23 @@ inline MemRef<float, 2> Resize2D_Impl(Img<float, 2> *input,
 }
 } // namespace detail
 
+inline MemRef<float, 2> matToMemRef(cv::Mat container, bool is32FC1 = 1)
+{
+  intptr_t sizesContainer[2] = {container.rows, container.cols};
+  MemRef<float, 2> containerMemRef(sizesContainer);
+
+  for (int i = 0; i < container.rows; i++) {
+    for (int j = 0; j < container.cols; j++) {
+        if (is32FC1)
+          containerMemRef.getData()[container.cols * i + j] = container.at<float>(i, j);
+        else 
+          containerMemRef.getData()[container.cols * i + j] = static_cast<float>(container.at<uchar>(i, j));
+    }
+  }
+
+  return containerMemRef;
+}
+
 // User interface for 2D Correlation.
 inline void Corr2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
                    MemRef<float, 2> *output, unsigned int centerX,
@@ -189,6 +206,37 @@ inline void Corr2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
     detail::_mlir_ciface_corr_2d_replicate_padding(input, kernel, output,
                                                    centerX, centerY, 0);
   }
+}
+
+inline void Corr2DNChannels(cv::Mat &inputImage, cv::Mat &kernel, cv::Mat &outputImage, 
+                     unsigned int centerX, unsigned int centerY, BOUNDARY_OPTION option, 
+                     float constantValue = 0)
+{
+  std::vector<cv::Mat> inputChannels, outputChannels;
+  std::vector<MemRef<float, 2>> inputChannelMemRefs, outputChannelMemRefs;
+
+  cv::split(inputImage, inputChannels);
+  cv::split(outputImage, outputChannels);
+  MemRef<float, 2> kernelMemRef = matToMemRef(kernel);
+
+  for (auto cI : inputChannels)
+    inputChannelMemRefs.push_back(matToMemRef(cI, 0));
+
+  for (auto cO : outputChannels)
+    outputChannelMemRefs.push_back(matToMemRef(cO));
+
+  for (int i1 = 0; i1 < inputImage.channels(); ++i1)
+  {
+    dip::Corr2D(static_cast<Img<float, 2> *>(&inputChannelMemRefs[i1]), &kernelMemRef, &outputChannelMemRefs[i1], 
+                centerX, centerY, option, constantValue);
+  }
+
+  outputChannels.clear();
+  for (int i = 0; i < inputImage.channels(); ++i)
+    outputChannels.push_back(cv::Mat(inputImage.rows, inputImage.cols, CV_32FC1, 
+                      outputChannelMemRefs[i].getData()));
+
+  cv::merge(outputChannels, outputImage);
 }
 
 // User interface for 2D Rotation.
@@ -217,6 +265,38 @@ inline MemRef<float, 2> Rotate2D(Img<float, 2> *input, float angle,
   detail::_mlir_ciface_rotate_2d(input, angleRad, &output);
 
   return output;
+}
+
+inline cv::Mat Rotate2DNChannels(cv::Mat &inputImage, float angle, ANGLE_TYPE angleType)
+{
+  cv::Mat outputImage(inputImage);
+  std::vector<cv::Mat> inputChannels, outputChannels;
+  std::vector<MemRef<float, 2>> inputChannelMemRefs, outputChannelMemRefs;
+
+  cv::split(inputImage, inputChannels);
+  cv::split(outputImage, outputChannels);
+  
+  for (auto cI : inputChannels)
+    inputChannelMemRefs.push_back(matToMemRef(cI, 0));
+
+  for (auto cO : outputChannels)
+    outputChannelMemRefs.push_back(matToMemRef(cO));
+
+  for (int i1 = 0; i1 < inputImage.channels(); ++i1)
+  {
+    outputChannelMemRefs[i1] = dip::Rotate2D(
+      static_cast<Img<float, 2> *>(&inputChannelMemRefs[i1]), 
+      angle, angleType);
+  }
+
+  outputChannels.clear();
+  for (int i = 0; i < inputImage.channels(); ++i)
+    outputChannels.push_back(cv::Mat(inputImage.rows, inputImage.cols, CV_32FC1, 
+                      outputChannelMemRefs[i].getData()));
+
+  cv::merge(outputChannels, outputImage);
+
+  return outputImage;
 }
 
 // User interface for 2D Resize.
@@ -250,6 +330,42 @@ inline MemRef<float, 2> Resize2D(Img<float, 2> *input, INTERPOLATION_TYPE type,
   scalingRatios[0] = input->getSizes()[1] * 1.0f / outputSize[1];
 
   return detail::Resize2D_Impl(input, type, scalingRatios, outputSize);
+}
+
+inline cv::Mat Resize2DNChannels(cv::Mat &inputImage, INTERPOLATION_TYPE type, intptr_t outputSize[2])
+{
+  cv::Mat outputImage = cv::Mat::zeros(outputSize[0], outputSize[1], CV_32FC3);
+  std::vector<cv::Mat> inputChannels, outputChannels;
+  std::vector<MemRef<float, 2>> inputChannelMemRefs, outputChannelMemRefs;
+
+  cv::split(inputImage, inputChannels);
+  cv::split(outputImage, outputChannels);
+
+  inputChannelMemRefs.clear();
+  for (auto cI : inputChannels)
+    inputChannelMemRefs.push_back(matToMemRef(cI, 0));
+
+  for (auto cO : outputChannels)
+    outputChannelMemRefs.push_back(matToMemRef(cO));
+
+  for (int i1 = 0; i1 < inputImage.channels(); ++i1)
+  {
+    outputChannelMemRefs[i1] = dip::Resize2D(
+      static_cast<Img<float, 2> *>(&inputChannelMemRefs[i1]),
+      dip::INTERPOLATION_TYPE::NEAREST_NEIGHBOUR_INTERPOLATION,
+      outputSize);
+  }
+
+  outputChannels.clear();
+  for (int i = 0; i < inputImage.channels(); ++i)
+  {
+    outputChannels.push_back(cv::Mat(outputSize[0], outputSize[1], CV_32FC1, 
+                      outputChannelMemRefs[i].getData()));
+  }
+
+  cv::merge(outputChannels, outputImage);
+
+  return outputImage;
 }
 
 inline void Erosion2D(Img<float, 2> input, MemRef<float, 2> *kernel,
