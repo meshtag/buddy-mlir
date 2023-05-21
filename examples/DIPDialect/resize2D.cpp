@@ -43,7 +43,7 @@ bool testImplementation(int argc, char *argv[]) {
   // Define memref container for image.
   Img<float, 2> input(image);
 
-  intptr_t outputSize[2] = {250, 250}; // {image_rows, image_cols}
+  intptr_t outputSize[2] = {400, 400}; // {image_rows, image_cols}
   std::vector<float> scalingRatios = {
       4, 3}; // {row_scaling_ratio, col_scaling_ratio}
 
@@ -77,8 +77,8 @@ bool testImplementation(int argc, char *argv[]) {
 
   imwrite(argv[2], outputImageResize2D);
 
-  string nameNChannelImage = "NChannels_" + (string)argv[2];
-  imwrite(nameNChannelImage, outputImageNChannels);
+  // string nameNChannelImage = "NChannels_" + (string)argv[2];
+  // imwrite(nameNChannelImage, outputImageNChannels);
 
   return 1;
 }
