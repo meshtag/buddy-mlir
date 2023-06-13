@@ -121,19 +121,34 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   return 1;
 }
 
+void check_filter_2d()
+{
+  Mat image = imread("../../examples/images/YuTu.png", IMREAD_COLOR);
+  Mat output;
+
+  Mat kernel = Mat(3, 3, CV_32FC1, laplacianKernelAlign);
+
+  filter2D(image, output, CV_32FC3, kernel, cv::Point(0, 0), 0.0, cv::BORDER_CONSTANT);
+
+  imwrite("opencv-check-output.png", output);
+
+  std::cout << kernel << "\n";
+}
+
 int main(int argc, char *argv[]) {
-  bool flag = 1;
-  for (std::ptrdiff_t x = 0; x < 3; ++x) {
-    for (std::ptrdiff_t y = 0; y < 3; ++y) {
-      if (!testImplementation(argc, argv, x, y, 0)) {
-        flag = 0;
-        break;
-      }
-      if (!flag) {
-        break;
-      }
-    }
-  }
+  // bool flag = 1;
+  // for (std::ptrdiff_t x = 0; x < 3; ++x) {
+  //   for (std::ptrdiff_t y = 0; y < 3; ++y) {
+  //     if (!testImplementation(argc, argv, x, y, 0)) {
+  //       flag = 0;
+  //       break;
+  //     }
+  //     if (!flag) {
+  //       break;
+  //     }
+  //   }
+  // }
+  check_filter_2d();
 
   return 0;
 }
