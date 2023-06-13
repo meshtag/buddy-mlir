@@ -124,15 +124,20 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
 void check_filter_2d()
 {
   Mat image = imread("../../examples/images/YuTu.png", IMREAD_COLOR);
-  Mat output;
+  Mat output1(image), output2(image);
 
-  Mat kernel = Mat(3, 3, CV_32FC1, laplacianKernelAlign);
+  Mat channels[3];
+  split(image, channels);
 
-  filter2D(image, output, CV_32FC3, kernel, cv::Point(0, 0), 0.0, cv::BORDER_CONSTANT);
+  intptr_t kernelSize[2] = {3, 3};
+  MemRef<float, 2> kernel(laplacianKernelAlign, kernelSize);
+  Mat kernel1 = Mat(3, 3, CV_32FC1, laplacianKernelAlign);
 
-  imwrite("opencv-check-output.png", output);
+  dip::Corr2DNChannels(image, &kernel, output1, 0, 0, dip::BOUNDARY_OPTION::CONSTANT_PADDING);
+  filter2D(image, output2, CV_32FC3, kernel1, cv::Point(0, 0), 0.0, cv::BORDER_CONSTANT);
 
-  std::cout << kernel << "\n";
+  imwrite("dip-check-output.png", output1);
+  imwrite("opencv-check-output.png", output2);
 }
 
 int main(int argc, char *argv[]) {

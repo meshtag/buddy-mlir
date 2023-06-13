@@ -217,6 +217,31 @@ inline void Corr2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
   }
 }
 
+// User interface for N channel 2D Correlation.
+inline void Corr2DNChannels(cv::Mat &input, MemRef<float, 2> *kernel, cv::Mat &output, 
+                            unsigned int centerX, unsigned int centerY, BOUNDARY_OPTION option,
+                            float constantValue = 0) 
+{
+  unsigned numChannels = input.channels();
+  std::vector<cv::Mat> inputChannels, outputChannels;
+  cv::split(input, inputChannels);
+
+  intptr_t sizesOutput[2] = {input.rows, input.cols};
+  MemRef<float, 2> outputMemRef(sizesOutput);
+
+  for (unsigned i = 0; i < numChannels; ++i)
+  {
+    Img<float, 2> inputChannel(inputChannels[i]);
+
+    dip::Corr2D(&inputChannel, kernel, &outputMemRef, centerX, centerY,
+                option, constantValue);
+
+    outputChannels.push_back(cv::Mat(sizesOutput[0], sizesOutput[1], CV_32FC1, outputMemRef.getData()));
+  }
+
+  cv::merge(outputChannels, output);
+}
+
 inline void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
                       MemRef<float, 2> *output, unsigned int centerX,
                       unsigned int centerY, BOUNDARY_OPTION option,
