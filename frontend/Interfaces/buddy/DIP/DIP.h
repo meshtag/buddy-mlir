@@ -229,8 +229,14 @@ inline void Corr2DNChannels(cv::Mat &input, MemRef<float, 2> *kernel, cv::Mat &o
   intptr_t sizesOutput[2] = {input.rows, input.cols};
   MemRef<float, 2> outputMemRef(sizesOutput);
 
+  std::vector<Img<float, 2>> inputChannelImgVec(numChannels);
+
+  for (unsigned i = 0; i < numChannels; ++i)
+    inputChannelImgVec[i] = Img<float, 2>(inputChannels[i])
+
   for (unsigned i = 0; i < numChannels; ++i)
   {
+    std::cout << "Haha\n";
     Img<float, 2> inputChannel(inputChannels[i]);
 
     dip::Corr2D(&inputChannel, kernel, &outputMemRef, centerX, centerY,
@@ -239,7 +245,11 @@ inline void Corr2DNChannels(cv::Mat &input, MemRef<float, 2> *kernel, cv::Mat &o
     outputChannels.push_back(cv::Mat(sizesOutput[0], sizesOutput[1], CV_32FC1, outputMemRef.getData()));
   }
 
+  std::cout << output.channels() << "\n";
   cv::merge(outputChannels, output);
+  // std::cout << "I am here first " << inputChannels[0].at<float>(0, 0) << " " << inputChannels[1].at<float>(0, 0) << "\n";
+  std::cout << "I am here " << outputChannels[0].at<float>(0, 0) << " " << outputChannels[1].at<float>(0, 0) << " " << outputChannels[2].at<float>(0, 0) << "\n";
+  std::cout << output.channels() << "\n";
 }
 
 inline void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,
