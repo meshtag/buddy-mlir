@@ -229,20 +229,34 @@ inline void Corr2DNChannels(cv::Mat &input, MemRef<float, 2> *kernel, cv::Mat &o
   intptr_t sizesOutput[2] = {input.rows, input.cols};
   MemRef<float, 2> outputMemRef(sizesOutput);
 
-  std::vector<Img<float, 2>> inputChannelImgVec(numChannels);
+  // std::vector<Img<float, 2>> inputChannelImgVec(numChannels);
 
-  for (unsigned i = 0; i < numChannels; ++i)
-    inputChannelImgVec[i] = Img<float, 2>(inputChannels[i])
+  // for (unsigned i = 0; i < numChannels; ++i)
+  //   inputChannelImgVec[i] = Img<float, 2>(inputChannels[i])
+
+  // int *arrTemp = new int[input.rows * input.cols];
+  int arrTemp[input.rows * input.cols];
 
   for (unsigned i = 0; i < numChannels; ++i)
   {
     std::cout << "Haha\n";
     Img<float, 2> inputChannel(inputChannels[i]);
 
+    for (int i1 = 0; i1 < input.rows; ++i1)
+      for (int j1 = 0; j1 < input.cols; ++j1)
+        outputMemRef.getData()[i1*input.cols + j1] = 0;
+
     dip::Corr2D(&inputChannel, kernel, &outputMemRef, centerX, centerY,
                 option, constantValue);
 
-    outputChannels.push_back(cv::Mat(sizesOutput[0], sizesOutput[1], CV_32FC1, outputMemRef.getData()));
+    // std::copy(outputMemRef.getData(), outputMemRef.getData() + input.rows*input.cols, arrTemp);
+    for (int i1 = 0; i1 < input.rows; ++i1)
+      for (int j1 = 0; j1 < input.cols; ++j1)
+        arrTemp[i1*input.cols + j1] = (int)outputMemRef.getData()[i1*input.cols + j1];
+    
+    std::cout << "Meshtag here\n" << (int)outputMemRef.getData()[0] << " " << (int)arrTemp[0] << "\n\n";
+
+    outputChannels.push_back(cv::Mat(sizesOutput[0], sizesOutput[1], CV_32FC1, arrTemp));
   }
 
   std::cout << output.channels() << "\n";
@@ -250,6 +264,7 @@ inline void Corr2DNChannels(cv::Mat &input, MemRef<float, 2> *kernel, cv::Mat &o
   // std::cout << "I am here first " << inputChannels[0].at<float>(0, 0) << " " << inputChannels[1].at<float>(0, 0) << "\n";
   std::cout << "I am here " << outputChannels[0].at<float>(0, 0) << " " << outputChannels[1].at<float>(0, 0) << " " << outputChannels[2].at<float>(0, 0) << "\n";
   std::cout << output.channels() << "\n";
+  // delete []arrTemp;
 }
 
 inline void CorrFFT2D(Img<float, 2> *input, MemRef<float, 2> *kernel,

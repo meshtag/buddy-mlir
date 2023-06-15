@@ -142,8 +142,15 @@ void check_filter_2d()
   std::cout << output1.channels() << "\n";
   std::cout << output2.channels() << "\n";
 
-  std::cout << output1.at<float>(0, 0) << "\n";
-  std::cout << output2.at<float>(0, 0) << "\n\n";
+  std::cout << output1.at<float>(0, 0) << " " << output1.at<float>(0, 1) << " " << output1.at<float>(0, 2) << "\n";
+  std::cout << output2.at<float>(0, 0) << " " << output2.at<float>(0, 1) << " " << output2.at<float>(0, 2) << "\n\n";
+
+  std::cout << output1.at<float>(1, 0) << " " << output1.at<float>(1, 1) << " " << output1.at<float>(1, 2) << "\n";
+  std::cout << output2.at<float>(1, 0) << " " << output2.at<float>(1, 1) << " " << output2.at<float>(1, 2) << "\n\n";
+
+  std::cout << output1.at<float>(2, 0) << " " << output1.at<float>(2, 1) << " " << output1.at<float>(2, 2) << "\n";
+  std::cout << output2.at<float>(2, 0) << " " << output2.at<float>(2, 1) << " " << output2.at<float>(2, 2) << "\n\n";
+
   // std::cout << (float)output1.at<cv::Vec3b>(0, 0)[0] << "\n";
 
   // cv::Vec3b px = output1.at<cv::Vec3b>(0, 0);
