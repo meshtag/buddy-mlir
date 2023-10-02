@@ -14,6 +14,9 @@ add_custom_command(OUTPUT DIP.o
         COMMAND ${CMAKE_BINARY_DIR}/bin/buddy-opt ${CMAKE_CURRENT_SOURCE_DIR}/DIP.mlir
         -lower-dip="DIP-strip-mining=${SPLITING_SIZE}"
         -arith-expand
+        # -affine-parallelize="parallel-reductions=1"
+        -scf-bufferize
+        -scf-parallel-loop-specialization
         -lower-affine
         -convert-scf-to-cf
         -convert-math-to-llvm
