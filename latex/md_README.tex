@@ -1,0 +1,137 @@
+MLIR-\/\+Based Ideas Landing Project (\href{https://buddy-compiler.github.io/}{\texttt{ Project page}}).\hypertarget{md_README_autotoc_md1}{}\doxysection{Getting Started}\label{md_README_autotoc_md1}
+The default build system uses LLVM/\+MLIR as an external library. We also provide a \href{\#one-step}{\texttt{ one-\/step build strategy}} for users who only want to use our tools. Please make sure \href{https://llvm.org/docs/GettingStarted.html\#requirements}{\texttt{ the dependencies}} are available on your machine.\hypertarget{md_README_autotoc_md2}{}\doxysubsection{LLVM/\+MLIR Dependencies}\label{md_README_autotoc_md2}
+Before building, please make sure \href{https://llvm.org/docs/GettingStarted.html\#requirements}{\texttt{ the dependencies}} are available on your machine.\hypertarget{md_README_autotoc_md3}{}\doxysubsection{Clone and Initialize}\label{md_README_autotoc_md3}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ git clone git@github.com:buddy-\/compiler/buddy-\/mlir.git}
+\DoxyCodeLine{\$ cd buddy-\/mlir}
+\DoxyCodeLine{\$ git submodule update -\/-\/init}
+
+\end{DoxyCode}
+\hypertarget{md_README_autotoc_md4}{}\doxysubsection{Build and Test LLVM/\+MLIR/\+CLANG}\label{md_README_autotoc_md4}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ cd buddy-\/mlir}
+\DoxyCodeLine{\$ mkdir llvm/build}
+\DoxyCodeLine{\$ cd llvm/build}
+\DoxyCodeLine{\$ cmake -\/G Ninja ../llvm \(\backslash\)}
+\DoxyCodeLine{    -\/DLLVM\_ENABLE\_PROJECTS="{}mlir;clang"{} \(\backslash\)}
+\DoxyCodeLine{    -\/DLLVM\_TARGETS\_TO\_BUILD="{}host;RISCV"{} \(\backslash\)}
+\DoxyCodeLine{    -\/DLLVM\_ENABLE\_ASSERTIONS=ON \(\backslash\)}
+\DoxyCodeLine{    -\/DCMAKE\_BUILD\_TYPE=RELEASE}
+\DoxyCodeLine{\$ ninja check-\/mlir check-\/clang}
+
+\end{DoxyCode}
+
+
+If your target machine includes a Nvidia GPU, you can use the following configuration\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ cmake -\/G Ninja ../llvm \(\backslash\)}
+\DoxyCodeLine{    -\/DLLVM\_ENABLE\_PROJECTS="{}mlir;clang"{} \(\backslash\)}
+\DoxyCodeLine{    -\/DLLVM\_TARGETS\_TO\_BUILD="{}host;RISCV;NVPTX"{} \(\backslash\)}
+\DoxyCodeLine{    -\/DMLIR\_ENABLE\_CUDA\_RUNNER=ON \(\backslash\)}
+\DoxyCodeLine{    -\/DLLVM\_ENABLE\_ASSERTIONS=ON \(\backslash\)}
+\DoxyCodeLine{    -\/DCMAKE\_BUILD\_TYPE=RELEASE}
+
+\end{DoxyCode}
+
+
+If your target machine has lld installed, you can use the following configuration\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ cmake -\/G Ninja ../llvm \(\backslash\)}
+\DoxyCodeLine{    -\/DLLVM\_ENABLE\_PROJECTS="{}mlir;clang"{} \(\backslash\)}
+\DoxyCodeLine{    -\/DLLVM\_TARGETS\_TO\_BUILD="{}host;RISCV"{} \(\backslash\)}
+\DoxyCodeLine{    -\/DLLVM\_USE\_LINKER=lld \(\backslash\)}
+\DoxyCodeLine{    -\/DLLVM\_ENABLE\_ASSERTIONS=ON \(\backslash\)}
+\DoxyCodeLine{    -\/DCMAKE\_BUILD\_TYPE=RELEASE}
+
+\end{DoxyCode}
+\hypertarget{md_README_autotoc_md5}{}\doxysubsection{Build buddy-\/mlir}\label{md_README_autotoc_md5}
+If you have previously built the llvm-\/project, you can replace the \$\+PWD with the path to the directory where you have successfully built the llvm-\/project.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ cd buddy-\/mlir}
+\DoxyCodeLine{\$ mkdir build}
+\DoxyCodeLine{\$ cd build}
+\DoxyCodeLine{\$ cmake -\/G Ninja .. \(\backslash\)}
+\DoxyCodeLine{    -\/DMLIR\_DIR=\$PWD/../llvm/build/lib/cmake/mlir \(\backslash\)}
+\DoxyCodeLine{    -\/DLLVM\_DIR=\$PWD/../llvm/build/lib/cmake/llvm \(\backslash\)}
+\DoxyCodeLine{    -\/DLLVM\_ENABLE\_ASSERTIONS=ON \(\backslash\)}
+\DoxyCodeLine{    -\/DCMAKE\_BUILD\_TYPE=RELEASE}
+\DoxyCodeLine{\$ ninja}
+\DoxyCodeLine{\$ ninja check-\/buddy}
+
+\end{DoxyCode}
+
+
+If you want to add domain-\/specific framework support, please add the following cmake options\+:
+
+\tabulinesep=1mm
+\begin{longtabu}spread 0pt [c]{*{3}{|X[-1]}|}
+\hline
+\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ Framework   }&\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ Enable Option   }&\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ Other Options    }\\\cline{1-3}
+\endfirsthead
+\hline
+\endfoot
+\hline
+\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ Framework   }&\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ Enable Option   }&\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ Other Options    }\\\cline{1-3}
+\endhead
+Open\+CV   &{\ttfamily -\/DBUDDY\+\_\+\+ENABLE\+\_\+\+OPENCV=ON}   &Add {\ttfamily -\/DOpen\+CV\+\_\+\+DIR=$<$/\+PATH/\+TO/\+OPENCV/\+BUILD/$>$} or install Open\+CV release version on your local device.   \\\cline{1-3}
+\end{longtabu}
+
+
+\doxysubsubsection*{One-\/step building strategy}
+
+If you only want to use our tools and integrate them more easily into your projects, you can choose to use the one-\/step build strategy.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ cmake -\/G Ninja -\/Bbuild \(\backslash\)}
+\DoxyCodeLine{    -\/DCMAKE\_BUILD\_TYPE=Release \(\backslash\)}
+\DoxyCodeLine{    -\/DLLVM\_ENABLE\_PROJECTS="{}mlir;clang"{} \(\backslash\)}
+\DoxyCodeLine{    -\/DLLVM\_TARGETS\_TO\_BUILD="{}host;RISCV"{} \(\backslash\)}
+\DoxyCodeLine{    -\/DLLVM\_EXTERNAL\_PROJECTS="{}buddy-\/mlir"{} \(\backslash\)}
+\DoxyCodeLine{    -\/DLLVM\_EXTERNAL\_BUDDY\_MLIR\_SOURCE\_DIR="{}\$PWD"{} \(\backslash\)}
+\DoxyCodeLine{    -\/DLLVM\_ENABLE\_ASSERTIONS=ON \(\backslash\)}
+\DoxyCodeLine{    -\/DCMAKE\_BUILD\_TYPE=RELEASE \(\backslash\)}
+\DoxyCodeLine{    llvm/llvm}
+\DoxyCodeLine{\$ cd build}
+\DoxyCodeLine{\$ ninja check-\/mlir check-\/clang}
+\DoxyCodeLine{\$ ninja}
+\DoxyCodeLine{\$ ninja check-\/buddy}
+
+\end{DoxyCode}
+ \hypertarget{md_README_autotoc_md6}{}\doxysection{Dialects}\label{md_README_autotoc_md6}
+\hypertarget{md_README_autotoc_md7}{}\doxysubsection{Bud Dialect}\label{md_README_autotoc_md7}
+Bud dialect is designed for testing and demonstrating.\hypertarget{md_README_autotoc_md8}{}\doxysubsection{DIP Dialect}\label{md_README_autotoc_md8}
+DIP dialect is designed for digital image processing abstraction.\hypertarget{md_README_autotoc_md9}{}\doxysection{Tools}\label{md_README_autotoc_md9}
+\hypertarget{md_README_autotoc_md10}{}\doxysubsection{buddy-\/opt}\label{md_README_autotoc_md10}
+The buddy-\/opt is the driver for dialects and optimization in buddy-\/mlir project.\hypertarget{md_README_autotoc_md11}{}\doxysubsection{buddy-\/lsp-\/server}\label{md_README_autotoc_md11}
+This program should be a drop-\/in replacement for {\ttfamily mlir-\/lsp-\/server}, supporting new dialects defined in buddy-\/mlir. To use it, please directly modify mlir LSP server path in VSCode settings (or similar settings for other editors) to\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\{}
+\DoxyCodeLine{    "{}mlir.server\_path"{}: "{}YOUR\_BUDDY\_MLIR\_BUILD/bin/buddy-\/lsp-\/server"{},}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+
+
+After modification, your editor should have correct completion and error prompts for new dialects such as {\ttfamily rvv} and {\ttfamily gemmini}.\hypertarget{md_README_autotoc_md12}{}\doxysubsection{Auto\+Config Mechanism}\label{md_README_autotoc_md12}
+The {\ttfamily Auto\+Config} mechanism is designed to detect the target hardware and configure the toolchain automatically.\hypertarget{md_README_autotoc_md13}{}\doxysection{Examples}\label{md_README_autotoc_md13}
+The purpose of the examples is to give users a better understanding of how to use the passes and the interfaces in buddy-\/mlir. Currently, we provide three types of examples.
+
+
+\begin{DoxyItemize}
+\item IR level conversion and transformation examples.
+\item Domain-\/specific application level examples.
+\item Testing and demonstrating examples.
+\end{DoxyItemize}
+
+For more details, please see the documentation of the examples. 

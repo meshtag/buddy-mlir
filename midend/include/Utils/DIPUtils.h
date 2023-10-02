@@ -30,45 +30,45 @@ using namespace mlir;
 namespace buddy {
 namespace dip {
 
-// Specify operation names which will be used for performing operation specific
-// tasks inside generic utility functions.
+/// Specify operation names which will be used for performing operation specific
+/// tasks inside generic utility functions.
 enum class DIP_OP { CORRELATION_2D, EROSION_2D, DILATION_2D };
 
-// Specify error codes specific to DIP dialect which might be used for exiting
-// from lowering passes with appropriate messages.
+/// Specify error codes specific to DIP dialect which might be used for exiting
+/// from lowering passes with appropriate messages.
 enum class DIP_ERROR { INCONSISTENT_TYPES, UNSUPPORTED_TYPE, NO_ERROR };
 
-// Inserts a constant op with value 0 into a location `loc` based on type
-// `type`. Supported types are : f32, f64, integer types.
+/// Inserts a constant op with value 0 into a location `loc` based on type
+/// `type`. Supported types are : f32, f64, integer types.
 Value insertZeroConstantOp(MLIRContext *ctx, OpBuilder &builder, Location loc,
                            Type elemTy);
 
-// Inserts FMA operation into a given location `loc` based on type `type`.
-// Note: FMA is done by Multiply and Add for integer types, because there is no
-// dedicated FMA operation for them.
-// Supported types: f32, f64, integer types
+/// Inserts FMA operation into a given location `loc` based on type `type`.
+/// Note: FMA is done by Multiply and Add for integer types, because there is no
+/// dedicated FMA operation for them.
+/// Supported types: f32, f64, integer types
 Value insertFMAOp(OpBuilder &builder, Location loc, VectorType type,
                   Value inputVec, Value kernelVec, Value outputVec);
 
-// Calculate result of FMA and store it in output memref. This function cannot
-// handle tail processing.
+/// Calculate result of FMA and store it in output memref. This function cannot
+/// handle tail processing.
 void calcAndStoreFMAwoTailProcessing(OpBuilder &builder, Location loc,
                                      VectorType vecType, Value inputVec,
                                      Value kernelVec, Value output,
                                      Value beginIdx, Value endIdx);
 
-// Checks if we encountered a tail (columns remaining after processing in
-// batches of stride size).
+/// Checks if we encountered a tail (columns remaining after processing in
+/// batches of stride size).
 Value tailChecker(OpBuilder &builder, Location loc, AffineMap calcHelper,
                   Value strideVal, Value kernelSize, Value c1, Value pseudoCol,
                   Value colPivot);
 
-// Creates the required mask which is to be used for tail processing.
+/// Creates the required mask which is to be used for tail processing.
 Value tailMaskCreator(OpBuilder &builder, Location loc, Value inputCol,
                       Value colPivot, VectorType vectorMaskTy);
 
-// Calculate result of FMA and store it in output memref. This function can
-// handle tail processing.
+/// Calculate result of FMA and store it in output memref. This function can
+/// handle tail processing.
 void calcAndStoreFMAwTailProcessing(OpBuilder &builder, Location loc,
                                     VectorType vecType, Value inputVec,
                                     Value kernelVec, Value output,
@@ -76,42 +76,42 @@ void calcAndStoreFMAwTailProcessing(OpBuilder &builder, Location loc,
                                     Value tailCond, Value zeroPadding,
                                     Value inputCol, VectorType vectorMaskTy);
 
-// Apply 3 shear method and return mapped values.
+/// Apply 3 shear method and return mapped values.
 std::vector<Value> shearTransform(OpBuilder &builder, Location loc,
                                   Value originalX, Value originalY,
                                   Value sinVec, Value tanVec);
 
-// Apply standard rotation matrix transformation and return mapped values.
+/// Apply standard rotation matrix transformation and return mapped values.
 std::vector<Value> standardRotate(OpBuilder &builder, Location loc,
                                   Value originalX, Value originalY,
                                   Value sinVec, Value cosVec);
 
-// Get center co-ordinates w.r.t given dimension.
+/// Get center co-ordinates w.r.t given dimension.
 Value getCenter(OpBuilder &builder, Location loc, MLIRContext *ctx, Value dim);
 
-// Scale pixel co-ordinates appropriately before calculating their rotated
-// position(s).
+/// Scale pixel co-ordinates appropriately before calculating their rotated
+/// position(s).
 Value pixelScaling(OpBuilder &builder, Location loc, Value imageDImF32Vec,
                    Value coordVec, Value imageCenterF32Vec, Value c1F32Vec);
 
-// Extract values present at a particular index in two vectors for using
-// those values to load an element from a memref.
+/// Extract values present at a particular index in two vectors for using
+/// those values to load an element from a memref.
 std::vector<Value> extractIndices(OpBuilder &builder, Location loc, Value xVec,
                                   Value yVec, Value vecIndex, Value xUpperBound,
                                   Value yUpperBound, Value c0F32);
 
-// Fill appropriate pixel data in its corresponding rotated co-ordinate of
-// output image.
+/// Fill appropriate pixel data in its corresponding rotated co-ordinate of
+/// output image.
 void fillPixels(OpBuilder &builder, Location loc, Value resXVec, Value resYVec,
                 Value xVec, Value yVec, Value input, Value output, Value c0,
                 Value strideVal, Value outputRowLastElemF32,
                 Value outputColLastElemF32, Value inputRowLastElemF32,
                 Value inputColLastElemF32, Value c0F32);
 
-// Calculate tan(angle / 2) where angle is a function parameter.
+/// Calculate tan(angle / 2) where angle is a function parameter.
 Value customTanVal(OpBuilder &builder, Location loc, Value angleVal);
 
-// Controls shear transform application.
+/// Controls shear transform application.
 void shearTransformController(
     OpBuilder &builder, Location loc, MLIRContext *ctx,
     SmallVector<Value, 8> lowerBounds, SmallVector<Value, 8> upperBounds,
@@ -124,6 +124,37 @@ void shearTransformController(
     Value c1F32Vec, VectorType vectorTy32, int64_t stride, FloatType f32);
 
 // Controls standard rotation matrix application.
+/**
+ * @brief 
+ * 
+ * @param builder 
+ * @param loc 
+ * @param ctx 
+ * @param lowerBounds 
+ * @param upperBounds 
+ * @param steps 
+ * @param strideVal 
+ * @param input 
+ * @param output 
+ * @param sinVec 
+ * @param angleVal 
+ * @param inputRowF32Vec 
+ * @param inputColF32Vec 
+ * @param inputCenterYF32Vec 
+ * @param inputCenterXF32Vec 
+ * @param outputCenterYF32Vec 
+ * @param outputCenterXF32Vec 
+ * @param outputRowLastElemF32 
+ * @param outputColLastElemF32 
+ * @param inputRowLastElemF32 
+ * @param inputColLastElemF32 
+ * @param c0 
+ * @param c0F32 
+ * @param c1F32Vec 
+ * @param vectorTy32 
+ * @param stride 
+ * @param f32 
+ */
 void standardRotateController(
     OpBuilder &builder, Location loc, MLIRContext *ctx,
     SmallVector<Value, 8> lowerBounds, SmallVector<Value, 8> upperBounds,
