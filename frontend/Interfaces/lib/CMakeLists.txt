@@ -16,7 +16,8 @@ add_custom_command(OUTPUT DIP.o
         -arith-expand
         # -affine-parallelize="parallel-reductions=1"
         -scf-bufferize
-        -scf-parallel-loop-specialization
+        # -scf-parallel-loop-specialization
+        -scf-parallel-loop-tiling
         -lower-affine
         -convert-scf-to-cf
         -convert-math-to-llvm
