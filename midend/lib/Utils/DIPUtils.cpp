@@ -990,8 +990,11 @@ void traverseImagewBoundaryExtrapolation(
         rewriter, loc, lowerBounds, upperBounds1, steps1,
         [&](OpBuilder &builder, Location loc, ValueRange ivs1) {
 
-      auto check = builder.create<scf::ParallelOp>(loc, lowerBounds, upperBounds2, steps2, 
-       [&](OpBuilder &builder, Location loc, ValueRange ivs2) {
+    //   auto check = builder.create<scf::ParallelOp>(loc, lowerBounds, upperBounds2, steps2, 
+    //    [&](OpBuilder &builder, Location loc, ValueRange ivs2) {
+
+        builder.create<scf::ParallelOp>(loc, lowerBounds, upperBounds2, steps2, 
+            [&](OpBuilder &builder, Location loc, ValueRange ivs2) {
 
     //    })  
 

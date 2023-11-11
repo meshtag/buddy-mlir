@@ -10,17 +10,42 @@ elseif (HAVE_NEON)
     set(SPLITING_SIZE 16)
 endif ()
 
+# add_custom_command(OUTPUT DIP.o
+#         COMMAND ${CMAKE_BINARY_DIR}/bin/buddy-opt ${CMAKE_CURRENT_SOURCE_DIR}/DIP.mlir
+#         -lower-dip="DIP-strip-mining=${SPLITING_SIZE}"
+#         -arith-expand
+#         # -affine-parallelize="parallel-reductions=1"
+#         -scf-bufferize
+#         # -scf-parallel-loop-specialization
+#         -scf-parallel-loop-tiling
+#         -lower-affine
+#         -convert-scf-to-cf
+#         -convert-math-to-llvm
+#         -convert-vector-to-llvm
+#         -finalize-memref-to-llvm
+#         -convert-func-to-llvm
+#         -reconcile-unrealized-casts |
+#         ${LLVM_MLIR_BINARY_DIR}/mlir-translate --mlir-to-llvmir |
+#         ${LLVM_MLIR_BINARY_DIR}/llc
+#         -mtriple=${BUDDY_TARGET_TRIPLE}
+#         -mattr=${BUDDY_OPT_ATTR}
+#         --filetype=obj
+#         -o ${CMAKE_CURRENT_BINARY_DIR}/DIP.o
+#         DEPENDS buddy-opt
+#         )
+
 add_custom_command(OUTPUT DIP.o
         COMMAND ${CMAKE_BINARY_DIR}/bin/buddy-opt ${CMAKE_CURRENT_SOURCE_DIR}/DIP.mlir
         -lower-dip="DIP-strip-mining=${SPLITING_SIZE}"
-        -arith-expand
-        # -affine-parallelize="parallel-reductions=1"
-        -scf-bufferize
-        # -scf-parallel-loop-specialization
-        -scf-parallel-loop-tiling
         -lower-affine
+        -async-parallel-for
+        -async-to-async-runtime
+        -async-runtime-ref-counting
+        -async-runtime-ref-counting-opt
+        -arith-expand
         -convert-scf-to-cf
         -convert-math-to-llvm
+        -convert-async-to-llvm
         -convert-vector-to-llvm
         -finalize-memref-to-llvm
         -convert-func-to-llvm

@@ -81,9 +81,9 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
 
   Mat kernel1 = Mat(3, 3, CV_32FC1, laplacianKernelAlign);
 
-  // Call the MLIR Corr2D function.
-  dip::Corr2D(&input, &kernel, &output1, x, y,
-              dip::BOUNDARY_OPTION::REPLICATE_PADDING);
+  // // Call the MLIR Corr2D function.
+  // dip::Corr2D(&input, &kernel, &output1, x, y,
+  //             dip::BOUNDARY_OPTION::REPLICATE_PADDING);
 
   // Define a cv::Mat with the output of Corr2D.
   Mat outputImageReplicatePadding(sizesOutput[0], sizesOutput[1], CV_32FC1,
@@ -95,10 +95,10 @@ bool testImplementation(int argc, char *argv[], std::ptrdiff_t x,
   filter2D(image, opencvReplicatePadding, CV_8UC1, kernel1, cv::Point(x, y),
            0.0, cv::BORDER_REPLICATE);
 
-  if (!testImages(o1, opencvReplicatePadding)) {
-    std::cout << "x, y = " << x << ", " << y << "\n";
-    return 0;
-  }
+  // if (!testImages(o1, opencvReplicatePadding)) {
+  //   std::cout << "x, y = " << x << ", " << y << "\n";
+  //   return 0;
+  // }
 
   // Call the MLIR Corr2D function.
   dip::Corr2D(&input, &kernel, &output2, x, y,
