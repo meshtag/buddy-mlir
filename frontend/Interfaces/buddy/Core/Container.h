@@ -31,6 +31,64 @@
 #include <stdexcept>
 #include <vector>
 
+template <typename T, size_t N> class Tensor {
+public:
+  Tensor(intptr_t sizes[N]);
+  Tensor(intptr_t sizes[N], T init);
+  ~Tensor();
+
+protected:
+  Tensor();
+  void setStrides();
+  size_t product(const intptr_t sizes[N]) const;
+
+  T *allocated = nullptr;
+  T *aligned = nullptr;
+  intptr_t offset = 0;
+  intptr_t sizes[N];
+  intptr_t strides[N];
+};
+
+template <typename T, std::size_t N> Tensor<T, N>::Tensor(intptr_t sizes[N]) {
+  for (size_t i = 0; i < N; ++i) {
+    this->sizes[i] = sizes[i];
+  }
+  setStrides();
+  size_t size = product(sizes);
+  allocated = (T *)malloc(sizeof(T) * size);
+  aligned = allocated;
+}
+
+template <typename T, std::size_t N>
+Tensor<T, N>::Tensor(intptr_t sizes[N], T init) : Tensor(sizes) {
+  size_t size = product(sizes);
+  std::fill(aligned, aligned + size, init);
+}
+
+template <typename T, std::size_t N> void Tensor<T, N>::setStrides() {
+  assert((N > 0) && "Invalid container number of dims");
+  strides[N - 1] = 1;
+  if (N < 2)
+    return;
+  // Prevent implicit conversions between unsigned and signed
+  for (std::size_t i = N - 1; i > 0; i--) {
+    strides[i - 1] = strides[i] * sizes[i];
+  }
+}
+
+template <typename T, std::size_t N>
+size_t Tensor<T, N>::product(const intptr_t sizes[N]) const {
+  size_t size = 1;
+  for (size_t i = 0; i < N; i++)
+    size *= sizes[i];
+  return size;
+}
+
+template <typename T, std::size_t N> Tensor<T, N>::~Tensor() {
+  if (allocated)
+    free(allocated);
+}
+
 // MemRef descriptor.
 // - T represents the type of the elements.
 // - N represents the number of dimensions.

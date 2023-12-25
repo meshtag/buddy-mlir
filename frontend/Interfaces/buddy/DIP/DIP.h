@@ -73,6 +73,10 @@ void _mlir_ciface_resize_2d_bilinear_interpolation(
     Img<float, 2> *input, float horizontalScalingFactor,
     float verticalScalingFactor, MemRef<float, 2> *output);
 
+void _mlir_ciface_tensor_resize_2d_nearest_neighbour_interpolation(
+    Tensor<float, 2> *input, float horizontalScalingFactor,
+    float verticalScalingFactor, Tensor<float, 2> *output);
+
 // Declare the Morphology 2D C interface.
 void _mlir_ciface_erosion_2d_constant_padding(
     Img<float, 2> input, MemRef<float, 2> *kernel, MemRef<float, 2> *output,

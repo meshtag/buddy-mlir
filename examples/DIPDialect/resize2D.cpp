@@ -35,6 +35,13 @@ bool testImplementation(int argc, char *argv[]) {
   // Read as grayscale image and Define memref container for image.
   Img<float, 2> input = dip::imread<float, 2>(argv[1], dip::IMGRD_GRAYSCALE);
 
+  intptr_t checkSizes[2] = {25, 25};
+  Tensor<float, 2> inputTensorCheck(checkSizes);
+  Tensor<float, 2> inputTensorCheckFill0(checkSizes, 0);
+
+  dip::detail::_mlir_ciface_tensor_resize_2d_nearest_neighbour_interpolation(
+      &inputTensorCheckFill0, 2, 2, &inputTensorCheck);
+
   intptr_t outputSize[2] = {250, 100}; // {image_cols, image_rows}
   std::vector<float> scalingRatios = {
       0.25, 0.1}; // {col_scaling_ratio, row_scaling_ratio}
@@ -61,7 +68,7 @@ bool testImplementation(int argc, char *argv[]) {
   // Define Img with the output of Resize2D.
   intptr_t sizes[2] = {output.getSizes()[0], output.getSizes()[1]};
 
-  Img<float, 2> outputImageResize2D(output.getData(),sizes);
+  Img<float, 2> outputImageResize2D(output.getData(), sizes);
 
   dip::imwrite(argv[2], outputImageResize2D);
 
